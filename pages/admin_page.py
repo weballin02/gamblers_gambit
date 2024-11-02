@@ -1,4 +1,3 @@
-
 import streamlit as st
 import os
 from core.signal_system import signal_system
@@ -35,15 +34,24 @@ def admin_page():
 
 def create_new_page(page_name, page_code):
     page_path = f"pages/{page_name}.py"
+    os.makedirs("pages", exist_ok=True)  # Ensure pages directory exists
     with open(page_path, "w") as f:
         f.write(page_code)
     signal_system.emit("on_page_added", {"page_name": page_name})
 
 def add_utility(util_name, util_code):
     util_path = f"utils/{util_name}.py"
+    os.makedirs("utils", exist_ok=True)  # Ensure utils directory exists
     with open(util_path, "w") as f:
         f.write(util_code)
 
 def add_dependency(dependency):
-    with open("requirements.txt", "a") as f:
-        f.write(f"{dependency}\n")
+    with open("requirements.txt", "r") as f:
+        existing_dependencies = f.read().splitlines()
+
+    if dependency not in existing_dependencies:
+        with open("requirements.txt", "a") as f:
+            f.write(f"{dependency}\n")
+        st.success(f"Dependency '{dependency}' added to requirements.txt")
+    else:
+        st.warning(f"Dependency '{dependency}' is already in requirements.txt")
