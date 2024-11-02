@@ -1,0 +1,8 @@
+
+streamlit
+pandas
+numpy
+nfl_data_py
+bcrypt
+Flask
+sqlalchemy
