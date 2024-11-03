@@ -5,5 +5,5 @@ from utils.database import init_db
 init_db()
 
 # Title and introduction for the main landing page
-st.title("Welcome to NFL Monte Carlo Simulation and Analysis")
-st.write("Explore different pages using the sidebar to run simulations, view correlations, and more.")
+st.title("Welcome to Gambler's Gambit")
+st.write("Enter the Gambit: Conduct Monte Carlo Simulations and Correlation Analysis, Explore Game Predictions, and more.")
