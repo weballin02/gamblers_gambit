@@ -39,7 +39,7 @@ def load_and_preprocess_data(file_path):
     return team_data
 
 # Load Data
-file_path = '/Users/matthewfox/Downloads/gamblers_gambit/data/nfl_data.csv'  # Update this path
+file_path = 'data/nfl_data.csv'  # Update this path
 team_data = load_and_preprocess_data(file_path)
 
 # Get list of teams
@@ -48,7 +48,7 @@ teams_list = team_data['team'].unique()
 # Train or Load Models
 @st.cache_resource
 def get_team_models(team_data):
-    model_dir = '/Users/matthewfox/Downloads/gamblers_gambit/models/nfl/'  # Update this path
+    model_dir = 'models/nfl/'  # Update this path
     os.makedirs(model_dir, exist_ok=True)
 
     team_models = {}
