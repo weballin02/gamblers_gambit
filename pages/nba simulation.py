@@ -74,7 +74,7 @@ def apply_team_name_mapping(data):
     return data, team_name_mapping, inverse_team_name_mapping
 
 # Load Data
-file_path = '/Users/matthewfox/Downloads/gamblers_gambit/data/traditional.csv'
+file_path = 'data/traditional.csv'
 data = load_and_preprocess_data(file_path)
 
 # Apply Team Name Mapping
@@ -87,7 +87,7 @@ team_data.set_index('date', inplace=True)
 # Initialize, Train, Save, and Load ARIMA Models for Each Team
 @st.cache_resource
 def get_team_models(team_data):
-    model_dir = '/Users/matthewfox/Downloads/gamblers_gambit/models/nba'
+    model_dir = 'models/nba'
     os.makedirs(model_dir, exist_ok=True)  # Ensure the model directory exists
 
     team_models = {}
