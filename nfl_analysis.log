@@ -1,0 +1,3 @@
+2024-11-05 10:43:44,814 - INFO - Fetching NFL data...
+2024-11-05 10:43:56,944 - ERROR - Error fetching NFL data: "['team', 'opponent'] not in index"
+2024-11-05 10:43:56,944 - ERROR - Analysis failed: "['team', 'opponent'] not in index"
