@@ -62,7 +62,7 @@ id_to_abbrev = {team['id']: team['abbreviation'] for team in nba_team_list}
 
 # Cache the data loading to improve performance
 @st.cache_data(ttl=3600)  # Cache for 1 hour
-def load_nba_game_logs(season='2022-23'):
+def load_nba_game_logs(season='2022-24'):
     try:
         # Fetch game logs for all teams for the specified season and regular season
         game_logs = LeagueGameLog(season=season, season_type_all_star='Regular Season', player_or_team_abbreviation='T')
