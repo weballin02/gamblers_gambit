@@ -1,13 +1,13 @@
-# monte_carlo_simulation.py
-
 import streamlit as st
 import nfl_data_py as nfl
 import pandas as pd
 import numpy as np
-from datetime import datetime
+from datetime import datetime, timedelta
 from utils.auth import hash_password, check_password
 from utils.user_database import initialize_database
 from utils.database import save_model, get_saved_models, load_model
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
 # Initialize the database for user and model management
 initialize_database()
@@ -39,13 +39,14 @@ def calculate_team_stats():
 
     return team_stats
 
-# Function to get upcoming games
+# Function to get upcoming games within the next 30 days
 def get_upcoming_games():
     current_year = datetime.now().year
     schedule = nfl.import_schedules([current_year])
     today = datetime.now().date()
+    next_month = today + timedelta(days=30)
     schedule['gameday'] = pd.to_datetime(schedule['gameday']).dt.date
-    upcoming_games = schedule[schedule['gameday'] >= today]
+    upcoming_games = schedule[(schedule['gameday'] >= today) & (schedule['gameday'] <= next_month)]
     return upcoming_games[['gameday', 'home_team', 'away_team']]
 
 # Monte Carlo simulation function
@@ -78,62 +79,124 @@ def monte_carlo_simulation(home_team, away_team, spread_adjustment, num_simulati
     avg_total_score = avg_home_score + avg_away_score
 
     return {
-        f"{home_team} Win Percentage": round(home_wins / num_simulations * 100, 1),
-        f"{away_team} Win Percentage": round(away_wins / num_simulations * 100, 1),
-        f"Average {home_team} Score": round(avg_home_score, 1),
-        f"Average {away_team} Score": round(avg_away_score, 1),
-        "Average Total Score": round(avg_total_score, 1),
-        f"Score Differential ({home_team} - {away_team})": round(np.mean(np.array(total_home_scores) - np.array(total_away_scores)), 1),
-        f"{home_team} Max Score": round(np.max(total_home_scores), 1),
-        f"{home_team} Min Score": round(np.min(total_home_scores), 1),
-        f"{away_team} Max Score": round(np.max(total_away_scores), 1),
-        f"{away_team} Min Score": round(np.min(total_away_scores), 1)
+        f"{home_team} Win Percentage": round(home_wins / num_simulations * 100, 2),
+        f"{away_team} Win Percentage": round(away_wins / num_simulations * 100, 2),
+        f"Average {home_team} Score": round(avg_home_score, 2),
+        f"Average {away_team} Score": round(avg_away_score, 2),
+        "Average Total Score": round(avg_total_score, 2),
+        f"Score Differential ({home_team} - {away_team})": round(np.mean(np.array(total_home_scores) - np.array(total_away_scores)), 2),
+        "Simulation Data": {
+            "home_scores": total_home_scores,
+            "away_scores": total_away_scores
+        }
     }
 
-# Function to run simulations at different iteration levels
-def run_all_simulations(home_team, away_team, spread_adjustment, team_stats):
-    preset_iterations = [1000, 10000, 100000, 1000000]
-    results_by_simulation = []
+# Function to create visualizations of the simulation results
+def create_simulation_visualizations(results, home_team, away_team):
+    home_scores = results["Simulation Data"]["home_scores"]
+    away_scores = results["Simulation Data"]["away_scores"]
+    
+    # Create subplot figure
+    fig = make_subplots(
+        rows=2, cols=1,
+        subplot_titles=('Score Distribution', 'Score Differential Distribution')
+    )
+    
+    # Score distribution
+    fig.add_trace(
+        go.Histogram(x=home_scores, name=f"{home_team} Scores", opacity=0.75),
+        row=1, col=1
+    )
+    fig.add_trace(
+        go.Histogram(x=away_scores, name=f"{away_team} Scores", opacity=0.75),
+        row=1, col=1
+    )
+    
+    # Score differential distribution
+    score_diff = np.array(home_scores) - np.array(away_scores)
+    fig.add_trace(
+        go.Histogram(x=score_diff, name="Score Differential", opacity=0.75),
+        row=2, col=1
+    )
+    
+    fig.update_layout(
+        height=800,
+        title_text="Simulation Results Analysis",
+        showlegend=True
+    )
+    
+    return fig
 
-    for num_simulations in preset_iterations:
-        result = monte_carlo_simulation(home_team, away_team, spread_adjustment, num_simulations, team_stats)
-        result["Simulation Runs"] = num_simulations  
-        results_by_simulation.append(result)
-
-    aggregated_result = {
-        "Simulation Runs": "Aggregate of All Runs",
-        f"{home_team} Win Percentage": round(np.mean([res[f"{home_team} Win Percentage"] for res in results_by_simulation]), 1),
-        f"{away_team} Win Percentage": round(np.mean([res[f"{away_team} Win Percentage"] for res in results_by_simulation]), 1),
-        f"Average {home_team} Score": round(np.mean([res[f"Average {home_team} Score"] for res in results_by_simulation]), 1),
-        f"Average {away_team} Score": round(np.mean([res[f"Average {away_team} Score"] for res in results_by_simulation]), 1),
-        "Average Total Score": round(np.mean([res["Average Total Score"] for res in results_by_simulation]), 1),
-        f"Score Differential ({home_team} - {away_team})": round(np.mean([res[f"Score Differential ({home_team} - {away_team})"] for res in results_by_simulation]), 1),
-        f"{home_team} Max Score": round(np.mean([res[f"{home_team} Max Score"] for res in results_by_simulation]), 1),
-        f"{home_team} Min Score": round(np.mean([res[f"{home_team} Min Score"] for res in results_by_simulation]), 1),
-        f"{away_team} Max Score": round(np.mean([res[f"{away_team} Max Score"] for res in results_by_simulation]), 1),
-        f"{away_team} Min Score": round(np.mean([res[f"{away_team} Min Score"] for res in results_by_simulation]), 1)
-    }
-
-    return {"Individual Results": results_by_simulation, "Aggregated Result": aggregated_result}
-
-# Run Simulation setup and UI
-team_stats = calculate_team_stats()
-upcoming_games = get_upcoming_games()
-matchup = st.selectbox("Select Matchup", [(game['home_team'], game['away_team']) for idx, game in upcoming_games.iterrows()])
-spread_adjustment = -5.37  
-num_simulations = st.radio("Select Number of Simulations", ("1,000", "10,000", "100,000", "1,000,000", "Run All"))
-
-if st.button("Run Simulation"):
-    home_team, away_team = matchup
-    if num_simulations == "Run All":
-        results = run_all_simulations(home_team, away_team, spread_adjustment, team_stats)
-        st.subheader(f"Results for {results['Aggregated Result']['Simulation Runs']} Simulations")
-        st.write(results['Aggregated Result'])
+# Sidebar for controls
+with st.sidebar:
+    st.header("Simulation Controls")
+    upcoming_games = get_upcoming_games()
+    
+    if not upcoming_games.empty:
+        game_options = [
+            f"{row['gameday']} - {row['home_team']} vs {row['away_team']}"
+            for _, row in upcoming_games.iterrows()
+        ]
+        selected_game = st.selectbox("Select Game", game_options)
         
-        for result in results["Individual Results"]:
-            st.subheader(f"Results for {result['Simulation Runs']} Simulations")
-            st.write(result)
+        # Extract teams from selection
+        home_team = selected_game.split(' vs ')[0].split(' - ')[1]
+        away_team = selected_game.split(' vs ')[1]
+        
+        spread_adjustment = st.slider(
+            "Home Team Spread Adjustment",
+            -10.0, 10.0, 0.0,
+            help="Positive values favor home team, negative values favor away team"
+        )
+        
+        num_simulations = st.selectbox(
+            "Number of Simulations",
+            [1000, 10000, 100000],
+            help="More simulations = more accurate results but slower processing"
+        )
+        
+        run_simulation = st.button("Run Simulation")
     else:
-        results = monte_carlo_simulation(home_team, away_team, spread_adjustment, int(num_simulations.replace(",", "")), team_stats)
-        st.subheader(f"Results for {num_simulations} Simulations")
-        st.write(results)
+        st.error("No upcoming games found in the schedule.")
+        run_simulation = False
+
+# Main content area
+if run_simulation:
+    with st.spinner("Running simulation..."):
+        team_stats = calculate_team_stats()
+        results = monte_carlo_simulation(
+            home_team, away_team,
+            spread_adjustment, num_simulations,
+            team_stats
+        )
+        
+        if results:
+            # Display key metrics
+            col1, col2 = st.columns(2)
+            with col1:
+                st.metric(f"{home_team} Win Probability",
+                          f"{results[f'{home_team} Win Percentage']}%")
+            with col2:
+                st.metric(f"{away_team} Win Probability",
+                          f"{results[f'{away_team} Win Percentage']}%")
+            
+            # Display detailed results
+            st.subheader("Detailed Predictions")
+            metrics = {k: round(v, 2) if isinstance(v, (float, int)) else v for k, v in results.items() if k != "Simulation Data"}
+            st.json(metrics)
+            
+            # Display visualizations
+            st.subheader("Visualization")
+            fig = create_simulation_visualizations(results, home_team, away_team)
+            if fig:
+                st.plotly_chart(fig, use_container_width=True)
+            
+            # Display team statistics
+            st.subheader("Team Statistics")
+            col1, col2 = st.columns(2)
+            with col1:
+                st.write(f"{home_team} Recent Stats")
+                st.write({k: round(v, 2) if isinstance(v, (float, int)) else v for k, v in team_stats[home_team].items()})
+            with col2:
+                st.write(f"{away_team} Recent Stats")
+                st.write({k: round(v, 2) if isinstance(v, (float, int)) else v for k, v in team_stats[away_team].items()})
