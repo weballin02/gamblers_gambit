@@ -255,7 +255,3 @@ if run_simulation:
                 st.write(f"{away_team} Recent Stats")
                 away_team_stats = {k: round(v, 2) if isinstance(v, (float, int)) else v for k, v in st.session_state.team_stats[away_team].items()}
                 st.write(away_team_stats)
-
-           
-
-           
