@@ -70,4 +70,4 @@ pmdarima
 joblib
 pytz
 matplotlib
-
+plotly
