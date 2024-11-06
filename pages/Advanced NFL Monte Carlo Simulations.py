@@ -178,8 +178,8 @@ st.title("NFL Game Prediction System")
 st.markdown("### Using Quantum-Inspired Monte Carlo Simulation")
 
 # Initialize session state for caching
-if 'team_stats' not in st.session_state:
-    st.session_state.team_stats = calculate_team_stats()
+if 'nfl_team_stats' not in st.session_state:
+    st.session_state.nfl_team_stats = calculate_team_stats()
 
 # Sidebar for controls
 with st.sidebar:
@@ -220,7 +220,7 @@ if run_simulation:
         results = quantum_monte_carlo_simulation(
             home_team, away_team,
             spread_adjustment, num_simulations,
-            st.session_state.team_stats
+            st.session_state.nfl_team_stats
         )
         
         if results:
@@ -249,13 +249,9 @@ if run_simulation:
             col1, col2 = st.columns(2)
             with col1:
                 st.write(f"{home_team} Recent Stats")
-                home_team_stats = {k: round(v, 2) if isinstance(v, (float, int)) else v for k, v in st.session_state.team_stats[home_team].items()}
+                home_team_stats = {k: round(v, 2) if isinstance(v, (float, int)) else v for k, v in st.session_state.nfl_team_stats[home_team].items()}
                 st.write(home_team_stats)
             with col2:
                 st.write(f"{away_team} Recent Stats")
-                away_team_stats = {k: round(v, 2) if isinstance(v, (float, int)) else v for k, v in st.session_state.team_stats[away_team].items()}
+                away_team_stats = {k: round(v, 2) if isinstance(v, (float, int)) else v for k, v in st.session_state.nfl_team_stats[away_team].items()}
                 st.write(away_team_stats)
-
-           
-
-           
