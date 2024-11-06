@@ -18,41 +18,39 @@ st.title("NBA Game Prediction System")
 st.markdown("### Using Quantum-Inspired Monte Carlo Simulation")
 
 # Team Name Mapping - Corrected and Cleaned
-team_name_mapping = {
-    'ATL': 'Atlanta Hawks',
-    'BOS': 'Boston Celtics',
-    'BKN': 'Brooklyn Nets',
-    'CHA': 'Charlotte Hornets',
-    'CHI': 'Chicago Bulls',
-    'CLE': 'Cleveland Cavaliers',
-    'DAL': 'Dallas Mavericks',
-    'DEN': 'Denver Nuggets',
-    'DET': 'Detroit Pistons',
-    'GSW': 'Golden State Warriors',
-    'HOU': 'Houston Rockets',
-    'IND': 'Indiana Pacers',
-    'LAC': 'LA Clippers',
-    'LAL': 'Los Angeles Lakers',
-    'MEM': 'Memphis Grizzlies',
-    'MIA': 'Miami Heat',
-    'MIL': 'Milwaukee Bucks',
-    'MIN': 'Minnesota Timberwolves',
-    'NOP': 'New Orleans Pelicans',
-    'NYK': 'New York Knicks',
-    'OKC': 'Oklahoma City Thunder',
-    'ORL': 'Orlando Magic',
-    'PHI': 'Philadelphia 76ers',
-    'PHX': 'Phoenix Suns',
-    'POR': 'Portland Trail Blazers',
-    'SAC': 'Sacramento Kings',
-    'SAS': 'San Antonio Spurs',
-    'TOR': 'Toronto Raptors',
-    'UTA': 'Utah Jazz',
-    'WAS': 'Washington Wizards',
-}
-
-# Utility function to find team full name by abbreviation
 def find_team_full_name(abbrev):
+    team_name_mapping = {
+        'ATL': 'Atlanta Hawks',
+        'BOS': 'Boston Celtics',
+        'BKN': 'Brooklyn Nets',
+        'CHA': 'Charlotte Hornets',
+        'CHI': 'Chicago Bulls',
+        'CLE': 'Cleveland Cavaliers',
+        'DAL': 'Dallas Mavericks',
+        'DEN': 'Denver Nuggets',
+        'DET': 'Detroit Pistons',
+        'GSW': 'Golden State Warriors',
+        'HOU': 'Houston Rockets',
+        'IND': 'Indiana Pacers',
+        'LAC': 'LA Clippers',
+        'LAL': 'Los Angeles Lakers',
+        'MEM': 'Memphis Grizzlies',
+        'MIA': 'Miami Heat',
+        'MIL': 'Milwaukee Bucks',
+        'MIN': 'Minnesota Timberwolves',
+        'NOP': 'New Orleans Pelicans',
+        'NYK': 'New York Knicks',
+        'OKC': 'Oklahoma City Thunder',
+        'ORL': 'Orlando Magic',
+        'PHI': 'Philadelphia 76ers',
+        'PHX': 'Phoenix Suns',
+        'POR': 'Portland Trail Blazers',
+        'SAC': 'Sacramento Kings',
+        'SAS': 'San Antonio Spurs',
+        'TOR': 'Toronto Raptors',
+        'UTA': 'Utah Jazz',
+        'WAS': 'Washington Wizards',
+    }
     return team_name_mapping.get(abbrev, abbrev)
 
 # Fetch team list and create abbreviation mappings
@@ -62,7 +60,7 @@ id_to_abbrev = {team['id']: team['abbreviation'] for team in nba_team_list}
 
 # Cache the data loading to improve performance
 @st.cache_data(ttl=3600)  # Cache for 1 hour
-def load_nba_game_logs(season='2022-24'):
+def load_nba_game_logs(season='2022-23'):
     try:
         # Fetch game logs for all teams for the specified season and regular season
         game_logs = LeagueGameLog(season=season, season_type_all_star='Regular Season', player_or_team_abbreviation='T')
@@ -83,7 +81,6 @@ def calculate_team_stats(game_logs):
     team_stats = {}
     
     # Aggregate points by team and date
-    # 'TEAM_ID', 'TEAM_ABBREVIATION', 'PTS', 'GAME_DATE', etc.
     past_games = game_logs.dropna(subset=['PTS'])
     
     for index, row in past_games.iterrows():
@@ -152,11 +149,6 @@ def get_upcoming_games():
         if combined_games.empty:
             st.info(f"No upcoming games scheduled for today ({today}) and tomorrow ({next_day}).")
             return pd.DataFrame()
-        
-        # Mapping from team ID to abbreviation
-        nba_team_list = nba_teams.get_teams()
-        id_to_abbrev = {team['id']: team['abbreviation'] for team in nba_team_list}
-        abbrev_to_full = {team['abbreviation']: team['full_name'] for team in nba_team_list}
         
         # Process game data
         game_list = []
@@ -289,10 +281,10 @@ def create_simulation_visualizations(results, home_team_full, away_team_full):
     return fig
 
 # Initialize session state for caching team stats
-if 'team_stats' not in st.session_state:
+if 'nba_team_stats' not in st.session_state:
     current_season = get_current_season()
     game_logs = load_nba_game_logs(season=current_season)
-    st.session_state.team_stats = calculate_team_stats(game_logs)
+    st.session_state.nba_team_stats = calculate_team_stats(game_logs)
 
 # Sidebar for controls
 with st.sidebar:
@@ -352,7 +344,7 @@ if run_simulation and home_team and away_team:
             home_team_abbrev, away_team_abbrev,
             home_team_full, away_team_full,
             spread_adjustment, num_simulations,
-            st.session_state.team_stats
+            st.session_state.nba_team_stats
         )
         
         if results:
@@ -381,8 +373,8 @@ if run_simulation and home_team and away_team:
             col1, col2 = st.columns(2)
             with col1:
                 st.write(f"{home_team_full} Recent Stats")
-                if home_team_abbrev and home_team_abbrev in st.session_state.team_stats:
-                    home_team_stats = st.session_state.team_stats.get(home_team_abbrev, {})
+                if home_team_abbrev and home_team_abbrev in st.session_state.nba_team_stats:
+                    home_team_stats = st.session_state.nba_team_stats.get(home_team_abbrev, {})
                     if home_team_stats:
                         home_team_stats_display = {k: (round(v, 2) if isinstance(v, (float, int)) else v) for k, v in home_team_stats.items()}
                         st.write(home_team_stats_display)
@@ -392,8 +384,8 @@ if run_simulation and home_team and away_team:
                     st.write("No stats available.")
             with col2:
                 st.write(f"{away_team_full} Recent Stats")
-                if away_team_abbrev and away_team_abbrev in st.session_state.team_stats:
-                    away_team_stats = st.session_state.team_stats.get(away_team_abbrev, {})
+                if away_team_abbrev and away_team_abbrev in st.session_state.nba_team_stats:
+                    away_team_stats = st.session_state.nba_team_stats.get(away_team_abbrev, {})
                     if away_team_stats:
                         away_team_stats_display = {k: (round(v, 2) if isinstance(v, (float, int)) else v) for k, v in away_team_stats.items()}
                         st.write(away_team_stats_display)
