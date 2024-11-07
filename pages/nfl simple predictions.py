@@ -8,68 +8,107 @@ import pytz
 import warnings
 warnings.filterwarnings('ignore')
 
-# Load and Preprocess Data
+# Define Seasons and Weights
+current_year = datetime.now().year
+previous_years = [current_year - 1, current_year - 2]
+season_weights = {current_year: 1.0, current_year - 1: 0.7, current_year - 2: 0.5}  # Higher weight for recent data
+
+# Load and Preprocess Data from Multiple Seasons
 @st.cache_data
 def load_and_preprocess_data():
-    current_year = datetime.now().year
-    schedule = nfl.import_schedules([current_year])
+    all_team_data = []
+    for year in [current_year] + previous_years:
+        schedule = nfl.import_schedules([year])
+        
+        # Add date and weights for seasons
+        schedule['gameday'] = pd.to_datetime(schedule['gameday'], errors='coerce')
+        schedule['season_weight'] = season_weights[year]
+        
+        # Split into home and away data and standardize columns
+        home_df = schedule[['gameday', 'home_team', 'home_score', 'season_weight']].copy().rename(columns={'home_team': 'team', 'home_score': 'score'})
+        away_df = schedule[['gameday', 'away_team', 'away_score', 'season_weight']].copy().rename(columns={'away_team': 'team', 'away_score': 'score'})
+        
+        # Combine home and away data, filter out null scores
+        season_data = pd.concat([home_df, away_df], ignore_index=True)
+        season_data.dropna(subset=['score'], inplace=True)
+        season_data.set_index('gameday', inplace=True)
+        
+        all_team_data.append(season_data)
 
-    schedule['gameday'] = pd.to_datetime(schedule['gameday'], errors='coerce')
-    home_df = schedule[['gameday', 'home_team', 'home_score']].copy().rename(columns={'home_team': 'team', 'home_score': 'score'})
-    away_df = schedule[['gameday', 'away_team', 'away_score']].copy().rename(columns={'away_team': 'team', 'away_score': 'score'})
+    # Concatenate data for all seasons
+    return pd.concat(all_team_data, ignore_index=False)
 
-    team_data = pd.concat([home_df, away_df], ignore_index=True)
-    team_data.dropna(subset=['score'], inplace=True)
-    team_data.set_index('gameday', inplace=True)
-    team_data.sort_index(inplace=True)
-    
-    return team_data
-
+# Load the team data for training purposes
 team_data = load_and_preprocess_data()
 
-# Aggregate Team Stats
+# Aggregate Team Stats with Weights (Training on All Seasons)
 def aggregate_team_stats(team_data):
-    team_stats = team_data.groupby('team').agg(
-        avg_score=('score', 'mean'),
-        min_score=('score', 'min'),
-        max_score=('score', 'max'),
-        std_dev=('score', 'std'),
-        games_played=('score', 'count'),
-        recent_form=('score', lambda x: x.tail(5).mean() if len(x) >= 5 else x.mean())
+    # Calculate team stats across multiple seasons with weights
+    team_stats = team_data.groupby('team').apply(
+        lambda x: pd.Series({
+            'avg_score': np.average(x['score'], weights=x['season_weight']),
+            'min_score': x['score'].min(),
+            'max_score': x['score'].max(),
+            'std_dev': x['score'].std(),
+            'games_played': x['score'].count()
+        })
     ).to_dict(orient='index')
     
     return team_stats
 
+# Train using multi-season aggregated data
 team_stats = aggregate_team_stats(team_data)
 
-# Calculate Team Rating
-def calculate_team_rating(team_stats):
-    team_ratings = {}
-    team_rating_values = []
-
-    for team, stats in team_stats.items():
-        team_rating = (stats['avg_score'] + stats['max_score'] + stats['recent_form']) - (stats['games_played'] * 0.5)
-        team_rating_values.append(team_rating)
-        team_ratings[team] = {
-            'avg_score': round(stats['avg_score'], 2),
-            'min_score': round(stats['min_score'], 2),
-            'max_score': round(stats['max_score'], 2),
-            'std_dev': round(stats['std_dev'], 2),
-            'recent_form': round(stats['recent_form'], 2),
-            'games_played': stats['games_played'],
-            'team_rating': round(team_rating, 2)
-        }
+# Filter Current Season Data Only for Predictions
+def get_current_season_stats():
+    schedule = nfl.import_schedules([current_year])
+    schedule['gameday'] = pd.to_datetime(schedule['gameday'], errors='coerce')
     
-    return team_ratings
+    # Separate current season's home and away games
+    home_df = schedule[['gameday', 'home_team', 'home_score']].copy().rename(columns={'home_team': 'team', 'home_score': 'score'})
+    away_df = schedule[['gameday', 'away_team', 'away_score']].copy().rename(columns={'away_team': 'team', 'away_score': 'score'})
+    
+    # Combine, filter, and sort by date
+    current_season_data = pd.concat([home_df, away_df], ignore_index=True)
+    current_season_data.dropna(subset=['score'], inplace=True)
+    current_season_data.set_index('gameday', inplace=True)
+    current_season_data.sort_index(inplace=True)
+    
+    return current_season_data
 
-team_ratings = calculate_team_rating(team_stats)
+# Load current season data for prediction
+current_season_data = get_current_season_stats()
 
-# Predict Outcome Based on Team Ratings
+# Calculate current season stats only
+def calculate_current_season_stats():
+    current_season_stats = current_season_data.groupby('team').apply(
+        lambda x: pd.Series({
+            'avg_score': x['score'].mean(),
+            'min_score': x['score'].min(),
+            'max_score': x['score'].max(),
+            'std_dev': x['score'].std(),
+            'games_played': x['score'].count(),
+            'recent_form': x['score'].tail(5).mean() if len(x) >= 5 else x['score'].mean()
+        })
+    ).to_dict(orient='index')
+    return current_season_stats
+
+# Calculate current season stats for all teams
+current_season_stats = calculate_current_season_stats()
+
+# Predict Outcome Based on Current Season Data
 def predict_game_outcome(home_team, away_team):
-    home_team_rating = team_ratings.get(home_team, {}).get('team_rating', None)
-    away_team_rating = team_ratings.get(away_team, {}).get('team_rating', None)
-
-    if home_team_rating is not None and away_team_rating is not None:
+    home_stats = current_season_stats.get(home_team, {})
+    away_stats = current_season_stats.get(away_team, {})
+    
+    if home_stats and away_stats:
+        # Calculate "overall rating" using only current season stats for consistency
+        home_team_rating = home_stats['avg_score'] * 0.5 + home_stats['max_score'] * 0.2 + home_stats['recent_form'] * 0.3
+        away_team_rating = away_stats['avg_score'] * 0.5 + away_stats['max_score'] * 0.2 + away_stats['recent_form'] * 0.3
+        rating_diff = abs(home_team_rating - away_team_rating)
+        
+        confidence = min(100, max(0, 50 + rating_diff * 5))  # Confidence based on rating difference
+        
         if home_team_rating > away_team_rating:
             predicted_winner = home_team
             predicted_score_diff = home_team_rating - away_team_rating
@@ -79,16 +118,13 @@ def predict_game_outcome(home_team, away_team):
         else:
             predicted_winner = "Tie"
             predicted_score_diff = 0
+        return predicted_winner, predicted_score_diff, confidence, home_team_rating, away_team_rating
     else:
-        predicted_winner = "Unavailable"
-        predicted_score_diff = "N/A"
-    
-    return predicted_winner, predicted_score_diff
+        return "Unavailable", "N/A", "N/A", None, None
 
 # Fetch Upcoming Games
 @st.cache_data(ttl=3600)
 def fetch_upcoming_games():
-    current_year = datetime.now().year
     schedule = nfl.import_schedules([current_year])
     schedule['game_datetime'] = pd.to_datetime(schedule['gameday'].astype(str) + ' ' + schedule['gametime'].astype(str), errors='coerce', utc=True)
     upcoming_games = schedule[(schedule['game_type'] == 'REG') & (schedule['game_datetime'] >= datetime.now(pytz.UTC))]
@@ -115,43 +151,73 @@ home_team = selected_game['home_team']
 away_team = selected_game['away_team']
 
 # Predict Outcome for Selected Game
-predicted_winner, predicted_score_diff = predict_game_outcome(home_team, away_team)
+predicted_winner, predicted_score_diff, confidence, home_team_rating, away_team_rating = predict_game_outcome(home_team, away_team)
 
 # Display Prediction Results with Betting Insights
 if predicted_winner != "Unavailable":
     st.write(f"### Predicted Outcome for {home_team} vs. {away_team}")
-    st.write(f"**Predicted Winner:** {predicted_winner}")
-    st.write(f"**Expected Score Difference:** {predicted_score_diff:.2f}")
+    st.write(f"**Predicted Winner:** {predicted_winner} with a confidence of {round(confidence, 2)}%")
+    st.write(f"**Expected Score Difference:** {round(predicted_score_diff, 2)}")
     
-    # Detailed Team Stats for Betting Insights
-    home_stats = team_ratings.get(home_team, {})
-    away_stats = team_ratings.get(away_team, {})
+    # Display home team stats based on current season data
+    home_stats = current_season_stats.get(home_team, {})
+    away_stats = current_season_stats.get(away_team, {})
 
-    # Display home team stats
-    st.subheader(f"{home_team} Performance Summary")
-    st.write(f"- **Average Score:** {home_stats['avg_score']}")
-    st.write(f"- **Recent Form (Last 5 Games):** {home_stats['recent_form']}")
-    st.write(f"- **Score Variability (Std Dev):** {home_stats['std_dev']} (Lower indicates more consistency)")
+    st.subheader(f"{home_team} Performance Summary (Current Season)")
+    st.write(f"- **Average Score:** {round(home_stats['avg_score'], 2)}")
+    st.write(f"- **Recent Form (Last 5 Games):** {round(home_stats['recent_form'], 2)}")
     st.write(f"- **Games Played:** {home_stats['games_played']}")
-    st.write(f"- **Overall Rating:** {home_stats['team_rating']}")
+    st.write(f"- **Consistency (Std Dev):** {round(home_stats['std_dev'], 2)}")
+    st.write(f"- **Overall Rating:** {round(home_team_rating, 2)}")
 
-    # Display away team stats
-    st.subheader(f"{away_team} Performance Summary")
-    st.write(f"- **Average Score:** {away_stats['avg_score']}")
-    st.write(f"- **Recent Form (Last 5 Games):** {away_stats['recent_form']}")
-    st.write(f"- **Score Variability (Std Dev):** {away_stats['std_dev']} (Lower indicates more consistency)")
+    st.subheader(f"{away_team} Performance Summary (Current Season)")
+    st.write(f"- **Average Score:** {round(away_stats['avg_score'], 2)}")
+    st.write(f"- **Recent Form (Last 5 Games):** {round(away_stats['recent_form'], 2)}")
     st.write(f"- **Games Played:** {away_stats['games_played']}")
-    st.write(f"- **Overall Rating:** {away_stats['team_rating']}")
+    st.write(f"- **Consistency (Std Dev):** {round(away_stats['std_dev'], 2)}")
+    st.write(f"- **Overall Rating:** {round(away_team_rating, 2)}")
 
-    # Betting Insights Summary
+    # Enhanced Betting Insights Summary
     st.subheader("Betting Insights")
-    st.write(f"**{home_team if home_stats['team_rating'] > away_stats['team_rating'] else away_team}** has a higher team rating, indicating a likely advantage.")
-    
+
+    # Identify which team has a higher rating and consistency
+    likely_advantage = home_team if home_team_rating > away_team_rating else away_team
+    st.write(f"**Advantage:** {likely_advantage} has a higher overall rating, suggesting a potential advantage.")
+
+    # Consistency Analysis
     if home_stats['std_dev'] < away_stats['std_dev']:
-        st.write(f"**{home_team}** has a more consistent scoring pattern, which may reduce risk in betting.")
+        st.write(f"**Consistency:** {home_team} has a more consistent scoring pattern (lower standard deviation), which may indicate reliability in expected performance. This can be useful for spread or moneyline bets.")
     elif away_stats['std_dev'] < home_stats['std_dev']:
-        st.write(f"**{away_team}** has a more consistent scoring pattern, which may reduce risk in betting.")
-    
-    st.write("Consider betting on the team with higher rating and consistency, but monitor recent form as it can reflect current team momentum.")
+        st.write(f"**Consistency:** {away_team} has a more consistent scoring pattern (lower standard deviation), making them potentially more reliable. Consider this for spread or moneyline bets.")
+    else:
+        st.write("**Consistency:** Both teams have similar consistency in scoring, making this matchup less predictable for reliability.")
+
+    # Recent Form and Momentum
+    if home_stats['recent_form'] > home_stats['avg_score']:
+        st.write(f"**Momentum:** {home_team} is currently exceeding their season average in recent games, suggesting they are in good form. This may indicate positive momentum.")
+    else:
+        st.write(f"**Momentum:** {home_team} is scoring below their season average recently, suggesting a potential decline in form.")
+
+    if away_stats['recent_form'] > away_stats['avg_score']:
+        st.write(f"**Momentum:** {away_team} is also performing above their season average recently, indicating positive momentum.")
+    else:
+        st.write(f"**Momentum:** {away_team} is performing below their season average in recent games, which may signal a downward trend.")
+
+    # Scoring Trends for Over/Under Bets
+    avg_total_score = home_stats['avg_score'] + away_stats['avg_score']
+    recent_total_score = home_stats['recent_form'] + away_stats['recent_form']
+    st.write(f"**Scoring Trends:** The combined average score of both teams is approximately {round(avg_total_score, 2)} points per game.")
+    st.write(f"- **Over/Under Insight:** Based on recent form, the teams are scoring a combined {round(recent_total_score, 2)} points. If this exceeds the set over/under line, an over bet might be worth considering, while a lower score could indicate potential for an under bet.")
+
+    # Spread and Moneyline Suggestions
+    if predicted_score_diff > 3:
+        st.write(f"**Spread Suggestion:** With an expected score difference of {round(predicted_score_diff, 2)}, the spread bet might favor **{predicted_winner}** if the line is less than this expected margin.")
+    else:
+        st.write("**Spread Suggestion:** The expected score difference is small, suggesting a close game where a spread bet could be risky.")
+
+    st.write("**Moneyline Insight:** Based on overall ratings and recent form, **{likely_advantage}** may be a good choice for a moneyline bet if they’re performing consistently.")
+
 else:
     st.error("Prediction data for one or both teams is unavailable.")
+
+
