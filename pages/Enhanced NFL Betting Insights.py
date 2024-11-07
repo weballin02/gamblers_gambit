@@ -8,6 +8,10 @@ import pytz
 import warnings
 warnings.filterwarnings('ignore')
 
+# Streamlit App Title
+st.title("Enhanced NFL Betting Insights")
+st.markdown("Get detailed insights on NFL team trends and betting opportunities. This page combines multi-season stats, recent form, and consistency to highlight spread, moneyline, and over/under suggestions. Just select a game to dive into specific betting angles.")
+
 # Define Seasons and Weights
 current_year = datetime.now().year
 previous_years = [current_year - 1, current_year - 2]

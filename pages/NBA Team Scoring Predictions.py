@@ -13,6 +13,10 @@ import matplotlib.dates as mdates
 import warnings
 warnings.filterwarnings('ignore')
 
+# Streamlit App Title
+st.title("NBA Team Scoring Predictions")
+st.markdown("Explore NBA team score predictions driven by historical and recent data. Select a team to see its past performance and projected points for the next games. Quickly identify today’s expected scores and winners for smarter betting choices.")
+
 # Load and Preprocess Data
 @st.cache_data
 def load_and_preprocess_data(file_path):

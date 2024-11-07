@@ -7,6 +7,10 @@ from sklearn.cluster import KMeans
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
+# Streamlit App Title
+st.title("NFL Quantum-Inspired Game Predictions")
+st.markdown("Experience an advanced, quantum-inspired simulation of NFL games. Select a game or simulate all matchups for the day. Customize spread and simulation settings to see win probabilities, average scores, and predictions that will guide your next moves.")
+
 # Cache the data loading to improve performance
 @st.cache_data(ttl=3600)  # Cache for 1 hour
 def load_nfl_data():

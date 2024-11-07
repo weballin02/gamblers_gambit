@@ -10,12 +10,13 @@ from nba_api.stats.endpoints import LeagueGameLog, ScoreboardV2
 from nba_api.stats.static import teams as nba_teams
 import warnings
 
+
 # Suppress warnings for cleaner output
 warnings.filterwarnings('ignore')
 
 # Streamlit App Title
-st.title("NBA Game Prediction System")
-st.markdown("### Using Quantum-Inspired Monte Carlo Simulation")
+st.title("NBA Quantum-Inspired Game Predictions")
+st.markdown("Experience an advanced, quantum-inspired simulation of NBA games. Select a game or simulate all matchups for the day. Customize spread and simulation settings to see win probabilities, average scores, and predictions that will guide your next moves.")
 
 # Team Name Mapping - Corrected and Cleaned
 def find_team_full_name(abbrev):

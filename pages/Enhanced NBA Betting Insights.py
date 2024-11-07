@@ -8,6 +8,10 @@ from nba_api.stats.static import teams as nba_teams
 import warnings
 warnings.filterwarnings('ignore')
 
+# Streamlit App Title
+st.title("Enhanced NBA Betting Insights")
+st.markdown("Analyze NBA team performance with a focus on betting insights. See scoring averages, recent form, and team consistency to identify solid betting opportunities. Choose a game to view tailored spread and moneyline advice.")
+
 # Define season start dates and weights for multi-season training
 current_season = '2024-25'
 previous_seasons = ['2023-24', '2022-23']
