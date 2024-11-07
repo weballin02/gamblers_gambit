@@ -1,88 +1,75 @@
 # Import Libraries
 import pandas as pd
 import numpy as np
-import os
 import streamlit as st
 from datetime import datetime, timedelta
-from nba_api.stats.endpoints import ScoreboardV2
+from nba_api.stats.endpoints import LeagueGameLog, ScoreboardV2
 from nba_api.stats.static import teams as nba_teams
 import warnings
 warnings.filterwarnings('ignore')
 
-# Define the start of the current 2024-2025 NBA season
-current_season_start = datetime(2022, 10, 1)
+# Define season start dates
+current_season = '2024-25'
+previous_seasons = ['2023-24', '2022-23']
+season_weights = {current_season: 1.0, '2023-24': 0.7, '2022-23': 0.5}  # Weighted preference on recent data
 
-# Load and Preprocess Data
+# Fetch and Preprocess Game Logs for Multiple Seasons
 @st.cache_data
-def load_and_preprocess_data(file_path):
-    """Load and preprocess NBA data from CSV."""
-    # Updated usecols to match columns in the current dataset
-    usecols = ['date', 'team', 'PTS', 'gameid', 'playerid', 'season']
-    data = pd.read_csv(file_path, usecols=usecols)
-    data['date'] = pd.to_datetime(data['date'], errors='coerce')
-    return data
+def load_nba_game_logs(seasons):
+    """Fetch and preprocess game logs for the specified NBA seasons."""
+    all_games = []
+    for season in seasons:
+        try:
+            game_logs = LeagueGameLog(season=season, season_type_all_star='Regular Season', player_or_team_abbreviation='T')
+            games = game_logs.get_data_frames()[0]
+            games['GAME_DATE'] = pd.to_datetime(games['GAME_DATE'])
+            games['SEASON'] = season  # Add season label for weighting
+            games['WEIGHT'] = season_weights[season]
+            all_games.append(games)
+        except Exception as e:
+            st.error(f"Error loading NBA game logs for {season}: {str(e)}")
+    return pd.concat(all_games, ignore_index=True) if all_games else None
 
-# Apply Team Name Mapping
-def apply_team_name_mapping(data):
-    """Map team abbreviations to full names."""
-    team_name_mapping = {
-        'ATL': 'Atlanta Hawks', 'BOS': 'Boston Celtics', 'BKN': 'Brooklyn Nets', 'CHA': 'Charlotte Hornets',
-        'CHI': 'Chicago Bulls', 'CLE': 'Cleveland Cavaliers', 'DAL': 'Dallas Mavericks', 'DEN': 'Denver Nuggets',
-        'DET': 'Detroit Pistons', 'GSW': 'Golden State Warriors', 'HOU': 'Houston Rockets', 'IND': 'Indiana Pacers',
-        'LAC': 'LA Clippers', 'LAL': 'Los Angeles Lakers', 'MEM': 'Memphis Grizzlies', 'MIA': 'Miami Heat',
-        'MIL': 'Milwaukee Bucks', 'MIN': 'Minnesota Timberwolves', 'NOP': 'New Orleans Pelicans', 'NYK': 'New York Knicks',
-        'OKC': 'Oklahoma City Thunder', 'ORL': 'Orlando Magic', 'PHI': 'Philadelphia 76ers', 'PHX': 'Phoenix Suns',
-        'POR': 'Portland Trail Blazers', 'SAC': 'Sacramento Kings', 'SAS': 'San Antonio Spurs', 'TOR': 'Toronto Raptors',
-        'UTA': 'Utah Jazz', 'WAS': 'Washington Wizards'
-    }
-    data['team_abbrev'] = data['team']
-    data['team'] = data['team'].map(team_name_mapping)
-    data.dropna(subset=['team'], inplace=True)
-    return data, team_name_mapping
+# Load game logs for the specified seasons
+game_logs = load_nba_game_logs([current_season] + previous_seasons)
 
-# Load Data
-file_path = 'data/traditional.csv'  # Update to the NBA data CSV file path
-data = load_and_preprocess_data(file_path)
-
-# Apply Team Name Mapping
-data, team_name_mapping = apply_team_name_mapping(data)
-
-# Aggregate Points by Team and Date
-team_data = data.groupby(['date', 'team_abbrev', 'team'])['PTS'].sum().reset_index()
-team_data.set_index('date', inplace=True)
-
-# Adjusted function to filter for the current season's data only
-def aggregate_team_stats(team_data):
+# Aggregate Points by Team and Date with Season Weights
+def aggregate_team_stats(game_logs):
     """
-    Calculate average score, recent form, and consistency for each team, 
-    restricted to the current 2024-2025 NBA season.
+    Calculate average score, recent form, and consistency for each team using multi-year data,
+    with a weighting factor for recent seasons and an emphasis on recent games.
     """
-    # Filter team data to include only games from the current season
-    current_season_data = team_data[team_data.index >= current_season_start]
+    if game_logs is None:
+        return {}
 
-    # Aggregate statistics for each team based on current season data
-    team_stats = current_season_data.groupby('team_abbrev').agg(
-        avg_score=('PTS', 'mean'),
-        min_score=('PTS', 'min'),
-        max_score=('PTS', 'max'),
-        std_dev=('PTS', 'std'),
-        games_played=('PTS', 'count'),
-        recent_form=('PTS', lambda x: x.tail(5).mean() if len(x) >= 5 else x.mean())
+    # Filter data for current season's recent games to calculate "recent form"
+    recent_games = game_logs[(game_logs['SEASON'] == current_season) & (game_logs['GAME_DATE'] >= datetime.now() - timedelta(days=30))]
+
+    # Calculate weighted stats for each team
+    team_stats = game_logs.groupby('TEAM_ABBREVIATION').apply(
+        lambda x: pd.Series({
+            'avg_score': np.average(x['PTS'], weights=x['WEIGHT']),
+            'min_score': x['PTS'].min(),
+            'max_score': x['PTS'].max(),
+            'std_dev': np.std(x['PTS']),
+            'games_played': x['PTS'].count(),
+            'recent_form': recent_games[recent_games['TEAM_ABBREVIATION'] == x.name]['PTS'].mean()
+        })
     ).to_dict(orient='index')
     
     return team_stats
 
-# Calculate team ratings with current season's stats
+# Generate team stats for the season with weights applied
+team_stats = aggregate_team_stats(game_logs)
+
+# Calculate Team Ratings
 def calculate_team_rating(team_stats):
-    """
-    Calculate a rating based on stats for each team, with adjusted weightings.
-    """
+    """Calculate a rating based on stats for each team, with adjusted weightings."""
     team_ratings = {}
     for team, stats in team_stats.items():
-        # Calculate team rating with minimal impact from games_played
+        # Calculate team rating with weighted emphasis on recent form and avg score
         team_rating = (
-            stats['avg_score'] + stats['max_score'] + stats['recent_form']
-            - (stats['games_played'] * 0.1)
+            stats['avg_score'] * 0.5 + stats['max_score'] * 0.2 + stats['recent_form'] * 0.3
         )
         
         team_ratings[team] = {
@@ -96,11 +83,10 @@ def calculate_team_rating(team_stats):
         }
     return team_ratings
 
-# Re-run the aggregate and rating calculations using the filtered data
-team_stats = aggregate_team_stats(team_data)
+# Generate team ratings
 team_ratings = calculate_team_rating(team_stats)
 
-# Predict Outcome Based on Team Ratings
+# Predict Game Outcome Based on Team Ratings
 def predict_game_outcome(home_team, away_team):
     """Predict the game outcome based on team ratings."""
     home_team_rating = team_ratings.get(home_team, {}).get('team_rating', None)
@@ -125,36 +111,30 @@ def predict_game_outcome(home_team, away_team):
 # Fetch Upcoming NBA Games for Today and Tomorrow
 @st.cache_data(ttl=3600)
 def fetch_nba_games():
-    """Fetch NBA games scheduled for today and tomorrow using nba_api."""
+    """Fetch NBA games scheduled for today and tomorrow."""
     today = datetime.now().date()
     next_day = today + timedelta(days=1)
     
-    # Fetch games for today
+    # Fetch games for today and tomorrow
     today_scoreboard = ScoreboardV2(game_date=today.strftime('%Y-%m-%d'))
     tomorrow_scoreboard = ScoreboardV2(game_date=next_day.strftime('%Y-%m-%d'))
     
-    # Combine today's and tomorrow's games
     try:
         today_games = today_scoreboard.get_data_frames()[0]
         tomorrow_games = tomorrow_scoreboard.get_data_frames()[0]
         combined_games = pd.concat([today_games, tomorrow_games], ignore_index=True)
     except Exception as e:
         st.error(f"Error fetching games: {e}")
-        return pd.DataFrame()  # Return empty DataFrame if an error occurs
-    
-    # If no games are found, notify user
-    if combined_games.empty:
-        st.info("No games scheduled for today or tomorrow.")
         return pd.DataFrame()
     
-    # Process team abbreviations and full names
+    # Process games data and add abbreviations for home and away teams
     nba_team_list = nba_teams.get_teams()
     id_to_abbrev = {team['id']: team['abbreviation'] for team in nba_team_list}
-
+    
     combined_games['HOME_TEAM_ABBREV'] = combined_games['HOME_TEAM_ID'].map(id_to_abbrev)
     combined_games['VISITOR_TEAM_ABBREV'] = combined_games['VISITOR_TEAM_ID'].map(id_to_abbrev)
     combined_games.dropna(subset=['HOME_TEAM_ABBREV', 'VISITOR_TEAM_ABBREV'], inplace=True)
-
+    
     return combined_games[['GAME_ID', 'HOME_TEAM_ABBREV', 'VISITOR_TEAM_ABBREV']]
 
 upcoming_games = fetch_nba_games()
@@ -164,6 +144,9 @@ st.title('NBA Team Points Prediction')
 
 # Display Game Predictions
 st.header('NBA Game Predictions with Detailed Analysis')
+
+# Team Name Mapping for Display Purposes
+team_name_mapping = {team['abbreviation']: team['full_name'] for team in nba_teams.get_teams()}
 
 # Create game labels for selection
 upcoming_games['game_label'] = [
