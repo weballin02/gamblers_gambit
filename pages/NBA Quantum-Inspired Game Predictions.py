@@ -41,7 +41,7 @@ id_to_abbrev = {team['id']: team['abbreviation'] for team in nba_team_list}
 
 # Cache the data loading to improve performance
 @st.cache_data(ttl=3600)  # Cache for 1 hour
-def load_nba_game_logs(season='2022-23'):
+def load_nba_game_logs(season=['2023-24', '2022-23']):
     try:
         game_logs = LeagueGameLog(season=season, season_type_all_star='Regular Season', player_or_team_abbreviation='T')
         games = game_logs.get_data_frames()[0]
@@ -211,7 +211,7 @@ def create_summary_table(all_results):
 
 # Initialize session state for caching
 if 'nba_team_stats' not in st.session_state:
-    current_season = "2022-23"
+    current_season = "2024-25"
     game_logs = load_nba_game_logs(season=current_season)
     st.session_state.nba_team_stats = calculate_team_stats(game_logs)
 
