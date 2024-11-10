@@ -14,7 +14,8 @@ from utils.database import save_model, get_saved_models, load_model
 from utils.sports_data import fetch_sport_data
 
 # Title of the page
-st.title("Correlation and Feature Importance Analysis")
+st.title("Key Stat Analysis")
+st.markdown("Uncover which stats impact game outcomes the most. Upload your data or use built-in options to analyze stat correlations and feature importance. The visual heatmaps and weighted formulas help you understand what drives performance.")
 
 # Sidebar for inputs
 st.sidebar.header("Analysis Settings")

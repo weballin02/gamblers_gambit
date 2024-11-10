@@ -7,6 +7,10 @@ from sklearn.cluster import KMeans
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
+# Streamlit App Title
+st.title("NFL Quantum-Inspired Game Predictions")
+st.markdown("Experience an advanced, quantum-inspired simulation of NFL games. Select a game or simulate all matchups for the day. Customize spread and simulation settings to see win probabilities, average scores, and predictions that will guide your next moves.")
+
 # Cache the data loading to improve performance
 @st.cache_data(ttl=3600)  # Cache for 1 hour
 def load_nfl_data():
@@ -126,66 +130,51 @@ def quantum_monte_carlo_simulation(home_team, away_team, spread_adjustment, num_
         f"Average {home_team} Score": round(np.mean(home_scores), 2),
         f"Average {away_team} Score": round(np.mean(away_scores), 2),
         "Average Total Score": round(np.mean(home_scores + away_scores), 2),
-        f"Score Differential ({home_team} - {away_team})": round(np.mean(score_diff), 2),
-        "Simulation Data": {
-            "home_scores": home_scores,
-            "away_scores": away_scores
-        }
+        f"Score Differential ({home_team} - {away_team})": round(np.mean(score_diff), 2)
     }
     
     return results
 
-def create_simulation_visualizations(results, home_team, away_team):
-    if not results:
-        return None
-    
-    home_scores = results["Simulation Data"]["home_scores"]
-    away_scores = results["Simulation Data"]["away_scores"]
-    
-    # Create subplot figure
-    fig = make_subplots(
-        rows=2, cols=1,
-        subplot_titles=('Score Distribution', 'Win Probability Distribution')
-    )
-    
-    # Score distribution
-    fig.add_trace(
-        go.Histogram(x=home_scores, name=f"{home_team} Scores", opacity=0.75),
-        row=1, col=1
-    )
-    fig.add_trace(
-        go.Histogram(x=away_scores, name=f"{away_team} Scores", opacity=0.75),
-        row=1, col=1
-    )
-    
-    # Score differential distribution
-    score_diff = home_scores - away_scores
-    fig.add_trace(
-        go.Histogram(x=score_diff, name="Score Differential", opacity=0.75),
-        row=2, col=1
-    )
-    
-    fig.update_layout(
-        height=800,
-        title_text="Simulation Results Analysis",
-        showlegend=True
-    )
-    
-    return fig
+def display_results(results, home_team, away_team):
+    if results:
+        col1, col2 = st.columns(2)
+        with col1:
+            st.metric(f"{home_team} Win Probability", f"{results[f'{home_team} Win Percentage']:.2f}%")
+        with col2:
+            st.metric(f"{away_team} Win Probability", f"{results[f'{away_team} Win Percentage']:.2f}%")
+
+        st.subheader("Detailed Predictions")
+        metrics = {k: round(v, 2) if isinstance(v, (float, int)) else v for k, v in results.items()}
+        st.json(metrics)
+
+def create_summary_table(all_results):
+    summary_data = []
+    for game in all_results:
+        summary_data.append({
+            "Home Team": game['home_team'],
+            "Away Team": game['away_team'],
+            "Home Win %": game['results'][f"{game['home_team']} Win Percentage"],
+            "Away Win %": game['results'][f"{game['away_team']} Win Percentage"],
+            "Avg Total Score": game['results']["Average Total Score"],
+            "Score Differential": game['results'][f"Score Differential ({game['home_team']} - {game['away_team']})"]
+        })
+    summary_df = pd.DataFrame(summary_data)
+    st.write("### Summary of All Predictions")
+    st.dataframe(summary_df)
 
 # Streamlit UI
 st.title("NFL Game Prediction System")
 st.markdown("### Using Quantum-Inspired Monte Carlo Simulation")
 
 # Initialize session state for caching
-if 'team_stats' not in st.session_state:
-    st.session_state.team_stats = calculate_team_stats()
+if 'nfl_team_stats' not in st.session_state:
+    st.session_state.nfl_team_stats = calculate_team_stats()
 
 # Sidebar for controls
 with st.sidebar:
     st.header("Simulation Controls")
     upcoming_games = get_upcoming_games()
-    
+
     if not upcoming_games.empty:
         game_options = [
             f"{row['gameday']} - {row['home_team']} vs {row['away_team']}"
@@ -193,67 +182,50 @@ with st.sidebar:
         ]
         selected_game = st.selectbox("Select Game", game_options)
         
-        # Extract teams from selection
         home_team = selected_game.split(' vs ')[0].split(' - ')[1]
         away_team = selected_game.split(' vs ')[1]
         
         spread_adjustment = st.slider(
             "Home Team Spread Adjustment",
-            -10.0, 10.0, 0.0,
-            help="Positive values favor home team, negative values favor away team"
+            -10.0, 10.0, 0.0, step=0.5
         )
         
         num_simulations = st.selectbox(
             "Number of Simulations",
-            [1000, 10000, 100000],
-            help="More simulations = more accurate results but slower processing"
+            [1000, 10000, 100000]
         )
         
         run_simulation = st.button("Run Simulation")
-    else:
-        st.error("No upcoming games found in the schedule.")
-        run_simulation = False
+        predict_all = st.button("Predict All Upcoming Games")
 
-# Main content area
 if run_simulation:
     with st.spinner("Running simulation..."):
         results = quantum_monte_carlo_simulation(
-            home_team, away_team,
-            spread_adjustment, num_simulations,
-            st.session_state.team_stats
+            home_team, away_team, spread_adjustment, num_simulations,
+            st.session_state.nfl_team_stats
         )
-        
-        if results:
-            # Display key metrics
-            col1, col2 = st.columns(2)
-            with col1:
-                st.metric(f"{home_team} Win Probability",
-                          f"{results[f'{home_team} Win Percentage']:.2f}%")
-            with col2:
-                st.metric(f"{away_team} Win Probability",
-                          f"{results[f'{away_team} Win Percentage']:.2f}%")
-            
-            # Display detailed results
-            st.subheader("Detailed Predictions")
-            metrics = {k: round(v, 2) if isinstance(v, (float, int)) else v for k, v in results.items() if k != "Simulation Data"}
-            st.json(metrics)
-            
-            # Display visualizations
-            st.subheader("Visualization")
-            fig = create_simulation_visualizations(results, home_team, away_team)
-            if fig:
-                st.plotly_chart(fig, use_container_width=True)
-            
-            # Display team statistics with rounding to 2 decimal places
-            st.subheader("Team Statistics")
-            col1, col2 = st.columns(2)
-            with col1:
-                st.write(f"{home_team} Recent Stats")
-                home_team_stats = {k: round(v, 2) if isinstance(v, (float, int)) else v for k, v in st.session_state.team_stats[home_team].items()}
-                st.write(home_team_stats)
-            with col2:
-                st.write(f"{away_team} Recent Stats")
-                away_team_stats = {k: round(v, 2) if isinstance(v, (float, int)) else v for k, v in st.session_state.team_stats[away_team].items()}
-                st.write(away_team_stats)
+        display_results(results, home_team, away_team)
 
-           
+if predict_all:
+    all_results = []
+    with st.spinner("Running simulations for all games..."):
+        for _, row in upcoming_games.iterrows():
+            home_team = row['home_team']
+            away_team = row['away_team']
+            game_results = quantum_monte_carlo_simulation(
+                home_team, away_team, spread_adjustment, num_simulations,
+                st.session_state.nfl_team_stats
+            )
+            all_results.append({
+                'home_team': home_team,
+                'away_team': away_team,
+                'results': game_results
+            })
+    
+    # Display summary table
+    create_summary_table(all_results)
+
+    # Display individual game results
+    for game in all_results:
+        with st.expander(f"{game['home_team']} vs {game['away_team']}"):
+            display_results(game['results'], game['home_team'], game['away_team'])

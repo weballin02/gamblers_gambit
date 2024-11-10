@@ -14,7 +14,8 @@ import warnings
 warnings.filterwarnings('ignore')
 
 def nfl_predictions():
-    st.title('NFL Team Points Prediction')
+    st.title('NFL Team Scoring Predictions')
+    st.markdown("View projected NFL team scores for upcoming games based on recent stats. Simply select a team to see its scoring history and forecasts for the next five games. Use the insights on daily matchups and expected scores to refine your bets.")
 
 # Load and Preprocess Data
 @st.cache_data

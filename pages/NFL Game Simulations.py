@@ -12,7 +12,9 @@ from plotly.subplots import make_subplots
 # Initialize the database for user and model management
 initialize_database()
 
-st.title("NFL Monte Carlo Simulation")
+# Title and Description
+st.title("NFL Game Simulations")
+st.markdown("Run thousands of simulations for NFL games to see win probabilities and score predictions. Adjust the spread and number of simulations to explore scenarios, then view visuals of expected outcomes to help shape your betting strategy.")
 
 # Function to calculate team stats
 def calculate_team_stats():
