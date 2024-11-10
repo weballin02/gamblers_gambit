@@ -47,7 +47,6 @@ team_data = load_and_preprocess_data()
 
 # Aggregate Team Stats with Weights (Training on All Seasons)
 def aggregate_team_stats(team_data):
-    # Calculate team stats across multiple seasons with weights
     team_stats = team_data.groupby('team').apply(
         lambda x: pd.Series({
             'avg_score': np.average(x['score'], weights=x['season_weight']),
@@ -68,11 +67,9 @@ def get_current_season_stats():
     schedule = nfl.import_schedules([current_year])
     schedule['gameday'] = pd.to_datetime(schedule['gameday'], errors='coerce')
     
-    # Separate current season's home and away games
     home_df = schedule[['gameday', 'home_team', 'home_score']].copy().rename(columns={'home_team': 'team', 'home_score': 'score'})
     away_df = schedule[['gameday', 'away_team', 'away_score']].copy().rename(columns={'away_team': 'team', 'away_score': 'score'})
     
-    # Combine, filter, and sort by date
     current_season_data = pd.concat([home_df, away_df], ignore_index=True)
     current_season_data.dropna(subset=['score'], inplace=True)
     current_season_data.set_index('gameday', inplace=True)
@@ -100,31 +97,169 @@ def calculate_current_season_stats():
 # Calculate current season stats for all teams
 current_season_stats = calculate_current_season_stats()
 
-# Predict Outcome Based on Current Season Data
-def predict_game_outcome(home_team, away_team):
+# Injury Data Retrieval Function
+@st.cache_data(ttl=3600)
+def fetch_injury_data():
+    injury_data = nfl.import_injuries([current_year])
+    
+    # Define key positions and filter for players who are 'Out'
+    key_positions = ['QB', 'RB', 'WR', 'OL']
+    key_injuries = injury_data[
+        (injury_data['position'].isin(key_positions)) &
+        (injury_data['report_status'] == 'Out')
+    ]
+
+    # Filter injuries to only include updates within the past week
+    today = datetime.now(pytz.UTC)  # Set to UTC
+    one_week_ago = today - timedelta(days=7)
+    key_injuries['date_modified'] = pd.to_datetime(key_injuries['date_modified'], errors='coerce')
+    recent_injuries = key_injuries[key_injuries['date_modified'] >= one_week_ago]
+
+    return recent_injuries
+
+# Adjust Team Rating Based on Injury Impact
+def adjust_rating_for_injuries(team, base_rating, injury_data):
+    team_injuries = injury_data[(injury_data['team'] == team)]
+    impact_score = 0
+    impact_summary = []
+    # Define impact coefficients for each key position based on expected scoring impact
+    position_impacts = {
+        'QB': 0.15,  # Estimated impact: 2.5-3.5 points
+        'RB': 0.07,  # Estimated impact: 1.0-1.5 points
+        'WR': 0.08,  # Estimated impact: 1.5-2 points
+        'OL': 0.05,  # Estimated impact: 0.5-1 point
+        'DEF': 0.02  # Indirect impact, affects opponent
+    }
+
+    for _, row in team_injuries.iterrows():
+        position = row['position']
+        position_impact = position_impacts.get(position, 0.02)  # Default impact for other positions
+        impact_score += position_impact
+        impact_summary.append(f"{row['full_name']} ({row['position']}) - {row['report_status']}")
+
+    # Estimate point decrease based on accumulated impact score
+    point_decrease = round(impact_score * 3, 2)  # Apply a multiplier to estimate points impact
+    adjusted_rating = base_rating * (1 - impact_score)
+    return adjusted_rating, impact_summary, point_decrease
+
+# Predict Outcome with Optional Injury Adjustments
+def predict_game_outcome(home_team, away_team, use_injury_impact):
     home_stats = current_season_stats.get(home_team, {})
     away_stats = current_season_stats.get(away_team, {})
-    
+
     if home_stats and away_stats:
-        # Calculate "overall rating" using only current season stats for consistency
-        home_team_rating = home_stats['avg_score'] * 0.5 + home_stats['max_score'] * 0.2 + home_stats['recent_form'] * 0.3
-        away_team_rating = away_stats['avg_score'] * 0.5 + away_stats['max_score'] * 0.2 + away_stats['recent_form'] * 0.3
+        home_team_rating = (
+            home_stats['avg_score'] * 0.5 +
+            home_stats['max_score'] * 0.2 +
+            home_stats['recent_form'] * 0.3
+        )
+        away_team_rating = (
+            away_stats['avg_score'] * 0.5 +
+            away_stats['max_score'] * 0.2 +
+            away_stats['recent_form'] * 0.3
+        )
+
+        if use_injury_impact:
+            injury_data = fetch_injury_data()
+            home_team_rating, home_injury_summary, home_point_decrease = adjust_rating_for_injuries(
+                home_team, home_team_rating, injury_data
+            )
+            away_team_rating, away_injury_summary, away_point_decrease = adjust_rating_for_injuries(
+                away_team, away_team_rating, injury_data
+            )
+        else:
+            home_injury_summary, away_injury_summary = [], []
+            home_point_decrease = away_point_decrease = 0
+
         rating_diff = abs(home_team_rating - away_team_rating)
-        
-        confidence = min(100, max(0, 50 + rating_diff * 5))  # Confidence based on rating difference
-        
+        confidence = min(100, max(0, 50 + rating_diff * 5))
+
         if home_team_rating > away_team_rating:
             predicted_winner = home_team
             predicted_score_diff = home_team_rating - away_team_rating
-        elif away_team_rating > home_team_rating:
+        else:
             predicted_winner = away_team
             predicted_score_diff = away_team_rating - home_team_rating
-        else:
-            predicted_winner = "Tie"
-            predicted_score_diff = 0
-        return predicted_winner, predicted_score_diff, confidence, home_team_rating, away_team_rating
+
+        return (
+            predicted_winner,
+            predicted_score_diff,
+            confidence,
+            home_team_rating,
+            away_team_rating,
+            home_injury_summary,
+            away_injury_summary,
+            home_point_decrease,
+            away_point_decrease
+        )
     else:
-        return "Unavailable", "N/A", "N/A", None, None
+        return "Unavailable", "N/A", "N/A", None, None, [], [], 0, 0
+
+# Helper function to check for positions in injury summary
+def has_position_injury(injury_summary, position):
+    return any(position in injury for injury in injury_summary)
+
+# Enhanced Summary for Betting Insights
+def enhanced_summary(home_team, away_team, home_stats, away_stats, home_injury_summary, away_injury_summary, home_team_rating, away_team_rating, home_point_decrease, away_point_decrease, use_injury_impact):
+    st.subheader("Enhanced Betting Insights Summary")
+
+    # Key Players Missing (only shown if injury impact is included)
+    if use_injury_impact:
+        st.write(f"### Key Players Missing for {home_team}")
+        st.write(", ".join(home_injury_summary) if home_injury_summary else "No key injuries.")
+        st.write(f"### Key Players Missing for {away_team}")
+        st.write(", ".join(away_injury_summary) if away_injury_summary else "No key injuries.")
+        st.write("_Impact_: Key player absences can reduce a team’s scoring potential and overall performance. Bettors might consider this when assessing point spreads and moneyline bets.")
+
+        # Injury Impact Score (only shown if injury impact is included)
+        st.subheader("Injury Impact on Team Strength")
+        home_impact_score = round(1 - home_team_rating / (home_stats['avg_score'] * 0.5 + home_stats['max_score'] * 0.2 + home_stats['recent_form'] * 0.3), 2)
+        away_impact_score = round(1 - away_team_rating / (away_stats['avg_score'] * 0.5 + away_stats['max_score'] * 0.2 + away_stats['recent_form'] * 0.3), 2)
+        st.write(f"**{home_team} Injury Impact Score:** {home_impact_score}")
+        st.write(f"**{away_team} Injury Impact Score:** {away_impact_score}")
+        st.write("_Impact_: Higher impact scores suggest a bigger negative effect from injuries. For close games, a high injury impact score on one team may tip the balance, making the healthier team a better bet.")
+
+        # Offensive & Defensive Impact Based on Injuries (only shown if injury impact is included)
+        st.subheader("Expected Offensive & Defensive Impact from Injuries")
+        
+        st.write(f"**{home_team} Offense:**")
+        if has_position_injury(home_injury_summary, 'QB'):
+            st.write("- Likely decline in passing game due to absence of QB")
+        if has_position_injury(home_injury_summary, 'RB'):
+            st.write("- Potential reduction in rushing game due to absence of RB")
+        if has_position_injury(home_injury_summary, 'WR'):
+            st.write("- Reduced passing game options due to absence of WR")
+        st.write(f"- **Estimated Point Decrease Due to Injuries:** {home_point_decrease}")
+        
+        st.write(f"**{away_team} Offense:**")
+        if has_position_injury(away_injury_summary, 'QB'):
+            st.write("- Likely decline in passing game due to absence of QB")
+        if has_position_injury(away_injury_summary, 'RB'):
+            st.write("- Potential reduction in rushing game due to absence of RB")
+        if has_position_injury(away_injury_summary, 'WR'):
+            st.write("- Reduced passing game options due to absence of WR")
+        st.write(f"- **Estimated Point Decrease Due to Injuries:** {away_point_decrease}")
+
+        st.write("_Insight_: Injuries to key offensive players can lead to reduced scoring. This might make the under bet more attractive if a team is expected to score less due to missing players.")
+
+    # Team Trends and Strengths
+    st.subheader("Team Performance Trends")
+    st.write(f"### {home_team} Trends:")
+    st.write(f"- **Recent Form (Last 5 Games):** {round(home_stats['recent_form'], 2)}")
+    st.write(f"- **Consistency (Std Dev):** {round(home_stats['std_dev'], 2)}")
+    st.write("_Tip_: A higher recent form score suggests the team is on a good streak, which may indicate better performance in the upcoming game. Consistency is also key—lower values mean more reliable scoring.")
+
+    st.write(f"### {away_team} Trends:")
+    st.write(f"- **Recent Form (Last 5 Games):** {round(away_stats['recent_form'], 2)}")
+    st.write(f"- **Consistency (Std Dev):** {round(away_stats['std_dev'], 2)}")
+    st.write("_Tip_: For betting totals (over/under), look at consistency. Highly consistent teams can make predicting total points easier, while erratic scores suggest less predictable outcomes.")
+
+    # Confidence Score with Injury Adjustment
+    st.subheader("Overall Prediction and Confidence with Injury Adjustments")
+    likely_advantage = home_team if home_team_rating > away_team_rating else away_team
+    st.write(f"**Predicted Advantage:** {likely_advantage} is expected to have an edge, with adjusted ratings reflecting recent performance and injury impact.")
+    st.write(f"_Confidence Boost_: If betting on {likely_advantage}, the injury impact and recent form support this choice. Use this insight for moneyline bets or spreads if the adjusted ratings favor a team by a solid margin.")
+
 
 # Fetch Upcoming Games
 @st.cache_data(ttl=3600)
@@ -137,10 +272,10 @@ def fetch_upcoming_games():
 upcoming_games = fetch_upcoming_games()
 
 # Streamlit UI for Team Prediction
-st.title('Enhanced NFL Team Points Prediction for Betting Insights')
-
-# Display Game Predictions
 st.header('NFL Game Predictions with Detailed Analysis')
+
+# Checkbox to include injury impact in predictions
+use_injury_impact = st.checkbox("Include Injury Impact in Prediction")
 
 # Create game labels for selection
 upcoming_games['game_label'] = [
@@ -154,74 +289,17 @@ selected_game = upcoming_games[upcoming_games['game_label'] == game_selection].i
 home_team = selected_game['home_team']
 away_team = selected_game['away_team']
 
-# Predict Outcome for Selected Game
-predicted_winner, predicted_score_diff, confidence, home_team_rating, away_team_rating = predict_game_outcome(home_team, away_team)
+# Predict Outcome with optional Injury Impact
+predicted_winner, predicted_score_diff, confidence, home_team_rating, away_team_rating, home_injury_summary, away_injury_summary, home_point_decrease, away_point_decrease = predict_game_outcome(home_team, away_team, use_injury_impact)
 
 # Display Prediction Results with Betting Insights
 if predicted_winner != "Unavailable":
     st.write(f"### Predicted Outcome for {home_team} vs. {away_team}")
     st.write(f"**Predicted Winner:** {predicted_winner} with a confidence of {round(confidence, 2)}%")
     st.write(f"**Expected Score Difference:** {round(predicted_score_diff, 2)}")
-    
-    # Display home team stats based on current season data
-    home_stats = current_season_stats.get(home_team, {})
-    away_stats = current_season_stats.get(away_team, {})
 
-    st.subheader(f"{home_team} Performance Summary (Current Season)")
-    st.write(f"- **Average Score:** {round(home_stats['avg_score'], 2)}")
-    st.write(f"- **Recent Form (Last 5 Games):** {round(home_stats['recent_form'], 2)}")
-    st.write(f"- **Games Played:** {home_stats['games_played']}")
-    st.write(f"- **Consistency (Std Dev):** {round(home_stats['std_dev'], 2)}")
-    st.write(f"- **Overall Rating:** {round(home_team_rating, 2)}")
-
-    st.subheader(f"{away_team} Performance Summary (Current Season)")
-    st.write(f"- **Average Score:** {round(away_stats['avg_score'], 2)}")
-    st.write(f"- **Recent Form (Last 5 Games):** {round(away_stats['recent_form'], 2)}")
-    st.write(f"- **Games Played:** {away_stats['games_played']}")
-    st.write(f"- **Consistency (Std Dev):** {round(away_stats['std_dev'], 2)}")
-    st.write(f"- **Overall Rating:** {round(away_team_rating, 2)}")
-
-    # Enhanced Betting Insights Summary
-    st.subheader("Betting Insights")
-
-    # Identify which team has a higher rating and consistency
-    likely_advantage = home_team if home_team_rating > away_team_rating else away_team
-    st.write(f"**Advantage:** {likely_advantage} has a higher overall rating, suggesting a potential advantage.")
-
-    # Consistency Analysis
-    if home_stats['std_dev'] < away_stats['std_dev']:
-        st.write(f"**Consistency:** {home_team} has a more consistent scoring pattern (lower standard deviation), which may indicate reliability in expected performance. This can be useful for spread or moneyline bets.")
-    elif away_stats['std_dev'] < home_stats['std_dev']:
-        st.write(f"**Consistency:** {away_team} has a more consistent scoring pattern (lower standard deviation), making them potentially more reliable. Consider this for spread or moneyline bets.")
-    else:
-        st.write("**Consistency:** Both teams have similar consistency in scoring, making this matchup less predictable for reliability.")
-
-    # Recent Form and Momentum
-    if home_stats['recent_form'] > home_stats['avg_score']:
-        st.write(f"**Momentum:** {home_team} is currently exceeding their season average in recent games, suggesting they are in good form. This may indicate positive momentum.")
-    else:
-        st.write(f"**Momentum:** {home_team} is scoring below their season average recently, suggesting a potential decline in form.")
-
-    if away_stats['recent_form'] > away_stats['avg_score']:
-        st.write(f"**Momentum:** {away_team} is also performing above their season average recently, indicating positive momentum.")
-    else:
-        st.write(f"**Momentum:** {away_team} is performing below their season average in recent games, which may signal a downward trend.")
-
-    # Scoring Trends for Over/Under Bets
-    avg_total_score = home_stats['avg_score'] + away_stats['avg_score']
-    recent_total_score = home_stats['recent_form'] + away_stats['recent_form']
-    st.write(f"**Scoring Trends:** The combined average score of both teams is approximately {round(avg_total_score, 2)} points per game.")
-    st.write(f"- **Over/Under Insight:** Based on recent form, the teams are scoring a combined {round(recent_total_score, 2)} points. If this exceeds the set over/under line, an over bet might be worth considering, while a lower score could indicate potential for an under bet.")
-
-    # Spread and Moneyline Suggestions
-    if predicted_score_diff > 3:
-        st.write(f"**Spread Suggestion:** With an expected score difference of {round(predicted_score_diff, 2)}, the spread bet might favor **{predicted_winner}** if the line is less than this expected margin.")
-    else:
-        st.write("**Spread Suggestion:** The expected score difference is small, suggesting a close game where a spread bet could be risky.")
-
-    st.write("**Moneyline Insight:** Based on overall ratings and recent form, **{likely_advantage}** may be a good choice for a moneyline bet if they’re performing consistently.")
-
+    # Call Enhanced Summary for Detailed Insights, passing the `use_injury_impact` parameter
+    enhanced_summary(home_team, away_team, current_season_stats.get(home_team, {}), current_season_stats.get(away_team, {}),
+                     home_injury_summary, away_injury_summary, home_team_rating, away_team_rating, home_point_decrease, away_point_decrease, use_injury_impact)
 else:
     st.error("Prediction data for one or both teams is unavailable.")
-
-
