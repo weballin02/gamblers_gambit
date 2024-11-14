@@ -6,130 +6,132 @@ import joblib
 import os
 import numpy as np
 import streamlit as st
-from nba_api.stats.endpoints import ScoreboardV2
+from nba_api.stats.endpoints import teamgamelog  # Import teamgamelog
 from nba_api.stats.static import teams as nba_teams
 from datetime import datetime, timedelta
 import matplotlib.dates as mdates
 import warnings
 warnings.filterwarnings('ignore')
+from nba_api.stats.endpoints import ScoreboardV2
 
 # Streamlit App Title
 st.title("NBA Team Scoring Predictions")
 st.markdown("Explore NBA team score predictions driven by historical and recent data. Select a team to see its past performance and projected points for the next games. Quickly identify today’s expected scores and winners for smarter betting choices.")
 
-# Load and Preprocess Data
+# Fetch NBA team abbreviations and IDs
+nba_team_list = nba_teams.get_teams()
+team_abbreviations = [team['abbreviation'] for team in nba_team_list]  # List of all team abbreviations
+
+# Define Team Name Mapping Globally
+team_name_mapping = {
+    'ATL': 'Atlanta Hawks', 'BOS': 'Boston Celtics', 'BKN': 'Brooklyn Nets', 'CHA': 'Charlotte Hornets',
+    'CHI': 'Chicago Bulls', 'CLE': 'Cleveland Cavaliers', 'DAL': 'Dallas Mavericks', 'DEN': 'Denver Nuggets',
+    'DET': 'Detroit Pistons', 'GSW': 'Golden State Warriors', 'HOU': 'Houston Rockets', 'IND': 'Indiana Pacers',
+    'LAC': 'LA Clippers', 'LAL': 'Los Angeles Lakers', 'MEM': 'Memphis Grizzlies', 'MIA': 'Miami Heat',
+    'MIL': 'Milwaukee Bucks', 'MIN': 'Minnesota Timberwolves', 'NOP': 'New Orleans Pelicans', 'NYK': 'New York Knicks',
+    'OKC': 'Oklahoma City Thunder', 'ORL': 'Orlando Magic', 'PHI': 'Philadelphia 76ers', 'PHX': 'Phoenix Suns',
+    'POR': 'Portland Trail Blazers', 'SAC': 'Sacramento Kings', 'SAS': 'San Antonio Spurs', 'TOR': 'Toronto Raptors',
+    'UTA': 'Utah Jazz', 'WAS': 'Washington Wizards'
+}
+inverse_team_name_mapping = {v: k for k, v in team_name_mapping.items()}
+
+# Fetch and Preprocess Data from NBA API
 @st.cache_data
-def load_and_preprocess_data(file_path):
-    usecols = ['date', 'team', 'PTS']
-    data = pd.read_csv(file_path, usecols=usecols)
-    data['date'] = pd.to_datetime(data['date'], errors='coerce')
+def fetch_and_preprocess_data(season):
+    """Fetch data for the specified season from NBA API and preprocess it for model training."""
+    all_data = []
+
+    # Iterate over each team to get their game logs
+    for team in nba_team_list:
+        team_id = team['id']
+        team_abbrev = team['abbreviation']
+
+        # Fetch team game logs for this team and season
+        try:
+            team_logs = teamgamelog.TeamGameLog(team_id=team_id, season=season).get_data_frames()[0]
+
+            # Filter and rename columns to match our target structure
+            team_logs = team_logs[['Game_ID', 'GAME_DATE', 'PTS']]
+            team_logs['TEAM_ABBREV'] = team_abbrev
+            all_data.append(team_logs)
+        
+        except Exception as e:
+            st.error(f"Error fetching data for team {team_abbrev}: {e}")
+            continue
+
+    # Concatenate all teams' data
+    data = pd.concat(all_data, ignore_index=True)
+    data['GAME_DATE'] = pd.to_datetime(data['GAME_DATE'])
     return data
 
 # Apply Team Name Mapping
 def apply_team_name_mapping(data):
-    # Mapping from team abbreviation to full team name
-    team_name_mapping = {
-        'ATL': 'Atlanta Hawks',
-        'BOS': 'Boston Celtics',
-        'BKN': 'Brooklyn Nets',
-        'CHA': 'Charlotte Hornets',
-        'CHH': 'Charlotte Hornets',
-        'CHI': 'Chicago Bulls',
-        'CLE': 'Cleveland Cavaliers',
-        'DAL': 'Dallas Mavericks',
-        'DEN': 'Denver Nuggets',
-        'DET': 'Detroit Pistons',
-        'GSW': 'Golden State Warriors',
-        'HOU': 'Houston Rockets',
-        'IND': 'Indiana Pacers',
-        'LAC': 'LA Clippers',
-        'LAL': 'Los Angeles Lakers',
-        'MEM': 'Memphis Grizzlies',
-        'MIA': 'Miami Heat',
-        'MIL': 'Milwaukee Bucks',
-        'MIN': 'Minnesota Timberwolves',
-        'NOH': 'New Orleans Pelicans',
-        'NOK': 'New Orleans Pelicans',
-        'NOP': 'New Orleans Pelicans',
-        'NJN': 'Brooklyn Nets',
-        'NYK': 'New York Knicks',
-        'OKC': 'Oklahoma City Thunder',
-        'ORL': 'Orlando Magic',
-        'PHI': 'Philadelphia 76ers',
-        'PHX': 'Phoenix Suns',
-        'POR': 'Portland Trail Blazers',
-        'SAC': 'Sacramento Kings',
-        'SAS': 'San Antonio Spurs',
-        'SEA': 'Oklahoma City Thunder',
-        'TOR': 'Toronto Raptors',
-        'UTA': 'Utah Jazz',
-        'VAN': 'Memphis Grizzlies',
-        'WAS': 'Washington Wizards',
-    }
-
-    # Inverse mapping from full team name to abbreviation
-    inverse_team_name_mapping = {v: k for k, v in team_name_mapping.items()}
-
-    # Apply mapping to data
     data['team_abbrev'] = data['team']
     data['team'] = data['team'].map(team_name_mapping)
     data.dropna(subset=['team'], inplace=True)
+    return data
 
-    return data, team_name_mapping, inverse_team_name_mapping
-
-# Load Data
-file_path = 'data/traditional.csv'
-data = load_and_preprocess_data(file_path)
-
-# Apply Team Name Mapping
-data, team_name_mapping, inverse_team_name_mapping = apply_team_name_mapping(data)
 
 # Aggregate Points by Team and Date
-team_data = data.groupby(['date', 'team_abbrev', 'team'])['PTS'].sum().reset_index()
-team_data.set_index('date', inplace=True)
+def aggregate_points_by_team(data):
+    team_data = data.groupby(['GAME_DATE', 'TEAM_ABBREV'])['PTS'].sum().reset_index()
+    team_data.set_index('GAME_DATE', inplace=True)
+    return team_data
 
 # Initialize, Train, Save, and Load ARIMA Models for Each Team
 @st.cache_resource
-def get_team_models(team_data):
+def train_arima_models(team_data):
     model_dir = 'models/nba'
-    os.makedirs(model_dir, exist_ok=True)  # Ensure the model directory exists
+    os.makedirs(model_dir, exist_ok=True)
 
     team_models = {}
-    teams_list = team_data['team_abbrev'].unique()
+    teams_list = team_data['TEAM_ABBREV'].unique()
 
     for team_abbrev in teams_list:
         model_filename = f'{team_abbrev}_arima_model.pkl'
         model_path = os.path.join(model_dir, model_filename)
-
-        # Prepare team_points
-        team_points = team_data[team_data['team_abbrev'] == team_abbrev]['PTS']
+        team_points = team_data[team_data['TEAM_ABBREV'] == team_abbrev]['PTS']
         team_points.reset_index(drop=True, inplace=True)
 
-        # Load or train model
-        if os.path.exists(model_path):
-            # Load existing model
-            model = joblib.load(model_path)
-        else:
-            # Train a new ARIMA model
-            model = auto_arima(
-                team_points,
-                seasonal=False,
-                trace=False,
-                error_action='ignore',
-                suppress_warnings=True
-            )
-            model.fit(team_points)
+        # Train a new ARIMA model
+        model = auto_arima(
+            team_points,
+            seasonal=False,
+            trace=False,
+            error_action='ignore',
+            suppress_warnings=True
+        )
+        model.fit(team_points)
 
-            # Save the trained model
-            joblib.dump(model, model_path)
-
-        # Store the model in the dictionary
+        # Save the trained model
+        joblib.dump(model, model_path)
         team_models[team_abbrev] = model
 
     return team_models
 
-# Get Team Models
-team_models = get_team_models(team_data)
+# Button to fetch data, retrain models, and predict
+if st.button("Refresh Data & Retrain Models"):
+    with st.spinner("Fetching data and retraining models..."):
+        # Fetch and preprocess data
+        season = "2024-25"  # Use the current season or update dynamically
+        data = fetch_and_preprocess_data(season)
+        team_data = aggregate_points_by_team(data)
+
+        # Train ARIMA models with the latest data
+        st.session_state['team_models'] = train_arima_models(team_data)
+        st.session_state['team_data'] = team_data
+        st.success("Data refreshed and models retrained.")
+
+# Retrieve models and data from session state on first load
+if 'team_models' not in st.session_state or 'team_data' not in st.session_state:
+    season = "2024-25"
+    data = fetch_and_preprocess_data(season)
+    team_data = aggregate_points_by_team(data)
+    st.session_state['team_models'] = train_arima_models(team_data)
+    st.session_state['team_data'] = team_data
+
+team_models = st.session_state['team_models']
+team_data = st.session_state['team_data']
 
 # Forecast the Next 5 Games for Each Team
 @st.cache_data
@@ -138,101 +140,54 @@ def compute_team_forecasts(_team_models, team_data):
     forecast_periods = 5
 
     for team_abbrev, model in _team_models.items():
-        # Get last date
-        team_points = team_data[team_data['team_abbrev'] == team_abbrev]['PTS']
+        team_points = team_data[team_data['TEAM_ABBREV'] == team_abbrev]['PTS']
         if team_points.empty:
             continue
         last_date = team_points.index.max()
-
-        # Generate future dates
         future_dates = pd.date_range(start=last_date + pd.Timedelta(days=1), periods=forecast_periods, freq='D')
-
-        # Forecast
         forecast = model.predict(n_periods=forecast_periods)
-
-        # Ensure forecast is an array
         if isinstance(forecast, pd.Series):
             forecast = forecast.values
-
-        # Store forecast
-        predictions = pd.DataFrame({
-            'Date': future_dates,
-            'Predicted_PTS': forecast,
-            'Team': team_abbrev
-        })
+        predictions = pd.DataFrame({'Date': future_dates, 'Predicted_PTS': forecast, 'Team': team_abbrev})
         team_forecasts[team_abbrev] = predictions
 
-    # Combine all forecasts
-    if team_forecasts:
-        all_forecasts = pd.concat(team_forecasts.values(), ignore_index=True)
-    else:
-        all_forecasts = pd.DataFrame(columns=['Date', 'Predicted_PTS', 'Team'])
-    return all_forecasts
+    return pd.concat(team_forecasts.values(), ignore_index=True) if team_forecasts else pd.DataFrame(columns=['Date', 'Predicted_PTS', 'Team'])
 
 # Compute Team Forecasts
 all_forecasts = compute_team_forecasts(team_models, team_data)
 
-# Streamlit App
+# Streamlit App for Team Points Prediction
 st.title('NBA Team Points Prediction')
 
 # Dropdown menu for selecting a team
-teams_list = sorted(team_data['team_abbrev'].unique())
+teams_list = sorted(team_data['TEAM_ABBREV'].unique())
 team_abbrev = st.selectbox('Select a team for prediction:', teams_list)
 
 if team_abbrev:
-    team_full_name = team_name_mapping[team_abbrev]
-    team_points = team_data[team_data['team_abbrev'] == team_abbrev]['PTS']
+    team_full_name = [team['full_name'] for team in nba_team_list if team['abbreviation'] == team_abbrev][0]
+    team_points = team_data[team_data['TEAM_ABBREV'] == team_abbrev]['PTS']
     team_points.index = pd.to_datetime(team_points.index)
 
     st.write(f'### Historical Points for {team_full_name}')
     st.line_chart(team_points)
 
-    # Display future predictions
     team_forecast = all_forecasts[all_forecasts['Team'] == team_abbrev]
     st.write(f'### Predicted Points for Next 5 Games ({team_full_name})')
     st.write(team_forecast[['Date', 'Predicted_PTS']])
 
-    # Plot the historical and predicted points
     st.write(f'### Points Prediction for {team_full_name}')
     fig, ax = plt.subplots(figsize=(10, 6))
-
-    # Convert dates to Matplotlib's numeric format
     forecast_dates = mdates.date2num(team_forecast['Date'])
     historical_dates = mdates.date2num(team_points.index)
 
-    # Plot historical points
-    ax.plot(
-        historical_dates,
-        team_points.values,
-        label=f'Historical Points for {team_full_name}',
-        color='blue'
-    )
-    # Plot predicted points
-    ax.plot(
-        forecast_dates,
-        team_forecast['Predicted_PTS'],
-        label='Predicted Points',
-        color='red'
-    )
-    # Plot confidence interval (using +/- 5 as placeholder)
+    ax.plot(historical_dates, team_points.values, label=f'Historical Points for {team_full_name}', color='blue')
+    ax.plot(forecast_dates, team_forecast['Predicted_PTS'], label='Predicted Points', color='red')
     lower_bound = team_forecast['Predicted_PTS'] - 5
     upper_bound = team_forecast['Predicted_PTS'] + 5
-
-    # Ensure no non-finite values
     finite_indices = np.isfinite(forecast_dates) & np.isfinite(lower_bound) & np.isfinite(upper_bound)
-
-    ax.fill_between(
-        forecast_dates[finite_indices],
-        lower_bound.values[finite_indices],
-        upper_bound.values[finite_indices],
-        color='gray',
-        alpha=0.2,
-        label='Confidence Interval'
-    )
-
+    ax.fill_between(forecast_dates[finite_indices], lower_bound.values[finite_indices], upper_bound.values[finite_indices], color='gray', alpha=0.2, label='Confidence Interval')
     ax.xaxis_date()
     fig.autofmt_xdate()
-
     ax.set_title(f'Points Prediction for {team_full_name}')
     ax.set_xlabel('Date')
     ax.set_ylabel('Points')
