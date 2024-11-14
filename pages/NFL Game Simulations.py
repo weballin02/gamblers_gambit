@@ -8,6 +8,7 @@ from utils.user_database import initialize_database
 from utils.database import save_model, get_saved_models, load_model
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+import pytz
 
 # Initialize the database for user and model management
 initialize_database()
@@ -41,15 +42,34 @@ def calculate_team_stats():
 
     return team_stats
 
-# Function to get upcoming games within the next 30 days
+# Updated function to get upcoming games based on current day
 def get_upcoming_games():
     current_year = datetime.now().year
     schedule = nfl.import_schedules([current_year])
-    today = datetime.now().date()
-    next_month = today + timedelta(days=30)
-    schedule['gameday'] = pd.to_datetime(schedule['gameday']).dt.date
-    upcoming_games = schedule[(schedule['gameday'] >= today) & (schedule['gameday'] <= next_month)]
-    return upcoming_games[['gameday', 'home_team', 'away_team']]
+    schedule['game_datetime'] = pd.to_datetime(schedule['gameday']).dt.tz_localize('UTC')
+    now = datetime.now(pytz.UTC)
+    today_weekday = now.weekday()
+
+    # Set target game days based on the current weekday
+    if today_weekday == 3:  # Thursday
+        target_days = [3, 6, 0]
+    elif today_weekday == 6:  # Sunday
+        target_days = [6, 0, 3]
+    elif today_weekday == 0:  # Monday
+        target_days = [0, 3, 6]
+    else:
+        target_days = [3, 6, 0]
+
+    upcoming_game_dates = [
+        now + timedelta(days=(d - today_weekday + 7) % 7) for d in target_days
+    ]
+
+    upcoming_games = schedule[
+        (schedule['game_type'] == 'REG') &
+        (schedule['game_datetime'].dt.date.isin([date.date() for date in upcoming_game_dates]))
+    ].sort_values('game_datetime')
+
+    return upcoming_games[['game_datetime', 'home_team', 'away_team']]
 
 # Monte Carlo simulation function
 def monte_carlo_simulation(home_team, away_team, spread_adjustment, num_simulations, team_stats):
@@ -136,7 +156,7 @@ with st.sidebar:
     
     if not upcoming_games.empty:
         game_options = [
-            f"{row['gameday']} - {row['home_team']} vs {row['away_team']}"
+            f"{row['game_datetime'].date()} - {row['home_team']} vs {row['away_team']}"
             for _, row in upcoming_games.iterrows()
         ]
         selected_game = st.selectbox("Select Game", game_options)
