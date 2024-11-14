@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 from sklearn.cluster import KMeans
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+import pytz
 
 # Streamlit App Title
 st.title("NFL Quantum-Inspired Game Predictions")
@@ -30,15 +31,13 @@ def calculate_team_stats():
     if games is None:
         return {}
 
-    # Using correct column names: home_score, away_score, and gameday
     past_games = games.dropna(subset=['home_score', 'away_score'])
     team_stats = {}
 
     for team in pd.concat([past_games['home_team'], past_games['away_team']]).unique():
         home_games = past_games[past_games['home_team'] == team]
         away_games = past_games[past_games['away_team'] == team]
-        
-        # Calculate recent form (last 5 games)
+
         recent_home = home_games.sort_values('gameday').tail(5)
         recent_away = away_games.sort_values('gameday').tail(5)
         
@@ -52,7 +51,6 @@ def calculate_team_stats():
                 scores_clustered = KMeans(n_clusters=n_clusters).fit_predict(all_scores.values.reshape(-1, 1))
                 avg_scores_by_cluster = all_scores.groupby(scores_clustered).mean()
                 
-                # Calculate recent form score
                 recent_scores = pd.concat([
                     recent_home['home_score'],
                     recent_away['away_score']
@@ -74,22 +72,37 @@ def calculate_team_stats():
 
     return team_stats
 
+@st.cache_data(ttl=3600)
 def get_upcoming_games():
     games = load_nfl_data()
     if games is None:
         return pd.DataFrame()
 
-    today = datetime.now().date()
-    next_month = today + timedelta(days=30)
-    
     schedule = games.copy()
-    schedule['gameday'] = pd.to_datetime(schedule['gameday']).dt.date
+    schedule['game_datetime'] = pd.to_datetime(schedule['gameday']).dt.tz_localize('UTC')
+    now = datetime.now().astimezone(pytz.UTC)
+    today_weekday = now.weekday()
+
+    # Set target game days based on the current weekday
+    if today_weekday == 3:  # Thursday
+        target_days = [3, 6, 0]
+    elif today_weekday == 6:  # Sunday
+        target_days = [6, 0, 3]
+    elif today_weekday == 0:  # Monday
+        target_days = [0, 3, 6]
+    else:
+        target_days = [3, 6, 0]
+
+    upcoming_game_dates = [
+        now + timedelta(days=(d - today_weekday + 7) % 7) for d in target_days
+    ]
+
     upcoming_games = schedule[
-        (schedule['gameday'] >= today) & 
-        (schedule['gameday'] <= next_month)
-    ].sort_values('gameday')
+        (schedule['game_type'] == 'REG') &
+        (schedule['game_datetime'].dt.date.isin([date.date() for date in upcoming_game_dates]))
+    ].sort_values('game_datetime')
     
-    return upcoming_games[['gameday', 'home_team', 'away_team']]
+    return upcoming_games[['game_datetime', 'home_team', 'away_team']]
 
 def quantum_monte_carlo_simulation(home_team, away_team, spread_adjustment, num_simulations, team_stats):
     if home_team not in team_stats or away_team not in team_stats:
@@ -99,15 +112,12 @@ def quantum_monte_carlo_simulation(home_team, away_team, spread_adjustment, num_
     home_stats = team_stats[home_team]
     away_stats = team_stats[away_team]
     
-    # Initialize arrays for vectorized operations
     home_cluster_scores = np.array(home_stats['cluster_avg_scores'])
     away_cluster_scores = np.array(away_stats['cluster_avg_scores'])
     
-    # Vectorized simulation
     home_score_avg = np.random.choice(home_cluster_scores, num_simulations) + spread_adjustment
     away_score_avg = np.random.choice(away_cluster_scores, num_simulations)
     
-    # Generate scores with recent form influence
     home_form_factor = (home_stats['recent_form'] / home_stats['avg_score']) if home_stats['avg_score'] != 0 else 1
     away_form_factor = (away_stats['recent_form'] / away_stats['avg_score']) if away_stats['avg_score'] != 0 else 1
     
@@ -120,7 +130,6 @@ def quantum_monte_carlo_simulation(home_team, away_team, spread_adjustment, num_
         np.random.normal(away_score_avg * away_form_factor, away_stats['std_dev'], num_simulations)
     )
     
-    # Calculate results with rounding to 2 decimal places
     score_diff = home_scores - away_scores
     home_wins = np.sum(score_diff > 0)
     
@@ -177,7 +186,7 @@ with st.sidebar:
 
     if not upcoming_games.empty:
         game_options = [
-            f"{row['gameday']} - {row['home_team']} vs {row['away_team']}"
+            f"{row['game_datetime'].date()} - {row['home_team']} vs {row['away_team']}"
             for _, row in upcoming_games.iterrows()
         ]
         selected_game = st.selectbox("Select Game", game_options)
