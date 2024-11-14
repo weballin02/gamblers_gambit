@@ -17,7 +17,7 @@ warnings.filterwarnings('ignore')
 st.title('NFL Team Scoring Predictions')
 st.markdown("View projected NFL team scores for upcoming games based on recent stats. Select a team to see its scoring history and forecasts for the next five games. Use the insights on daily matchups and expected scores to refine your bets.")
 
-# Load and Preprocess Data
+# Load and Preprocess Data 
 @st.cache_data
 def fetch_and_preprocess_data():
     current_year = datetime.now().year
