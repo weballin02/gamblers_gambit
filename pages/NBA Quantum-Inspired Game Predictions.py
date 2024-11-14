@@ -10,7 +10,6 @@ from nba_api.stats.endpoints import LeagueGameLog, ScoreboardV2
 from nba_api.stats.static import teams as nba_teams
 import warnings
 
-
 # Suppress warnings for cleaner output
 warnings.filterwarnings('ignore')
 
@@ -244,6 +243,14 @@ with st.sidebar:
         run_simulation = st.button("Run Simulation")
         predict_all = st.button("Predict All Upcoming Games")
 
+# Button to refresh data, update models, and predict
+if st.button("Refresh Data & Predict"):
+    with st.spinner("Refreshing data and updating models..."):
+        current_season = "2024-25"
+        game_logs = load_nba_game_logs(season=current_season)
+        st.session_state.nba_team_stats = calculate_team_stats(game_logs)
+        st.success("Data refreshed and models updated.")
+
 if run_simulation:
     with st.spinner("Running simulation..."):
         results = quantum_monte_carlo_simulation(
@@ -280,3 +287,4 @@ if predict_all:
     for game in all_results:
         with st.expander(f"{game['home_team_full']} vs {game['away_team_full']}"):
             display_results(game['results'], game['home_team_full'], game['away_team_full'])
+
