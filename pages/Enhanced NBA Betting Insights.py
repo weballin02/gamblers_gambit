@@ -34,9 +34,6 @@ def load_nba_game_logs(seasons):
             st.error(f"Error loading NBA game logs for {season}: {str(e)}")
     return pd.concat(all_games, ignore_index=True) if all_games else None
 
-# Load game logs for multi-season training
-game_logs = load_nba_game_logs([current_season] + previous_seasons)
-
 # Aggregate Team Stats with Season Weights for Training
 def aggregate_team_stats(game_logs):
     if game_logs is None:
@@ -53,9 +50,6 @@ def aggregate_team_stats(game_logs):
     ).to_dict(orient='index')
     return team_stats
 
-# Generate team stats with multi-season weights
-team_stats = aggregate_team_stats(game_logs)
-
 # Fetch and Calculate Current Season Stats
 @st.cache_data
 def load_current_season_logs(season):
@@ -65,9 +59,7 @@ def load_current_season_logs(season):
     games['GAME_DATE'] = pd.to_datetime(games['GAME_DATE'])
     return games
 
-current_season_logs = load_current_season_logs(current_season)
-
-def calculate_current_season_stats():
+def calculate_current_season_stats(current_season_logs):
     """Calculate stats for current season only."""
     recent_games = current_season_logs[current_season_logs['GAME_DATE'] >= datetime.now() - timedelta(days=30)]
     current_season_stats = current_season_logs.groupby('TEAM_ABBREVIATION').apply(
@@ -82,12 +74,25 @@ def calculate_current_season_stats():
     ).to_dict(orient='index')
     return current_season_stats
 
-current_season_stats = calculate_current_season_stats()
+# Load data when the button is pressed or on first load
+if 'game_logs' not in st.session_state:
+    st.session_state['game_logs'] = load_nba_game_logs([current_season] + previous_seasons)
+    st.session_state['team_stats'] = aggregate_team_stats(st.session_state['game_logs'])
+    st.session_state['current_season_logs'] = load_current_season_logs(current_season)
+    st.session_state['current_season_stats'] = calculate_current_season_stats(st.session_state['current_season_logs'])
+
+if st.button("Refresh Data & Predict"):
+    with st.spinner("Refreshing data and updating predictions..."):
+        st.session_state['game_logs'] = load_nba_game_logs([current_season] + previous_seasons)
+        st.session_state['team_stats'] = aggregate_team_stats(st.session_state['game_logs'])
+        st.session_state['current_season_logs'] = load_current_season_logs(current_season)
+        st.session_state['current_season_stats'] = calculate_current_season_stats(st.session_state['current_season_logs'])
+        st.success("Data refreshed and predictions updated.")
 
 # Predict Game Outcome Based on Current Season Data
 def predict_game_outcome(home_team, away_team):
-    home_stats = current_season_stats.get(home_team, {})
-    away_stats = current_season_stats.get(away_team, {})
+    home_stats = st.session_state['current_season_stats'].get(home_team, {})
+    away_stats = st.session_state['current_season_stats'].get(away_team, {})
 
     if home_stats and away_stats:
         home_team_rating = home_stats['avg_score'] * 0.5 + home_stats['max_score'] * 0.2 + home_stats['recent_form'] * 0.3
@@ -172,8 +177,8 @@ if not upcoming_games.empty:
             st.write(f"**Expected Score Difference:** {round(predicted_score_diff, 2)}")
 
             # Detailed Team Stats for Betting Insights
-            home_stats = current_season_stats.get(home_team, {})
-            away_stats = current_season_stats.get(away_team, {})
+            home_stats = st.session_state['current_season_stats'].get(home_team, {})
+            away_stats = st.session_state['current_season_stats'].get(away_team, {})
 
             st.subheader(f"{team_name_mapping[home_team]} Performance Summary (Current Season)")
             st.write(f"- **Average Score:** {round(home_stats['avg_score'], 2)}")
@@ -212,3 +217,4 @@ if not upcoming_games.empty:
                 st.write("**Spread Insight:** A close game suggests caution for spread betting.")
                 
             st.write(f"**Moneyline Suggestion:** **{team_name_mapping[likely_advantage]}** may be favorable based on rating and consistency.")
+
