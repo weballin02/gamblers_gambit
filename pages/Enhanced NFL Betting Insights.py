@@ -265,10 +265,85 @@ def enhanced_summary(home_team, away_team, home_stats, away_stats, home_injury_s
 @st.cache_data(ttl=3600)
 def fetch_upcoming_games():
     schedule = nfl.import_schedules([current_year])
-    schedule['game_datetime'] = pd.to_datetime(schedule['gameday'].astype(str) + ' ' + schedule['gametime'].astype(str), errors='coerce', utc=True)
-    upcoming_games = schedule[(schedule['game_type'] == 'REG') & (schedule['game_datetime'] >= datetime.now(pytz.UTC))]
-    return upcoming_games[['game_id', 'game_datetime', 'home_team', 'away_team']]
+    schedule['game_datetime'] = pd.to_datetime(
+        schedule['gameday'].astype(str) + ' ' + schedule['gametime'].astype(str),
+        errors='coerce',
+        utc=True
+    )
+    schedule.dropna(subset=['game_datetime'], inplace=True)
+    now = datetime.now(pytz.UTC)
+    today_weekday = now.weekday()  # Monday=0, Sunday=6
 
+    # Determine the target game days based on the current day of the week
+    if today_weekday == 3:  # Thursday
+        target_days = [3, 6, 0]  # Thursday, Sunday, Monday
+    elif today_weekday == 6:  # Sunday
+        target_days = [6, 0, 3]  # Sunday, Monday, next Thursday
+    elif today_weekday == 0:  # Monday
+        target_days = [0, 3, 6]  # Monday, next Thursday, next Sunday
+    else:
+        # For non-gamedays (Tue, Wed, Fri, Sat), get next Thur, Sun, Mon
+        target_days = [3, 6, 0]  # Next Thursday, Sunday, Monday
+
+    # Calculate the upcoming game dates within one week for target days
+    upcoming_game_dates = [
+        now + timedelta(days=(d - today_weekday + 7) % 7) for d in target_days
+    ]
+
+    # Filter for games within the target dates and regular season
+    upcoming_games = schedule[
+        (schedule['game_type'] == 'REG') &
+        (schedule['game_datetime'].dt.date.isin([date.date() for date in upcoming_game_dates]))
+    ]
+
+    # Select relevant columns
+    upcoming_games = upcoming_games[['game_id', 'game_datetime', 'home_team', 'away_team']]
+
+    # Mapping from team abbreviations to full names
+    team_abbrev_mapping = {
+        'ARI': 'Arizona Cardinals',
+        'ATL': 'Atlanta Falcons',
+        'BAL': 'Baltimore Ravens',
+        'BUF': 'Buffalo Bills',
+        'CAR': 'Carolina Panthers',
+        'CHI': 'Chicago Bears',
+        'CIN': 'Cincinnati Bengals',
+        'CLE': 'Cleveland Browns',
+        'DAL': 'Dallas Cowboys',
+        'DEN': 'Denver Broncos',
+        'DET': 'Detroit Lions',
+        'GB': 'Green Bay Packers',
+        'HOU': 'Houston Texans',
+        'IND': 'Indianapolis Colts',
+        'JAX': 'Jacksonville Jaguars',
+        'KC': 'Kansas City Chiefs',
+        'LAC': 'Los Angeles Chargers',
+        'LAR': 'Los Angeles Rams',
+        'LV': 'Las Vegas Raiders',
+        'MIA': 'Miami Dolphins',
+        'MIN': 'Minnesota Vikings',
+        'NE': 'New England Patriots',
+        'NO': 'New Orleans Saints',
+        'NYG': 'New York Giants',
+        'NYJ': 'New York Jets',
+        'PHI': 'Philadelphia Eagles',
+        'PIT': 'Pittsburgh Steelers',
+        'SEA': 'Seattle Seahawks',
+        'SF': 'San Francisco 49ers',
+        'TB': 'Tampa Bay Buccaneers',
+        'TEN': 'Tennessee Titans',
+        'WAS': 'Washington Commanders',
+    }
+
+    # Apply mapping
+    upcoming_games['home_team_full'] = upcoming_games['home_team'].map(team_abbrev_mapping)
+    upcoming_games['away_team_full'] = upcoming_games['away_team'].map(team_abbrev_mapping)
+    upcoming_games.dropna(subset=['home_team_full', 'away_team_full'], inplace=True)
+    upcoming_games.reset_index(drop=True, inplace=True)
+
+    return upcoming_games
+
+# Execute fetch for upcoming games
 upcoming_games = fetch_upcoming_games()
 
 # Streamlit UI for Team Prediction
@@ -279,7 +354,7 @@ use_injury_impact = st.checkbox("Include Injury Impact in Prediction")
 
 # Create game labels for selection
 upcoming_games['game_label'] = [
-    f"{row['away_team']} at {row['home_team']} ({row['game_datetime'].strftime('%Y-%m-%d %H:%M %Z')})"
+    f"{row['away_team_full']} at {row['home_team_full']} ({row['game_datetime'].strftime('%Y-%m-%d %H:%M %Z')})"
     for _, row in upcoming_games.iterrows()
 ]
 
