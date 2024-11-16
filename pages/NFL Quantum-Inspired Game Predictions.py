@@ -489,7 +489,7 @@ if 'nfl_team_stats' not in st.session_state:
     st.session_state.nfl_team_stats = calculate_team_stats()
 
 # Sidebar for controls
-st.sidebar.markdown('''
+st.markdown('''
     <div class="controls-section">
         <h3>Simulation Controls</h3>
     ''', unsafe_allow_html=True)
@@ -501,25 +501,25 @@ if not upcoming_games.empty:
         f"{row['game_datetime'].date()} - {row['home_team']} vs {row['away_team']}"
         for _, row in upcoming_games.iterrows()
     ]
-    selected_game = st.sidebar.selectbox("Select Game", game_options)
+    selected_game = st.selectbox("Select Game", game_options)
     
     home_team = selected_game.split(' vs ')[0].split(' - ')[1]
     away_team = selected_game.split(' vs ')[1]
     
-    spread_adjustment = st.sidebar.slider(
+    spread_adjustment = st.slider(
         "Home Team Spread Adjustment",
         -10.0, 10.0, 0.0, step=0.5
     )
     
-    num_simulations = st.sidebar.selectbox(
+    num_simulations = st.selectbox(
         "Number of Simulations",
         [1000, 10000, 100000]
     )
     
-    run_simulation = st.sidebar.button("Run Simulation")
-    predict_all = st.sidebar.button("Predict All Upcoming Games")
+    run_simulation = st.button("Run Simulation")
+    predict_all = st.button("Predict All Upcoming Games")
 
-st.sidebar.markdown('</div>', unsafe_allow_html=True)
+st.markdown('</div>', unsafe_allow_html=True)
 
 if run_simulation:
     with st.spinner("Running simulation..."):
