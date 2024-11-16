@@ -9,96 +9,242 @@ import requests
 import warnings
 warnings.filterwarnings('ignore')
 
-# Streamlit App Title
+# Set page configuration
 st.set_page_config(
-    page_title="Enhanced NFL Betting Insights",
-    page_icon="🏈",
-    layout="centered",
+    page_title="FoxEdge - Enhanced NFL Betting Insights",
+    page_icon="🦊",
+    layout="wide",
     initial_sidebar_state="collapsed",
 )
 
-# General Styling and High Contrast Toggle
-st.markdown("""
+# Synesthetic Interface CSS
+st.markdown('''
     <style>
-        /* Shared CSS for consistent styling */
-        html, body, [class*="css"] {
-            font-family: 'Open Sans', sans-serif;
-            background: linear-gradient(135deg, #1a1c2c 0%, #0f111a 100%);
-            color: #E5E7EB;
+        /* Import Fonts */
+        @import url('https://fonts.googleapis.com/css2?family=Raleway:wght@400;700&family=Open+Sans:wght@400;600&display=swap');
+
+        /* Root Variables */
+        :root {
+            --background-gradient-start: #0F2027;
+            --background-gradient-end: #203A43;
+            --primary-text-color: #ECECEC;
+            --heading-text-color: #F5F5F5;
+            --accent-color-teal: #2CFFAA;
+            --accent-color-purple: #A56BFF;
+            --highlight-color: #FF6B6B;
+            --font-heading: 'Raleway', sans-serif;
+            --font-body: 'Open Sans', sans-serif;
         }
 
-        .header-title {
-            font-family: 'Montserrat', sans-serif;
-            background: linear-gradient(120deg, #FFA500, #FF6B00);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            font-size: 3em;
-            font-weight: 800;
+        /* Global Styles */
+        body, html {
+            background: linear-gradient(135deg, var(--background-gradient-start), var(--background-gradient-end));
+            color: var(--primary-text-color);
+            font-family: var(--font-body);
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
         }
 
-        .gradient-bar {
-            height: 10px;
-            background: linear-gradient(90deg, #22C55E, #EF4444);
-            border-radius: 5px;
+        h1, h2, h3 {
+            font-family: var(--font-heading);
+            color: var(--heading-text-color);
         }
 
-        div.stButton > button {
-            background: linear-gradient(90deg, #FF6B00, #FFA500);
-            color: white;
+        /* Hero Section */
+        .hero {
+            position: relative;
+            text-align: center;
+            padding: 4em 1em;
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle at center, rgba(255, 255, 255, 0.1), transparent);
+            animation: rotate 30s linear infinite;
+        }
+
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .hero h1 {
+            font-size: 3.5em;
+            margin-bottom: 0.2em;
+        }
+
+        .hero p {
+            font-size: 1.5em;
+            margin-bottom: 1em;
+            color: #CCCCCC;
+        }
+
+        /* Buttons */
+        .button {
+            background: linear-gradient(45deg, var(--accent-color-teal), var(--accent-color-purple));
             border: none;
-            padding: 1em 2em;
-            border-radius: 8px;
+            padding: 0.8em 2em;
+            color: #FFFFFF;
             font-size: 1.1em;
-            font-weight: 700;
+            border-radius: 30px;
             cursor: pointer;
-            transition: all 0.3s ease;
+            transition: transform 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+            margin-top: 1em;
         }
 
-        div.stButton > button:hover {
-            transform: scale(1.05);
+        .button:hover {
+            transform: translateY(-5px);
+        }
+
+        /* Data Section */
+        .data-section {
+            padding: 2em 1em;
+            text-align: center;
+        }
+
+        .data-section h2 {
+            font-size: 2.5em;
+            margin-bottom: 0.5em;
+        }
+
+        .data-section p {
+            font-size: 1.2em;
+            color: #CCCCCC;
+            margin-bottom: 2em;
+        }
+
+        /* Enhanced Summary Styling */
+        .summary-section {
+            padding: 2em 1em;
+            background-color: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            margin-bottom: 2em;
+        }
+
+        .summary-section h3 {
+            font-size: 2em;
+            margin-bottom: 0.5em;
+            color: var(--accent-color-teal);
+        }
+
+        .summary-section p {
+            font-size: 1.1em;
+            color: #E0E0E0;
+            line-height: 1.6;
+        }
+
+        .team-trends {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 2em;
+            justify-content: center;
+            margin-top: 2em;
+        }
+
+        .team-card {
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 1.5em;
+            width: 300px;
+            text-align: center;
+        }
+
+        .team-card h4 {
+            font-size: 1.5em;
+            color: var(--accent-color-purple);
+            margin-bottom: 0.5em;
+        }
+
+        .team-card p {
+            font-size: 1em;
+            color: #CCCCCC;
+            line-height: 1.5;
+        }
+
+        /* Streamlit Elements */
+        .stButton > button {
+            background: linear-gradient(45deg, var(--accent-color-teal), var(--accent-color-purple));
+            border: none;
+            padding: 0.8em 2em;
+            color: #FFFFFF;
+            font-size: 1.1em;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: transform 0.3s ease;
+            margin-top: 1em;
+        }
+
+        .stButton > button:hover {
+            transform: translateY(-5px);
+        }
+
+        .stCheckbox > div {
+            padding: 0.5em 0;
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 2em 1em;
+            color: #999999;
+            font-size: 0.9em;
+        }
+
+        .footer a {
+            color: var(--accent-color-teal);
+            text-decoration: none;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 2.5em;
+            }
+
+            .hero p {
+                font-size: 1.2em;
+            }
+
+            .team-trends {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .team-card {
+                width: 90%;
+            }
         }
     </style>
-""", unsafe_allow_html=True)
+''', unsafe_allow_html=True)
 
-# High Contrast Toggle
-if st.button("Toggle High Contrast Mode"):
-    st.markdown("""
-        <style>
-            body {
-                background: #000;
-                color: #FFF;
-            }
+# Main Content
 
-            .gradient-bar {
-                background: linear-gradient(90deg, #0F0, #F00);
-            }
-
-            div.stButton > button {
-                background: #FFF;
-                color: #000;
-            }
-        </style>
-    """, unsafe_allow_html=True)
-
-# Header Section
+# Hero Section
 st.markdown('''
-    <div style="text-align: center; margin-bottom: 1.5em;">
-        <h1 class="header-title">Enhanced NFL Betting Insights</h1>
-        <p style="color: #9CA3AF; font-size: 1.2em;">
-            Analyze team trends, weather, and injuries for smarter predictions.
-        </p>
+    <div class="hero">
+        <h1>FoxEdge</h1>
+        <p>Enhanced NFL Betting Insights</p>
     </div>
 ''', unsafe_allow_html=True)
 
-# Data Visualizations
-st.markdown('''
-    <h2>Betting Insights</h2>
-    <div class="gradient-bar"></div>
-    <p style="color: #3B82F6; font-weight: 700;">Confidence Level: 71.68%</p>
-''', unsafe_allow_html=True)
-
 # Functionality
-st.write("Review team trends and predictions.")
+
+# Data Visualizations and Insights Section
+st.markdown('''
+    <div class="data-section">
+        <h2>NFL Game Predictions with Detailed Analysis</h2>
+        <p>Analyze team trends, weather, and injuries for smarter predictions.</p>
+    </div>
+''', unsafe_allow_html=True)
 
 # Define Seasons and Weights
 current_year = datetime.now().year
@@ -210,7 +356,7 @@ team_stadium_locations = {
 
 # Get weather data function
 def get_weather_data(location, game_datetime):
-    API_KEY = '88H6RKM5HJT8NMDGBFA8ZBM7S'  # Replace with your API key
+    API_KEY = 'YOUR_API_KEY_HERE'  # Replace with your API key
     date_str = game_datetime.strftime('%Y-%m-%d')
     url = f"https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/{location}/{date_str}?unitGroup=us&key={API_KEY}&include=current"
 
@@ -281,42 +427,70 @@ def predict_game_outcome(home_team, away_team, game_datetime, use_injury_impact=
         return "Unavailable", "N/A", "N/A", None, None, 0, 0, {}
 
 # Enhanced Summary for Betting Insights
-def enhanced_summary(home_team, away_team, home_stats, away_stats, home_injury_summary, away_injury_summary, 
-                     home_team_rating, away_team_rating, home_point_decrease, away_point_decrease, 
-                     weather_data, use_injury_impact):
-    st.subheader("Enhanced Betting Insights Summary")
+def enhanced_summary(home_team, away_team, home_stats, away_stats, home_team_rating, away_team_rating,
+                     home_point_decrease, away_point_decrease, weather_data, use_injury_impact):
+    st.markdown('''
+        <div class="summary-section">
+            <h3>Enhanced Betting Insights Summary</h3>
+    ''', unsafe_allow_html=True)
 
     # Display injury impact if selected
     if use_injury_impact:
-        st.write(f"### Key Players Missing for {home_team}")
-        st.write(", ".join(home_injury_summary) if home_injury_summary else "No key injuries.")
-        st.write(f"### Key Players Missing for {away_team}")
-        st.write(", ".join(away_injury_summary) if away_injury_summary else "No key injuries.")
-
-        st.subheader("Injury Impact on Team Strength")
-        st.write(f"**{home_team} Injury Impact Score:** {home_point_decrease}")
-        st.write(f"**{away_team} Injury Impact Score:** {away_point_decrease}")
+        st.markdown(f'''
+            <p><strong>Injury Impact on Team Strength:</strong></p>
+            <p>{home_team} Injury Impact Score: <strong>{home_point_decrease}</strong></p>
+            <p>{away_team} Injury Impact Score: <strong>{away_point_decrease}</strong></p>
+        ''', unsafe_allow_html=True)
 
     # Display weather impact if available
     if weather_data:
-        st.subheader("Weather Conditions")
-        st.write(f"**Temperature:** {weather_data['temperature']}°F")
-        st.write(f"**Wind Speed:** {weather_data['wind_speed']} mph")
-        st.write(f"**Conditions:** {weather_data['conditions']}")
-
-    # Display trends
-    st.subheader("Team Performance Trends")
-    st.write(f"**{home_team} Trends:**\n- Recent Form (Last 5 Games): {home_stats['recent_form']}\n- Consistency (Std Dev): {home_stats['std_dev']}")
-    st.write("Tip: A higher recent form score suggests the team is on a good streak, which may indicate better performance in the upcoming game. Consistency is also key—lower values mean more reliable scoring.")
-
-    st.write(f"**{away_team} Trends:**\n- Recent Form (Last 5 Games): {away_stats['recent_form']}\n- Consistency (Std Dev): {away_stats['std_dev']}")
-    st.write("Tip: For betting totals (over/under), look at consistency. Highly consistent teams can make predicting total points easier, while erratic scores suggest less predictable outcomes.")
+        st.markdown(f'''
+            <p><strong>Weather Conditions at {team_stadium_locations.get(home_team, 'Unknown Location')}:</strong></p>
+            <p>Temperature: <strong>{weather_data['temperature']}°F</strong></p>
+            <p>Wind Speed: <strong>{weather_data['wind_speed']} mph</strong></p>
+            <p>Conditions: <strong>{weather_data['conditions']}</strong></p>
+        ''', unsafe_allow_html=True)
 
     # Prediction and confidence
     likely_advantage = home_team if home_team_rating > away_team_rating else away_team
-    st.write(f"**Overall Prediction and Confidence with Injury Adjustments**")
-    st.write(f"Predicted Advantage: {likely_advantage} is expected to have an edge, with adjusted ratings reflecting recent performance and injury impact.")
-    st.write(f"Confidence Boost: If betting on {likely_advantage}, the injury impact and recent form support this choice. Use this insight for moneyline bets or spreads if the adjusted ratings favor a team by a solid margin.")
+    st.markdown(f'''
+            <p><strong>Overall Prediction and Confidence:</strong></p>
+            <p>Predicted Advantage: <strong>{likely_advantage}</strong> is expected to have an edge.</p>
+            <p>Confidence Level: <strong>{round(abs(home_team_rating - away_team_rating) * 5, 2)}%</strong></p>
+        </div>
+    ''', unsafe_allow_html=True)
+
+    # Display team performance trends
+    st.markdown('''
+        <div class="data-section">
+            <h2>Team Performance Trends</h2>
+            <div class="team-trends">
+    ''', unsafe_allow_html=True)
+
+    # Home team trends
+    st.markdown(f'''
+        <div class="team-card">
+            <h4>{home_team} Trends</h4>
+            <p>Recent Form (Last 5 Games): <strong>{home_stats.get('recent_form', 'N/A')}</strong></p>
+            <p>Consistency (Std Dev): <strong>{home_stats.get('std_dev', 'N/A')}</strong></p>
+            <p>Tip: A higher recent form score suggests the team is on a good streak, which may indicate better performance in the upcoming game. Consistency is also key—lower values mean more reliable scoring.</p>
+        </div>
+    ''', unsafe_allow_html=True)
+
+    # Away team trends
+    st.markdown(f'''
+        <div class="team-card">
+            <h4>{away_team} Trends</h4>
+            <p>Recent Form (Last 5 Games): <strong>{away_stats.get('recent_form', 'N/A')}</strong></p>
+            <p>Consistency (Std Dev): <strong>{away_stats.get('std_dev', 'N/A')}</strong></p>
+            <p>Tip: For betting totals (over/under), look at consistency. Highly consistent teams can make predicting total points easier, while erratic scores suggest less predictable outcomes.</p>
+        </div>
+    ''', unsafe_allow_html=True)
+
+    st.markdown('''
+            </div>
+        </div>
+    ''', unsafe_allow_html=True)
 
 # Fetch upcoming games based on the current day of the week
 @st.cache_data(ttl=3600)
@@ -339,7 +513,12 @@ def fetch_upcoming_games():
 upcoming_games = fetch_upcoming_games()
 
 # Streamlit UI for Team Prediction
-st.header('NFL Game Predictions with Detailed Analysis')
+st.markdown('''
+    <div class="data-section">
+        <h2>Select a Game for Prediction</h2>
+    </div>
+''', unsafe_allow_html=True)
+
 use_injury_impact = st.checkbox("Include Injury Impact in Prediction")
 use_weather_impact = st.checkbox("Include Weather Impact in Prediction")
 
@@ -357,16 +536,29 @@ home_team, away_team, game_datetime = selected_game['home_team'], selected_game[
 )
 
 if predicted_winner != "Unavailable":
-    st.write(f"### Predicted Outcome for {home_team} vs. {away_team}")
-    st.write(f"**Predicted Winner:** {predicted_winner} with confidence of {round(confidence, 2)}%")
-    st.write(f"**Score Difference:** {round(predicted_score_diff, 2)}")
+    st.markdown(f'''
+        <div class="data-section">
+            <h2>Predicted Outcome</h2>
+            <p><strong>{home_team}</strong> vs. <strong>{away_team}</strong></p>
+            <p>Predicted Winner: <strong>{predicted_winner}</strong></p>
+            <p>Confidence Level: <strong>{round(confidence, 2)}%</strong></p>
+            <p>Expected Score Difference: <strong>{round(predicted_score_diff, 2)}</strong></p>
+        </div>
+    ''', unsafe_allow_html=True)
+
     enhanced_summary(
-        home_team, away_team, 
+        home_team, away_team,
         current_season_stats.get(home_team, {}), current_season_stats.get(away_team, {}),
-        [], [],  # Placeholders for injury summaries if not used
-        home_team_rating, away_team_rating, 
+        home_team_rating, away_team_rating,
         home_total_point_decrease, away_total_point_decrease,
         weather_data, use_injury_impact
     )
 else:
     st.error("Prediction data unavailable.")
+
+# Footer
+st.markdown('''
+    <div class="footer">
+        &copy; 2023 <a href="#">FoxEdge</a>. All rights reserved.
+    </div>
+''', unsafe_allow_html=True)
