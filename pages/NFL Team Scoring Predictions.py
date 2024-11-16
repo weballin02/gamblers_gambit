@@ -13,11 +13,61 @@ import matplotlib.dates as mdates
 import warnings
 warnings.filterwarnings('ignore')
 
-# Streamlit App Title
-st.title('NFL Team Scoring Predictions')
-st.markdown("View projected NFL team scores for upcoming games based on recent stats. Select a team to see its scoring history and forecasts for the next five games. Use the insights on daily matchups and expected scores to refine your bets.")
+st.set_page_config(
+    page_title="NFL Team Scoring Predictions",
+    page_icon="🏈",
+    layout="centered",
+    initial_sidebar_state="collapsed",
+)
 
-# Load and Preprocess Data 
+# General Styling and High Contrast Toggle
+st.markdown("""
+    <style>
+        /* Include shared CSS here */
+    </style>
+""", unsafe_allow_html=True)
+
+# High Contrast Toggle
+if st.button("Toggle High Contrast Mode"):
+    st.markdown("""
+        <style>
+            body {
+                background: #000;
+                color: #FFF;
+            }
+
+            .gradient-bar {
+                background: linear-gradient(90deg, #0F0, #F00);
+            }
+
+            div.stButton > button {
+                background: #FFF;
+                color: #000;
+            }
+        </style>
+    """, unsafe_allow_html=True)
+
+# Header Section
+st.markdown('''
+    <div style="text-align: center; margin-bottom: 1.5em;">
+        <h1 class="header-title">NFL Team Scoring Predictions</h1>
+        <p style="color: #9CA3AF; font-size: 1.2em;">
+            Explore scoring predictions and trends to refine your strategy.
+        </p>
+    </div>
+''', unsafe_allow_html=True)
+
+# Data Visualizations
+st.markdown('''
+    <h2>Historical Scores</h2>
+    <div class="gradient-bar"></div>
+    <p style="color: #3B82F6; font-weight: 700;">Arizona Cardinals Average Score: 22.5</p>
+''', unsafe_allow_html=True)
+
+# Functionality
+st.write("Select a team to view predictions.")
+
+# Load and Preprocess Data
 @st.cache_data
 def fetch_and_preprocess_data():
     current_year = datetime.now().year
