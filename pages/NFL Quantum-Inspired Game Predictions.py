@@ -8,22 +8,250 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import pytz
 
-# Streamlit App Title
+# Set page configuration
 st.set_page_config(
-    page_title="NFL Quantum Predictions",
+    page_title="FoxEdge - NFL Quantum Predictions",
     page_icon="🔮",
-    layout="centered",
+    layout="wide",
     initial_sidebar_state="collapsed",
 )
 
-# General Styling and High Contrast Toggle
-st.markdown("""
+# Synesthetic Interface CSS
+st.markdown('''
     <style>
-        /* Include shared CSS here */
-    </style>
-""", unsafe_allow_html=True)
+        /* Import Fonts */
+        @import url('https://fonts.googleapis.com/css2?family=Raleway:wght@400;700&family=Open+Sans:wght@400;600&display=swap');
 
-# High Contrast Toggle
+        /* Root Variables */
+        :root {
+            --background-gradient-start: #0F2027;
+            --background-gradient-end: #203A43;
+            --primary-text-color: #ECECEC;
+            --heading-text-color: #F5F5F5;
+            --accent-color-teal: #2CFFAA;
+            --accent-color-purple: #A56BFF;
+            --highlight-color: #FF6B6B;
+            --font-heading: 'Raleway', sans-serif;
+            --font-body: 'Open Sans', sans-serif;
+        }
+
+        /* Global Styles */
+        body, html {
+            background: linear-gradient(135deg, var(--background-gradient-start), var(--background-gradient-end));
+            color: var(--primary-text-color);
+            font-family: var(--font-body);
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+        }
+
+        h1, h2, h3, h4 {
+            font-family: var(--font-heading);
+            color: var(--heading-text-color);
+        }
+
+        /* Hero Section */
+        .hero {
+            position: relative;
+            text-align: center;
+            padding: 4em 1em;
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle at center, rgba(255, 255, 255, 0.1), transparent);
+            animation: rotate 30s linear infinite;
+        }
+
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .hero h1 {
+            font-size: 3.5em;
+            margin-bottom: 0.2em;
+        }
+
+        .hero p {
+            font-size: 1.5em;
+            margin-bottom: 1em;
+            color: #CCCCCC;
+        }
+
+        /* Buttons */
+        .button {
+            background: linear-gradient(45deg, var(--accent-color-teal), var(--accent-color-purple));
+            border: none;
+            padding: 0.8em 2em;
+            color: #FFFFFF;
+            font-size: 1.1em;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: transform 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+            margin-top: 1em;
+        }
+
+        .button:hover {
+            transform: translateY(-5px);
+        }
+
+        /* Data Section */
+        .data-section {
+            padding: 2em 1em;
+            text-align: center;
+        }
+
+        .data-section h2 {
+            font-size: 2.5em;
+            margin-bottom: 0.5em;
+        }
+
+        .data-section p {
+            font-size: 1.2em;
+            color: #CCCCCC;
+            margin-bottom: 2em;
+        }
+
+        /* Simulation Controls */
+        .controls-section {
+            padding: 2em 1em;
+            background-color: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            margin-bottom: 2em;
+        }
+
+        .controls-section h3 {
+            font-size: 2em;
+            margin-bottom: 0.5em;
+            color: var(--accent-color-teal);
+        }
+
+        .controls-section label {
+            font-size: 1.1em;
+            color: var(--primary-text-color);
+        }
+
+        /* Prediction Results */
+        .results-section {
+            padding: 2em 1em;
+            background-color: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            margin-bottom: 2em;
+        }
+
+        .results-section h3 {
+            font-size: 2em;
+            margin-bottom: 0.5em;
+            color: var(--accent-color-purple);
+        }
+
+        .metric-container {
+            display: flex;
+            justify-content: space-around;
+            flex-wrap: wrap;
+            margin-top: 1em;
+        }
+
+        .metric {
+            background-color: rgba(255, 255, 255, 0.1);
+            padding: 1em;
+            border-radius: 10px;
+            margin: 0.5em;
+            flex: 1 1 200px;
+            text-align: center;
+        }
+
+        .metric h4 {
+            font-size: 1.2em;
+            margin-bottom: 0.3em;
+            color: var(--highlight-color);
+        }
+
+        .metric p {
+            font-size: 1.5em;
+            margin: 0;
+            color: var(--primary-text-color);
+        }
+
+        /* Streamlit Elements */
+        .stButton > button {
+            background: linear-gradient(45deg, var(--accent-color-teal), var(--accent-color-purple));
+            border: none;
+            padding: 0.8em 2em;
+            color: #FFFFFF;
+            font-size: 1.1em;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: transform 0.3s ease;
+            margin-top: 1em;
+        }
+
+        .stButton > button:hover {
+            transform: translateY(-5px);
+        }
+
+        /* Sidebar */
+        .sidebar .sidebar-content {
+            background-color: rgba(255, 255, 255, 0.05);
+            padding: 2em 1em;
+            border-radius: 15px;
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 2em 1em;
+            color: #999999;
+            font-size: 0.9em;
+        }
+
+        .footer a {
+            color: var(--accent-color-teal);
+            text-decoration: none;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 2.5em;
+            }
+
+            .hero p {
+                font-size: 1.2em;
+            }
+
+            .metric-container {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .metric {
+                width: 90%;
+            }
+        }
+    </style>
+''', unsafe_allow_html=True)
+
+# Main Content
+
+# Hero Section
+st.markdown('''
+    <div class="hero">
+        <h1>FoxEdge</h1>
+        <p>NFL Quantum-Inspired Predictions</p>
+    </div>
+''', unsafe_allow_html=True)
+
+# High Contrast Toggle (Optional)
 if st.button("Toggle High Contrast Mode"):
     st.markdown("""
         <style>
@@ -32,36 +260,33 @@ if st.button("Toggle High Contrast Mode"):
                 color: #FFF;
             }
 
-            .gradient-bar {
-                background: linear-gradient(90deg, #0F0, #F00);
+            .hero::before {
+                background: radial-gradient(circle at center, rgba(255, 255, 255, 0.1), transparent);
             }
 
-            div.stButton > button {
-                background: #FFF;
+            .stButton > button {
+                background: linear-gradient(45deg, #FFF, #AAA);
                 color: #000;
+            }
+
+            .footer {
+                color: #CCC;
+            }
+
+            .footer a {
+                color: #FFF;
             }
         </style>
     """, unsafe_allow_html=True)
 
-# Header Section
+# Functionality
+
+# Data Visualizations and Insights Section
 st.markdown('''
-    <div style="text-align: center; margin-bottom: 1.5em;">
-        <h1 class="header-title">NFL Quantum-Inspired Predictions</h1>
-        <p style="color: #9CA3AF; font-size: 1.2em;">
-            Leverage quantum simulations for smarter betting strategies.
-        </p>
+    <div class="data-section">
+        <h2>Leverage Quantum Simulations for Smarter Betting Strategies</h2>
     </div>
 ''', unsafe_allow_html=True)
-
-# Data Visualizations
-st.markdown('''
-    <h2>Simulation Results</h2>
-    <div class="gradient-bar"></div>
-    <p style="color: #3B82F6; font-weight: 700;">Win Probability: GB 68.3% vs CHI 31.7%</p>
-''', unsafe_allow_html=True)
-
-# Functionality
-st.write("Run simulations and explore probabilities.")
 
 # Cache the data loading to improve performance
 @st.cache_data(ttl=3600)  # Cache for 1 hour
@@ -197,15 +422,44 @@ def quantum_monte_carlo_simulation(home_team, away_team, spread_adjustment, num_
 
 def display_results(results, home_team, away_team):
     if results:
-        col1, col2 = st.columns(2)
-        with col1:
-            st.metric(f"{home_team} Win Probability", f"{results[f'{home_team} Win Percentage']:.2f}%")
-        with col2:
-            st.metric(f"{away_team} Win Probability", f"{results[f'{away_team} Win Percentage']:.2f}%")
+        st.markdown('''
+            <div class="results-section">
+                <h3>Simulation Results</h3>
+                <div class="metric-container">
+        ''', unsafe_allow_html=True)
 
-        st.subheader("Detailed Predictions")
-        metrics = {k: round(v, 2) if isinstance(v, (float, int)) else v for k, v in results.items()}
-        st.json(metrics)
+        st.markdown(f'''
+            <div class="metric">
+                <h4>{home_team} Win Probability</h4>
+                <p>{results[f'{home_team} Win Percentage']}%</p>
+            </div>
+        ''', unsafe_allow_html=True)
+
+        st.markdown(f'''
+            <div class="metric">
+                <h4>{away_team} Win Probability</h4>
+                <p>{results[f'{away_team} Win Percentage']}%</p>
+            </div>
+        ''', unsafe_allow_html=True)
+
+        st.markdown(f'''
+            <div class="metric">
+                <h4>Average Total Score</h4>
+                <p>{results["Average Total Score"]}</p>
+            </div>
+        ''', unsafe_allow_html=True)
+
+        st.markdown(f'''
+            <div class="metric">
+                <h4>Score Differential</h4>
+                <p>{results[f'Score Differential ({home_team} - {away_team})']}</p>
+            </div>
+        ''', unsafe_allow_html=True)
+
+        st.markdown('''
+                </div>
+            </div>
+        ''', unsafe_allow_html=True)
 
 def create_summary_table(all_results):
     summary_data = []
@@ -219,44 +473,53 @@ def create_summary_table(all_results):
             "Score Differential": game['results'][f"Score Differential ({game['home_team']} - {game['away_team']})"]
         })
     summary_df = pd.DataFrame(summary_data)
-    st.write("### Summary of All Predictions")
-    st.dataframe(summary_df)
-
-# Streamlit UI
-st.title("NFL Game Prediction System")
-st.markdown("### Using Quantum-Inspired Monte Carlo Simulation")
+    st.markdown('''
+        <div class="data-section">
+            <h2>Summary of All Predictions</h2>
+        </div>
+    ''', unsafe_allow_html=True)
+    st.dataframe(summary_df.style.set_properties(**{
+        'background-color': 'rgba(255, 255, 255, 0.05)',
+        'color': 'var(--primary-text-color)',
+        'border-color': 'rgba(255, 255, 255, 0.1)'
+    }))
 
 # Initialize session state for caching
 if 'nfl_team_stats' not in st.session_state:
     st.session_state.nfl_team_stats = calculate_team_stats()
 
 # Sidebar for controls
-with st.sidebar:
-    st.header("Simulation Controls")
-    upcoming_games = get_upcoming_games()
+st.sidebar.markdown('''
+    <div class="controls-section">
+        <h3>Simulation Controls</h3>
+    ''', unsafe_allow_html=True)
 
-    if not upcoming_games.empty:
-        game_options = [
-            f"{row['game_datetime'].date()} - {row['home_team']} vs {row['away_team']}"
-            for _, row in upcoming_games.iterrows()
-        ]
-        selected_game = st.selectbox("Select Game", game_options)
-        
-        home_team = selected_game.split(' vs ')[0].split(' - ')[1]
-        away_team = selected_game.split(' vs ')[1]
-        
-        spread_adjustment = st.slider(
-            "Home Team Spread Adjustment",
-            -10.0, 10.0, 0.0, step=0.5
-        )
-        
-        num_simulations = st.selectbox(
-            "Number of Simulations",
-            [1000, 10000, 100000]
-        )
-        
-        run_simulation = st.button("Run Simulation")
-        predict_all = st.button("Predict All Upcoming Games")
+upcoming_games = get_upcoming_games()
+
+if not upcoming_games.empty:
+    game_options = [
+        f"{row['game_datetime'].date()} - {row['home_team']} vs {row['away_team']}"
+        for _, row in upcoming_games.iterrows()
+    ]
+    selected_game = st.sidebar.selectbox("Select Game", game_options)
+    
+    home_team = selected_game.split(' vs ')[0].split(' - ')[1]
+    away_team = selected_game.split(' vs ')[1]
+    
+    spread_adjustment = st.sidebar.slider(
+        "Home Team Spread Adjustment",
+        -10.0, 10.0, 0.0, step=0.5
+    )
+    
+    num_simulations = st.sidebar.selectbox(
+        "Number of Simulations",
+        [1000, 10000, 100000]
+    )
+    
+    run_simulation = st.sidebar.button("Run Simulation")
+    predict_all = st.sidebar.button("Predict All Upcoming Games")
+
+st.sidebar.markdown('</div>', unsafe_allow_html=True)
 
 if run_simulation:
     with st.spinner("Running simulation..."):
@@ -287,5 +550,16 @@ if predict_all:
 
     # Display individual game results
     for game in all_results:
-        with st.expander(f"{game['home_team']} vs {game['away_team']}"):
-            display_results(game['results'], game['home_team'], game['away_team'])
+        st.markdown(f'''
+            <div class="results-section">
+                <h3>{game['home_team']} vs {game['away_team']}</h3>
+        ''', unsafe_allow_html=True)
+        display_results(game['results'], game['home_team'], game['away_team'])
+        st.markdown('</div>', unsafe_allow_html=True)
+
+# Footer
+st.markdown('''
+    <div class="footer">
+        &copy; 2023 <a href="#">FoxEdge</a>. All rights reserved.
+    </div>
+''', unsafe_allow_html=True)
