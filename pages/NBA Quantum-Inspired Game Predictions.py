@@ -13,9 +13,99 @@ import warnings
 # Suppress warnings for cleaner output
 warnings.filterwarnings('ignore')
 
-# Streamlit App Title
-st.title("NBA Quantum-Inspired Game Predictions")
-st.markdown("Experience an advanced, quantum-inspired simulation of NBA games. Select a game or simulate all matchups for the day. Customize spread and simulation settings to see win probabilities, average scores, and predictions that will guide your next moves.")
+st.set_page_config(
+    page_title="NBA Quantum Predictions",
+    page_icon="🔮",
+    layout="centered",
+    initial_sidebar_state="collapsed",
+)
+
+st.markdown("""
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@600;800&family=Open+Sans:wght@400;600&display=swap');
+
+        /* General Styling */
+        html, body, [class*="css"] {
+            font-family: 'Open Sans', sans-serif;
+            background: linear-gradient(135deg, #1a1c2c 0%, #0f111a 100%);
+            color: #E5E7EB;
+        }
+
+        /* Header Section */
+        .header-container {
+            text-align: center;
+            margin-bottom: 1.5em;
+        }
+
+        .header-title {
+            font-family: 'Montserrat', sans-serif;
+            background: linear-gradient(120deg, #FFA500, #FF6B00);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-size: 3em;
+            font-weight: 800;
+        }
+
+        .header-subtitle {
+            color: #9CA3AF;
+            font-size: 1.2em;
+        }
+
+        /* Trust Indicators */
+        .trust-badges {
+            display: flex;
+            justify-content: center;
+            gap: 2em;
+            margin-top: 1em;
+        }
+
+        .trust-badge {
+            text-align: center;
+            font-size: 1.1em;
+            color: #FFA500;
+            display: flex;
+            align-items: center;
+            gap: 0.5em;
+        }
+
+        /* Button Styling */
+        div.stButton > button {
+            background: linear-gradient(90deg, #FF6B00, #FFA500);
+            color: white;
+            border: none;
+            padding: 1em 2em;
+            border-radius: 8px;
+            font-size: 1.1em;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        div.stButton > button:hover {
+            transform: scale(1.05);
+        }
+    </style>
+""", unsafe_allow_html=True)
+
+# Header Section
+st.markdown('''
+    <div class="header-container">
+        <h1 class="header-title">NBA Quantum Predictions</h1>
+        <p class="header-subtitle">Leverage quantum-inspired simulations for smarter decisions.</p>
+    </div>
+''', unsafe_allow_html=True)
+
+# Trust Indicators
+st.markdown('''
+    <div class="trust-badges">
+        <div class="trust-badge"><span>🔮</span> Quantum Algorithms</div>
+        <div class="trust-badge"><span>📊</span> Predictive Analytics</div>
+        <div class="trust-badge"><span>🎯</span> Proven Results</div>
+    </div>
+''', unsafe_allow_html=True)
+
+# Add functionality from the original script here (e.g., simulations, results)
+st.write("Select a game to view quantum-inspired predictions.")
 
 # Team Name Mapping - Corrected and Cleaned
 def find_team_full_name(abbrev):
