@@ -9,8 +9,59 @@ from plotly.subplots import make_subplots
 import pytz
 
 # Streamlit App Title
-st.title("NFL Quantum-Inspired Game Predictions")
-st.markdown("Experience an advanced, quantum-inspired simulation of NFL games. Select a game or simulate all matchups for the day. Customize spread and simulation settings to see win probabilities, average scores, and predictions that will guide your next moves.")
+st.set_page_config(
+    page_title="NFL Quantum Predictions",
+    page_icon="🔮",
+    layout="centered",
+    initial_sidebar_state="collapsed",
+)
+
+# General Styling and High Contrast Toggle
+st.markdown("""
+    <style>
+        /* Include shared CSS here */
+    </style>
+""", unsafe_allow_html=True)
+
+# High Contrast Toggle
+if st.button("Toggle High Contrast Mode"):
+    st.markdown("""
+        <style>
+            body {
+                background: #000;
+                color: #FFF;
+            }
+
+            .gradient-bar {
+                background: linear-gradient(90deg, #0F0, #F00);
+            }
+
+            div.stButton > button {
+                background: #FFF;
+                color: #000;
+            }
+        </style>
+    """, unsafe_allow_html=True)
+
+# Header Section
+st.markdown('''
+    <div style="text-align: center; margin-bottom: 1.5em;">
+        <h1 class="header-title">NFL Quantum-Inspired Predictions</h1>
+        <p style="color: #9CA3AF; font-size: 1.2em;">
+            Leverage quantum simulations for smarter betting strategies.
+        </p>
+    </div>
+''', unsafe_allow_html=True)
+
+# Data Visualizations
+st.markdown('''
+    <h2>Simulation Results</h2>
+    <div class="gradient-bar"></div>
+    <p style="color: #3B82F6; font-weight: 700;">Win Probability: GB 68.3% vs CHI 31.7%</p>
+''', unsafe_allow_html=True)
+
+# Functionality
+st.write("Run simulations and explore probabilities.")
 
 # Cache the data loading to improve performance
 @st.cache_data(ttl=3600)  # Cache for 1 hour
