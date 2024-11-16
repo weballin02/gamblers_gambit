@@ -15,8 +15,8 @@ initialize_database()
 
 # Title and Description
 st.set_page_config(
-    page_title="NFL Quantum Predictions",
-    page_icon="🔮",
+    page_title="NFL Game Simulations",
+    page_icon="🏈",
     layout="centered",
     initial_sidebar_state="collapsed",
 )
@@ -24,7 +24,43 @@ st.set_page_config(
 # General Styling and High Contrast Toggle
 st.markdown("""
     <style>
-        /* Include shared CSS here */
+        /* Shared CSS for consistent styling */
+        html, body, [class*="css"] {
+            font-family: 'Open Sans', sans-serif;
+            background: linear-gradient(135deg, #1a1c2c 0%, #0f111a 100%);
+            color: #E5E7EB;
+        }
+
+        .header-title {
+            font-family: 'Montserrat', sans-serif;
+            background: linear-gradient(120deg, #FFA500, #FF6B00);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-size: 3em;
+            font-weight: 800;
+        }
+
+        .gradient-bar {
+            height: 10px;
+            background: linear-gradient(90deg, #22C55E, #EF4444);
+            border-radius: 5px;
+        }
+
+        div.stButton > button {
+            background: linear-gradient(90deg, #FF6B00, #FFA500);
+            color: white;
+            border: none;
+            padding: 1em 2em;
+            border-radius: 8px;
+            font-size: 1.1em;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        div.stButton > button:hover {
+            transform: scale(1.05);
+        }
     </style>
 """, unsafe_allow_html=True)
 
@@ -51,9 +87,9 @@ if st.button("Toggle High Contrast Mode"):
 # Header Section
 st.markdown('''
     <div style="text-align: center; margin-bottom: 1.5em;">
-        <h1 class="header-title">NFL Quantum-Inspired Predictions</h1>
+        <h1 class="header-title">NFL Game Simulations</h1>
         <p style="color: #9CA3AF; font-size: 1.2em;">
-            Leverage quantum simulations for smarter betting strategies.
+            Run thousands of simulations for smarter betting strategies.
         </p>
     </div>
 ''', unsafe_allow_html=True)
@@ -62,11 +98,11 @@ st.markdown('''
 st.markdown('''
     <h2>Simulation Results</h2>
     <div class="gradient-bar"></div>
-    <p style="color: #3B82F6; font-weight: 700;">Win Probability: GB 68.3% vs CHI 31.7%</p>
+    <p style="color: #3B82F6; font-weight: 700;">GB Win Probability: 68.3% vs CHI: 31.7%</p>
 ''', unsafe_allow_html=True)
 
 # Functionality
-st.write("Run simulations and explore probabilities.")
+st.write("Customize simulations for upcoming NFL games.")
 
 # Function to calculate team stats
 def calculate_team_stats():
