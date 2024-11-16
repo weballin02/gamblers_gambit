@@ -1,205 +1,195 @@
 import streamlit as st
-from utils.database import init_db
-
-# Initialize the database at startup
-init_db()
+import pandas as pd
+import numpy as np
+import plotly.graph_objects as go
 
 # Set page configuration
 st.set_page_config(
-    page_title="FoxEdge",
+    page_title="FoxEdge - Synesthetic Interface",
     page_icon="🦊",
-    layout="centered",
+    layout="wide",
     initial_sidebar_state="collapsed",
 )
 
-# Enhanced CSS for visuals and branding
-st.markdown("""
+# Synesthetic Interface CSS
+st.markdown('''
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@600;800&family=Open+Sans:wght@400;600&family=Playfair+Display:wght@700&display=swap');
+        /* Import Fonts */
+        @import url('https://fonts.googleapis.com/css2?family=Raleway:wght@400;700&family=Open+Sans:wght@400;600&display=swap');
 
-        /* General Page Styling */
-        html, body, [class*="css"] {
-            font-family: 'Open Sans', sans-serif;
-            background: linear-gradient(135deg, #1a1c2c 0%, #0f111a 100%);
-            color: #E5E7EB;
+        /* Root Variables */
+        :root {
+            --background-gradient-start: #0F2027;
+            --background-gradient-end: #203A43;
+            --primary-text-color: #ECECEC;
+            --heading-text-color: #F5F5F5;
+            --accent-color-teal: #2CFFAA;
+            --accent-color-purple: #A56BFF;
+            --highlight-color: #FF6B6B;
+            --font-heading: 'Raleway', sans-serif;
+            --font-body: 'Open Sans', sans-serif;
         }
 
-        /* Hero Section Styling */
-        .logo-container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
+        /* Global Styles */
+        body, html {
+            background: linear-gradient(135deg, var(--background-gradient-start), var(--background-gradient-end));
+            color: var(--primary-text-color);
+            font-family: var(--font-body);
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+        }
+
+        h1, h2, h3 {
+            font-family: var(--font-heading);
+            color: var(--heading-text-color);
+        }
+
+        /* Hero Section */
+        .hero {
+            position: relative;
+            text-align: center;
+            padding: 6em 1em;
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle at center, rgba(255, 255, 255, 0.1), transparent);
+            animation: rotate 30s linear infinite;
+        }
+
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .hero h1 {
+            font-size: 4em;
+            margin-bottom: 0.2em;
+        }
+
+        .hero p {
+            font-size: 1.5em;
             margin-bottom: 1em;
+            color: #CCCCCC;
         }
 
-        .fox-icon {
-            font-size: 3em;
-            color: #FFA500;
-            animation: glow 3s infinite alternate;
-        }
-
-        .title h1 {
-            font-family: 'Montserrat', sans-serif;
-            background: linear-gradient(120deg, #FFA500, #FF6B00);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            font-size: 3.5em;
-            text-align: center;
-            font-weight: 800;
-            margin: 0.2em;
-            text-shadow: 2px 2px 6px rgba(0, 0, 0, 0.2);
-            animation: shimmer 2s infinite;
-        }
-
-        .subtitle p {
-            color: #9CA3AF;
-            font-size: 1.3em;
-            text-align: center;
-            margin-top: 0.5em;
-            line-height: 1.6;
-            font-family: 'Playfair Display', serif;
-        }
-
-        /* Trust Indicators */
-        .trust-badges {
-            display: flex;
-            justify-content: center;
-            gap: 2em;
-            margin-top: 2em;
-        }
-
-        .trust-badge {
-            text-align: center;
-            font-size: 1.2em;
-            color: #FFA500;
-            display: flex;
-            align-items: center;
-            gap: 0.5em;
-            animation: fadeIn 2s ease;
-        }
-
-        .trust-badge span {
-            font-size: 1.5em;
-            color: #FF6B00;
-        }
-
-        /* Strategic Advantage Banner */
-        .advantage-banner {
-            background: linear-gradient(90deg, rgba(255,107,0,0.2) 0%, rgba(255,142,83,0.2) 100%);
-            border-left: 5px solid #FF6B00;
-            padding: 1em;
-            border-radius: 8px;
-            font-size: 1.1em;
-            font-weight: bold;
-            color: #E5E7EB;
-            margin: 2em 0;
-            display: flex;
-            align-items: center;
-            gap: 1em;
-            animation: slideIn 1.5s ease;
-        }
-
-        .advantage-banner span {
-            font-size: 1.5em;
-        }
-
-        /* CTA Button Styling */
-        div.stButton > button {
-            background: linear-gradient(90deg, #FF6B00, #FFA500);
-            color: white;
+        /* Buttons */
+        .button {
+            background: linear-gradient(45deg, var(--accent-color-teal), var(--accent-color-purple));
             border: none;
             padding: 1em 2em;
-            font-size: 1.3em;
-            font-weight: 700;
-            border-radius: 8px;
+            color: #FFFFFF;
+            font-size: 1.2em;
+            border-radius: 30px;
             cursor: pointer;
-            transition: all 0.3s ease;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            box-shadow: 0 6px 12px rgba(255, 107, 0, 0.2);
+            transition: transform 0.3s ease;
+            text-decoration: none;
         }
 
-        div.stButton > button:hover {
-            transform: scale(1.05);
-            background: linear-gradient(90deg, #FFA500, #FF6B00);
+        .button:hover {
+            transform: translateY(-5px);
         }
 
-        /* Footer Styling */
-        .footer {
-            margin-top: 3em;
+        /* Data Section */
+        .data-section {
+            padding: 4em 1em;
             text-align: center;
+        }
+
+        .data-section h2 {
+            font-size: 2.5em;
+            margin-bottom: 0.5em;
+        }
+
+        .data-section p {
+            font-size: 1.2em;
+            color: #CCCCCC;
+            margin-bottom: 2em;
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 2em 1em;
+            color: #999999;
             font-size: 0.9em;
-            color: #9CA3AF;
         }
 
         .footer a {
-            color: #FFA500;
+            color: var(--accent-color-teal);
             text-decoration: none;
-            font-weight: bold;
         }
 
-        /* Animations */
-        @keyframes shimmer {
-            0% { background-position: 0% 50%; }
-            100% { background-position: 100% 50%; }
-        }
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 2.5em;
+            }
 
-        @keyframes glow {
-            from { text-shadow: 0 0 10px #FFA500; }
-            to { text-shadow: 0 0 20px #FF6B00; }
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-
-        @keyframes slideIn {
-            from { transform: translateX(-100%); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
+            .hero p {
+                font-size: 1.2em;
+            }
         }
     </style>
-""", unsafe_allow_html=True)
+''', unsafe_allow_html=True)
 
-# Main Page Content
+# Main Content
+
+# Hero Section
 st.markdown('''
-    <div class="logo-container">
-        <span class="fox-icon">🦊</span>
-        <div class="title"><h1>FoxEdge</h1></div>
+    <div class="hero">
+        <h1>FoxEdge</h1>
+        <p>Experience Data Beyond Sight</p>
+        <a href="#data-section" class="button">Discover More</a>
     </div>
 ''', unsafe_allow_html=True)
 
+# Data Section
 st.markdown('''
-    <div class="subtitle">
-        <p>Join <strong>10,000+</strong> analysts leveraging AI-driven predictions<br>
-        for smarter NBA & NFL betting decisions.</p>
+    <div class="data-section" id="data-section">
+        <h2>Immersive Analytics</h2>
+        <p>Interact with data like never before through our synesthetic visualizations.</p>
     </div>
 ''', unsafe_allow_html=True)
 
-# Trust Badges
-st.markdown('''
-    <div class="trust-badges">
-        <div class="trust-badge"><span>🎯</span> 94% Prediction Accuracy</div>
-        <div class="trust-badge"><span>⚡</span> Real-Time Insights</div>
-        <div class="trust-badge"><span>📊</span> Data-Driven Analysis</div>
-    </div>
-''', unsafe_allow_html=True)
+# Sample Data Visualization
+# Generate random data for demonstration
+np.random.seed(42)
+x_data = np.linspace(0, 10, 500)
+y_data = np.sin(x_data) + np.random.normal(scale=0.5, size=500)
 
-# Strategic Advantage Banner
-st.markdown('''
-    <div class="advantage-banner">
-        <span>🦊</span> Unlock Your Edge: Free Premium Analytics for 7 Days!
-    </div>
-''', unsafe_allow_html=True)
+# Create a Plotly figure
+fig = go.Figure(data=go.Scatter(
+    x=x_data,
+    y=y_data,
+    mode='lines',
+    line=dict(color='#A56BFF', width=3),
+    hovertemplate='x: %{x:.2f}<br>y: %{y:.2f}<extra></extra>'
+))
 
-# Call-to-Action Button
-if st.button('GAIN YOUR EDGE TODAY'):
-    st.write("Preparing your strategic dashboard...")
+fig.update_layout(
+    template='plotly_dark',
+    paper_bgcolor='rgba(0, 0, 0, 0)',
+    plot_bgcolor='rgba(0, 0, 0, 0)',
+    margin=dict(l=20, r=20, t=20, b=20),
+    xaxis=dict(showgrid=False),
+    yaxis=dict(showgrid=False),
+    hovermode='x unified'
+)
+
+# Display the figure
+st.plotly_chart(fig, use_container_width=True)
 
 # Footer
 st.markdown('''
     <div class="footer">
-        Built with ❤️ by <a href="#">FoxEdge</a>. Follow us on <a href="#">Twitter</a> and <a href="#">Instagram</a>.
+        &copy; 2023 <a href="#">FoxEdge</a>. All rights reserved.
     </div>
 ''', unsafe_allow_html=True)
