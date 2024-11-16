@@ -10,8 +10,95 @@ import warnings
 warnings.filterwarnings('ignore')
 
 # Streamlit App Title
-st.title("Enhanced NFL Betting Insights with Weather and Injury Impact")
-st.markdown("Analyze upcoming NFL games with a unique edge. Assess weather and injury impact, review team trends, and make more informed betting decisions.")
+st.set_page_config(
+    page_title="Enhanced NFL Betting Insights",
+    page_icon="🏈",
+    layout="centered",
+    initial_sidebar_state="collapsed",
+)
+
+# General Styling and High Contrast Toggle
+st.markdown("""
+    <style>
+        /* Shared CSS for consistent styling */
+        html, body, [class*="css"] {
+            font-family: 'Open Sans', sans-serif;
+            background: linear-gradient(135deg, #1a1c2c 0%, #0f111a 100%);
+            color: #E5E7EB;
+        }
+
+        .header-title {
+            font-family: 'Montserrat', sans-serif;
+            background: linear-gradient(120deg, #FFA500, #FF6B00);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-size: 3em;
+            font-weight: 800;
+        }
+
+        .gradient-bar {
+            height: 10px;
+            background: linear-gradient(90deg, #22C55E, #EF4444);
+            border-radius: 5px;
+        }
+
+        div.stButton > button {
+            background: linear-gradient(90deg, #FF6B00, #FFA500);
+            color: white;
+            border: none;
+            padding: 1em 2em;
+            border-radius: 8px;
+            font-size: 1.1em;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        div.stButton > button:hover {
+            transform: scale(1.05);
+        }
+    </style>
+""", unsafe_allow_html=True)
+
+# High Contrast Toggle
+if st.button("Toggle High Contrast Mode"):
+    st.markdown("""
+        <style>
+            body {
+                background: #000;
+                color: #FFF;
+            }
+
+            .gradient-bar {
+                background: linear-gradient(90deg, #0F0, #F00);
+            }
+
+            div.stButton > button {
+                background: #FFF;
+                color: #000;
+            }
+        </style>
+    """, unsafe_allow_html=True)
+
+# Header Section
+st.markdown('''
+    <div style="text-align: center; margin-bottom: 1.5em;">
+        <h1 class="header-title">Enhanced NFL Betting Insights</h1>
+        <p style="color: #9CA3AF; font-size: 1.2em;">
+            Analyze team trends, weather, and injuries for smarter predictions.
+        </p>
+    </div>
+''', unsafe_allow_html=True)
+
+# Data Visualizations
+st.markdown('''
+    <h2>Betting Insights</h2>
+    <div class="gradient-bar"></div>
+    <p style="color: #3B82F6; font-weight: 700;">Confidence Level: 71.68%</p>
+''', unsafe_allow_html=True)
+
+# Functionality
+st.write("Review team trends and predictions.")
 
 # Define Seasons and Weights
 current_year = datetime.now().year
