@@ -142,11 +142,12 @@ st.markdown('''
             line-height: 1.6;
         }
 
+              /* Team Trends Styling Update */
         .team-trends {
             display: flex;
             flex-wrap: wrap;
             gap: 2em;
-            justify-content: center;
+            justify-content: space-around;  /* Aligns cards neatly side-by-side */
             margin-top: 2em;
         }
 
@@ -154,20 +155,10 @@ st.markdown('''
             background-color: rgba(255, 255, 255, 0.1);
             border-radius: 15px;
             padding: 1.5em;
-            width: 300px;
+            width: calc(33% - 2em);  /* Each card takes up approximately 1/3rd of the row, with gaps */
+            min-width: 300px;         /* Ensure cards maintain a minimum width */
+            max-width: 400px;         /* Optionally limit the maximum width */
             text-align: center;
-        }
-
-        .team-card h4 {
-            font-size: 1.5em;
-            color: var(--accent-color-purple);
-            margin-bottom: 0.5em;
-        }
-
-        .team-card p {
-            font-size: 1em;
-            color: #CCCCCC;
-            line-height: 1.5;
         }
 
         /* Streamlit Elements */
@@ -282,7 +273,10 @@ def aggregate_team_stats(team_data):
             'min_score': x['score'].min(),
             'max_score': x['score'].max(),
             'std_dev': x['score'].std(),
-            'games_played': x['score'].count()
+            'games_played': x['score'].count(),
+            'avg_points_allowed': np.average(x['points_allowed'], weights=x['season_weight']) if 'points_allowed' in x.columns else 0,  # Calculate average points allowed
+            'winning_percentage': (x['score'] > 0).sum() / x['score'].count() * 100 if x['score'].count() > 0 else 0,  # Calculate winning percentage
+            'last_5_results': x['score'].tail(5).tolist()  # Get last 5 results
         })
     ).to_dict(orient='index')
     return team_stats
@@ -426,7 +420,6 @@ def predict_game_outcome(home_team, away_team, game_datetime, use_injury_impact=
     else:
         return "Unavailable", "N/A", "N/A", None, None, 0, 0, {}
 
-# Enhanced Summary for Betting Insights
 def enhanced_summary(home_team, away_team, home_stats, away_stats, home_team_rating, away_team_rating,
                      home_point_decrease, away_point_decrease, weather_data, use_injury_impact):
     st.markdown('''
@@ -437,60 +430,235 @@ def enhanced_summary(home_team, away_team, home_stats, away_stats, home_team_rat
     # Display injury impact if selected
     if use_injury_impact:
         st.markdown(f'''
-            <p><strong>Injury Impact on Team Strength:</strong></p>
-            <p>{home_team} Injury Impact Score: <strong>{home_point_decrease}</strong></p>
-            <p>{away_team} Injury Impact Score: <strong>{away_point_decrease}</strong></p>
+            <div class="flex-container">
+                <div class="impact-card">
+                    <p><strong>Injury Impact on Team Strength:</strong></p>
+                    <div class="injury-impacts">
+                        <div class="injury-impact-item">
+                            <span>{home_team} Impact:</span>
+                            <strong>{home_point_decrease}</strong>
+                        </div>
+                        <div class="injury-impact-item">
+                            <span>{away_team} Impact:</span>
+                            <strong>{away_point_decrease}</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
         ''', unsafe_allow_html=True)
 
     # Display weather impact if available
     if weather_data:
         st.markdown(f'''
-            <p><strong>Weather Conditions at {team_stadium_locations.get(home_team, 'Unknown Location')}:</strong></p>
-            <p>Temperature: <strong>{weather_data['temperature']}°F</strong></p>
-            <p>Wind Speed: <strong>{weather_data['wind_speed']} mph</strong></p>
-            <p>Conditions: <strong>{weather_data['conditions']}</strong></p>
+            <div class="weather-card">
+                <p><strong>Weather Conditions at {team_stadium_locations.get(home_team, 'Unknown Location')}:</strong></p>
+                <div class="weather-grid">
+                    <div class="weather-item">
+                        <span>Temperature:</span>
+                        <strong>{weather_data['temperature']}°F</strong>
+                    </div>
+                    <div class="weather-item">
+                        <span>Wind Speed:</span>
+                        <strong>{weather_data['wind_speed']} mph</strong>
+                    </div>
+                    <div class="weather-item">
+                        <span>Conditions:</span>
+                        <strong>{weather_data['conditions']}</strong>
+                    </div>
+                </div>
+            </div>
         ''', unsafe_allow_html=True)
 
     # Prediction and confidence
     likely_advantage = home_team if home_team_rating > away_team_rating else away_team
     st.markdown(f'''
-            <p><strong>Overall Prediction and Confidence:</strong></p>
-            <p>Predicted Advantage: <strong>{likely_advantage}</strong> is expected to have an edge.</p>
-            <p>Confidence Level: <strong>{round(abs(home_team_rating - away_team_rating) * 5, 2)}%</strong></p>
-        </div>
-    ''', unsafe_allow_html=True)
-
-    # Display team performance trends
-    st.markdown('''
-        <div class="data-section">
-            <h2>Team Performance Trends</h2>
-            <div class="team-trends">
-    ''', unsafe_allow_html=True)
-
-    # Home team trends
-    st.markdown(f'''
-        <div class="team-card">
-            <h4>{home_team} Trends</h4>
-            <p>Recent Form (Last 5 Games): <strong>{home_stats.get('recent_form', 'N/A')}</strong></p>
-            <p>Consistency (Std Dev): <strong>{home_stats.get('std_dev', 'N/A')}</strong></p>
-            <p>Tip: A higher recent form score suggests the team is on a good streak, which may indicate better performance in the upcoming game. Consistency is also key—lower values mean more reliable scoring.</p>
-        </div>
-    ''', unsafe_allow_html=True)
-
-    # Away team trends
-    st.markdown(f'''
-        <div class="team-card">
-            <h4>{away_team} Trends</h4>
-            <p>Recent Form (Last 5 Games): <strong>{away_stats.get('recent_form', 'N/A')}</strong></p>
-            <p>Consistency (Std Dev): <strong>{away_stats.get('std_dev', 'N/A')}</strong></p>
-            <p>Tip: For betting totals (over/under), look at consistency. Highly consistent teams can make predicting total points easier, while erratic scores suggest less predictable outcomes.</p>
-        </div>
-    ''', unsafe_allow_html=True)
-
-    st.markdown('''
+            <div class="prediction-card">
+                <p><strong>Overall Prediction and Confidence:</strong></p>
+                <div class="prediction-details">
+                    <div class="prediction-item">
+                        <span>Predicted Advantage:</span>
+                        <strong>{likely_advantage}</strong>
+                    </div>
+                    <div class="prediction-item">
+                        <span>Confidence Level:</span>
+                        <strong>{round(abs(home_team_rating - away_team_rating) * 5, 2)}%</strong>
+                    </div>
+                </div>
             </div>
         </div>
     ''', unsafe_allow_html=True)
+
+    # Display team performance trends side by side
+    st.markdown(f'''
+        <div class="data-section">
+            <h2>Team Performance Comparison</h2>
+            <div class="team-comparison">
+                <div class="team-card">
+                    <h4>{home_team} Trends</h4>
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <span>Recent Form:</span>
+                            <strong>{round(home_stats.get('recent_form', 0), 2)}</strong>
+                        </div>
+                        <div class="stat-item">
+                            <span>Consistency:</span>
+                            <strong>{round(home_stats.get('std_dev', 0), 2)}</strong>
+                        </div>
+                        <div class="stat-item">
+                            <span>Avg Points Scored:</span>
+                            <strong>{round(home_stats.get('avg_score', 0), 2)}</strong>
+                        </div>
+                        <div class="stat-item">
+                            <span>Avg Points Allowed:</span>
+                            <strong>{round(home_stats.get('avg_points_allowed', 0), 2)}</strong>
+                        </div>
+                        <div class="stat-item">
+                            <span>Winning Percentage:</span>
+                            <strong>{round(home_stats.get('winning_percentage', 0), 2)}%</strong>
+                        </div>
+                        <div class="stat-item">
+                            <span>Last 5 Results:</span>
+                            <strong>{', '.join(home_stats.get('last_5_results', []))}</strong>
+                        </div>
+                    </div>
+                    <p class="trend-tip">Higher recent form suggests better performance potential.</p>
+                    <div class="betting-impact">
+                        <h5>Betting Impact:</h5>
+                        <p>With a predicted score differential of {round(predicted_score_diff, 2)} in favor of {predicted_winner}, consider betting on the spread. If {predicted_winner} is favored by less than {round(predicted_score_diff, 2)}, it may be a good idea to take the points.</p>
+                        <p>Based on the predicted total score of {round(total_predicted_score, 2)}, consider betting on the <strong>{'over' if total_predicted_score > 45 else 'under'}</strong> for totals bets.</p>
+                    </div>
+                </div>
+                <div class="team-card">
+                    <h4>{away_team} Trends</h4>
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <span>Recent Form:</span>
+                            <strong>{round(away_stats.get('recent_form', 0), 2)}</strong>
+                        </div>
+                        <div class="stat-item">
+                            <span>Consistency:</span>
+                            <strong>{round(away_stats.get('std_dev', 0), 2)}</strong>
+                        </div>
+                        <div class="stat-item">
+                            <span>Avg Points Scored:</span>
+                            <strong>{round(away_stats.get('avg_score', 0), 2)}</strong>
+                        </div>
+                        <div class="stat-item">
+                            <span>Avg Points Allowed:</span>
+                            <strong>{round(away_stats.get('avg_points_allowed', 0), 2)}</strong>
+                        </div>
+                        <div class="stat-item">
+                            <span>Winning Percentage:</span>
+                            <strong>{round(away_stats.get('winning_percentage', 0), 2)}%</strong>
+                        </div>
+                        <div class="stat-item">
+                            <span>Last 5 Results:</span>
+                            <strong>{', '.join(away_stats.get('last_5_results', []))}</strong>
+                        </div>
+                    </div>
+                    <p class="trend-tip">Lower consistency values indicate more reliable scoring.</p>
+                    <div class="betting-impact">
+                        <h5>Betting Impact:</h5>
+                        <p>With a predicted score differential of {round(predicted_score_diff, 2)} in favor of {predicted_winner}, consider betting on the spread. If {predicted_winner} is favored by less than {round(predicted_score_diff, 2)}, it may be a good idea to take the points.</p>
+                        <p>Based on the predicted total score of {round(total_predicted_score, 2)}, consider betting on the <strong>{'over' if total_predicted_score > 45 else 'under'}</strong> for totals bets.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    ''', unsafe_allow_html=True)
+
+# Update the CSS section to include new styles for the side-by-side layout
+st.markdown('''
+    <style>
+        /* Previous CSS styles remain the same until team-trends section */
+        
+        .team-comparison {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin: 2rem auto;
+            max-width: 1200px;
+        }
+        
+        .team-card {
+            flex: 1;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 1.5rem;
+            max-width: 500px;
+            backdrop-filter: blur(10px);
+            transition: transform 0.3s ease;
+        }
+        
+        .team-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .stats-grid {
+            display: grid;
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+        
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem;
+            background-color: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+        }
+        
+        .trend-tip {
+            font-size: 0.9rem;
+            color: var(--accent-color-teal);
+            margin-top: 1rem;
+            font-style: italic;
+        }
+        
+        .flex-container {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin: 2rem 0;
+        }
+        
+        .impact-card, .weather-card, .prediction-card {
+            background-color: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 1.5rem;
+            width: 100%;
+            max-width: 500px;
+        }
+        
+        .injury-impacts, .weather-grid, .prediction-details {
+            display: grid;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        
+        .injury-impact-item, .weather-item, .prediction-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem;
+            background-color: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+        }
+        
+        @media (max-width: 768px) {
+            .team-comparison {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .team-card {
+                width: 100%;
+                margin: 1rem 0;
+            }
+        }
+    </style>
+''', unsafe_allow_html=True)
 
 # Fetch upcoming games based on the current day of the week
 @st.cache_data(ttl=3600)
@@ -535,6 +703,12 @@ home_team, away_team, game_datetime = selected_game['home_team'], selected_game[
     home_team, away_team, game_datetime, use_injury_impact, use_weather_impact
 )
 
+# Calculate predicted scores for both teams
+home_predicted_score = home_team_rating  # Assuming home_team_rating is the predicted score for the home team
+away_predicted_score = away_team_rating  # Assuming away_team_rating is the predicted score for the away team
+total_predicted_score = home_predicted_score + away_predicted_score
+
+# Update the predicted outcome section
 if predicted_winner != "Unavailable":
     st.markdown(f'''
         <div class="data-section">
@@ -543,6 +717,7 @@ if predicted_winner != "Unavailable":
             <p>Predicted Winner: <strong>{predicted_winner}</strong></p>
             <p>Confidence Level: <strong>{round(confidence, 2)}%</strong></p>
             <p>Expected Score Difference: <strong>{round(predicted_score_diff, 2)}</strong></p>
+            <p>Total Predicted Score: <strong>{round(total_predicted_score, 2)}</strong></p>
         </div>
     ''', unsafe_allow_html=True)
 
