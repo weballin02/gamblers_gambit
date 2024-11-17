@@ -21,7 +21,44 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-# Synesthetic Interface CSS (omitted for brevity)
+# Team Abbreviation to Full Name Mapping
+team_abbrev_mapping = {
+    'ARI': 'Arizona Cardinals',
+    'ATL': 'Atlanta Falcons',
+    'BAL': 'Baltimore Ravens',
+    'BUF': 'Buffalo Bills',
+    'CAR': 'Carolina Panthers',
+    'CHI': 'Chicago Bears',
+    'CIN': 'Cincinnati Bengals',
+    'CLE': 'Cleveland Browns',
+    'DAL': 'Dallas Cowboys',
+    'DEN': 'Denver Broncos',
+    'DET': 'Detroit Lions',
+    'GB': 'Green Bay Packers',
+    'HOU': 'Houston Texans',
+    'IND': 'Indianapolis Colts',
+    'JAX': 'Jacksonville Jaguars',
+    'KC': 'Kansas City Chiefs',
+    'LAC': 'Los Angeles Chargers',
+    'LAR': 'Los Angeles Rams',
+    'LV': 'Las Vegas Raiders',
+    'MIA': 'Miami Dolphins',
+    'MIN': 'Minnesota Vikings',
+    'NE': 'New England Patriots',
+    'NO': 'New Orleans Saints',
+    'NYG': 'New York Giants',
+    'NYJ': 'New York Jets',
+    'PHI': 'Philadelphia Eagles',
+    'PIT': 'Pittsburgh Steelers',
+    'SEA': 'Seattle Seahawks',
+    'SF': 'San Francisco 49ers',
+    'TB': 'Tampa Bay Buccaneers',
+    'TEN': 'Tennessee Titans',
+    'WAS': 'Washington Commanders',
+}
+
+# Invert the mapping for reverse lookup
+full_name_to_abbrev = {v: k for k, v in team_abbrev_mapping.items()}
 
 # Load and Preprocess Data Using nfl_data_py
 @st.cache_data
@@ -110,8 +147,8 @@ def get_team_models(team_data):
 team_models = get_team_models(team_data)
 
 # Function to Predict Team Score
-def predict_team_score(team, periods=1):
-    model = team_models.get(team)
+def predict_team_score(team_abbrev, periods=1):
+    model = team_models.get(team_abbrev)
     if model:
         forecast = model.predict(n_periods=periods)
         # Ensure forecast is a numpy array
@@ -119,45 +156,8 @@ def predict_team_score(team, periods=1):
             forecast = forecast.values
         return forecast[0]
     else:
-        st.write(f"Prediction model not found for team: {team}")
+        st.write(f"Prediction model not found for team: {team_abbrev}")
         return None
-
-# Forecast the Next 5 Games for Each Team
-@st.cache_data
-def compute_team_forecasts(_team_models, team_data):
-    team_forecasts = {}
-    forecast_periods = 5
-
-    for team, model in _team_models.items():
-        # Get last date
-        team_scores = team_data[team_data['team'] == team]['score']
-        if team_scores.empty:
-            continue
-        last_date = team_scores.index.max()
-
-        # Generate future dates (assuming games are played weekly)
-        future_dates = pd.date_range(start=last_date + pd.Timedelta(days=7), periods=forecast_periods, freq='7D')
-
-        # Forecast
-        forecast = model.predict(n_periods=forecast_periods)
-
-        # Store forecast
-        predictions = pd.DataFrame({
-            'Date': future_dates,
-            'Predicted_Score': forecast,
-            'Team': team
-        })
-        team_forecasts[team] = predictions
-
-    # Combine all forecasts
-    if team_forecasts:
-        all_forecasts = pd.concat(team_forecasts.values(), ignore_index=True)
-    else:
-        all_forecasts = pd.DataFrame(columns=['Date', 'Predicted_Score', 'Team'])
-    return all_forecasts
-
-# Compute Team Forecasts
-all_forecasts = compute_team_forecasts(team_models, team_data)
 
 # Streamlit Interface for Selecting a Team and Viewing Predictions
 teams_list = sorted(team_data['team'].unique())
@@ -174,43 +174,13 @@ if team:
     ''', unsafe_allow_html=True)
     st.line_chart(team_scores)
 
-    # Display future predictions
-    team_forecast = all_forecasts[all_forecasts['Team'] == team]
-
-    st.markdown(f'''
-        <div class="data-section">
-            <h2>Predicted Scores for Next 5 Games ({team})</h2>
-        </div>
-    ''', unsafe_allow_html=True)
-    st.write(team_forecast[['Date', 'Predicted_Score']])
-
-    # Plot the historical and predicted scores
-    if not team_forecast.empty:
-        fig, ax = plt.subplots(figsize=(10, 6))
-
-        forecast_dates = mdates.date2num(team_forecast['Date'])
-        historical_dates = mdates.date2num(team_scores.index)
-
-        ax.plot(historical_dates, team_scores.values, label=f'Historical Scores for {team}', color='blue')
-        ax.plot(forecast_dates, team_forecast['Predicted_Score'], label='Predicted Scores', color='red')
-
-        lower_bound = team_forecast['Predicted_Score'] - 5
-        upper_bound = team_forecast['Predicted_Score'] + 5
-
-        finite_indices = np.isfinite(forecast_dates) & np.isfinite(lower_bound) & np.isfinite(upper_bound)
-
-        ax.fill_between(forecast_dates[finite_indices], lower_bound.values[finite_indices],
-                        upper_bound.values[finite_indices], color='gray', alpha=0.2, label='Confidence Interval')
-
-        ax.xaxis_date()
-        fig.autofmt_xdate()
-
-        ax.set_title(f'Score Prediction for {team}')
-        ax.set_xlabel('Date')
-        ax.set_ylabel('Score')
-        ax.legend()
-        ax.grid(True)
-        st.pyplot(fig)
+    # Predict future scores
+    if team in team_models:
+        forecast = team_models[team].predict(n_periods=5)
+        future_dates = pd.date_range(start=team_scores.index[-1] + pd.Timedelta(days=7), periods=5, freq='7D')
+        prediction_df = pd.DataFrame({'Date': future_dates, 'Predicted_Score': forecast})
+        st.write(f"### Predicted Scores for {team} (Next 5 Games)")
+        st.write(prediction_df)
 
 # Fetch Upcoming Games and Predict Scores
 st.write('---')
@@ -249,42 +219,6 @@ def fetch_upcoming_games():
     # Select necessary columns
     upcoming_games = upcoming_games[['game_id', 'game_datetime', 'home_team', 'away_team']]
 
-    # Mapping from team abbreviations to full names
-    team_abbrev_mapping = {
-        'ARI': 'Arizona Cardinals',
-        'ATL': 'Atlanta Falcons',
-        'BAL': 'Baltimore Ravens',
-        'BUF': 'Buffalo Bills',
-        'CAR': 'Carolina Panthers',
-        'CHI': 'Chicago Bears',
-        'CIN': 'Cincinnati Bengals',
-        'CLE': 'Cleveland Browns',
-        'DAL': 'Dallas Cowboys',
-        'DEN': 'Denver Broncos',
-        'DET': 'Detroit Lions',
-        'GB': 'Green Bay Packers',
-        'HOU': 'Houston Texans',
-        'IND': 'Indianapolis Colts',
-        'JAX': 'Jacksonville Jaguars',
-        'KC': 'Kansas City Chiefs',
-        'LAC': 'Los Angeles Chargers',
-        'LAR': 'Los Angeles Rams',
-        'LV': 'Las Vegas Raiders',
-        'MIA': 'Miami Dolphins',
-        'MIN': 'Minnesota Vikings',
-        'NE': 'New England Patriots',
-        'NO': 'New Orleans Saints',
-        'NYG': 'New York Giants',
-        'NYJ': 'New York Jets',
-        'PHI': 'Philadelphia Eagles',
-        'PIT': 'Pittsburgh Steelers',
-        'SEA': 'Seattle Seahawks',
-        'SF': 'San Francisco 49ers',
-        'TB': 'Tampa Bay Buccaneers',
-        'TEN': 'Tennessee Titans',
-        'WAS': 'Washington Commanders',
-    }
-
     # Apply mapping
     upcoming_games['home_team_full'] = upcoming_games['home_team'].map(team_abbrev_mapping)
     upcoming_games['away_team_full'] = upcoming_games['away_team'].map(team_abbrev_mapping)
@@ -314,27 +248,34 @@ if not upcoming_games.empty:
     home_team = selected_game['home_team_full']
     away_team = selected_game['away_team_full']
 
-    # Predict scores
-    home_team_score = predict_team_score(home_team)
-    away_team_score = predict_team_score(away_team)
+    # Convert full team names to abbreviations to use the saved models
+    home_team_abbrev = full_name_to_abbrev.get(home_team)
+    away_team_abbrev = full_name_to_abbrev.get(away_team)
 
-    if home_team_score is not None and away_team_score is not None:
-        st.markdown(f'''
-            <div class="summary-section">
-                <h3>Predicted Scores</h3>
-                <p><strong>{home_team}: {home_team_score:.2f}</strong></p>
-                <p><strong>{away_team}: {away_team_score:.2f}</strong></p>
-            </div>
-        ''', unsafe_allow_html=True)
+    if home_team_abbrev and away_team_abbrev:
+        # Predict scores
+        home_team_score = predict_team_score(home_team_abbrev)
+        away_team_score = predict_team_score(away_team_abbrev)
 
-        if home_team_score > away_team_score:
-            st.success(f"**Predicted Winner:** {home_team}")
-        elif away_team_score > home_team_score:
-            st.success(f"**Predicted Winner:** {away_team}")
+        if home_team_score is not None and away_team_score is not None:
+            st.markdown(f'''
+                <div class="summary-section">
+                    <h3>Predicted Scores</h3>
+                    <p><strong>{home_team}: {home_team_score:.2f}</strong></p>
+                    <p><strong>{away_team}: {away_team_score:.2f}</strong></p>
+                </div>
+            ''', unsafe_allow_html=True)
+
+            if home_team_score > away_team_score:
+                st.success(f"**Predicted Winner:** {home_team}")
+            elif away_team_score > home_team_score:
+                st.success(f"**Predicted Winner:** {away_team}")
+            else:
+                st.info("**Predicted Outcome:** Tie")
         else:
-            st.info("**Predicted Outcome:** Tie")
+            st.error("Prediction models for one or both teams are not available.")
     else:
-        st.error("Prediction models for one or both teams are not available.")
+        st.error("Could not find abbreviation for one or both teams.")
 
 # Footer
 st.markdown('''
