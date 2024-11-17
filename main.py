@@ -145,7 +145,7 @@ st.markdown('''
 # Hero Section
 st.markdown('''
     <div class="hero">
-        <h1>FoxEdge Quantum Analytics</h1>
+        <h1>FoxEdge Predictive Analytics</h1>
         <p>The Future of Sports Betting Confidence</p>
         <a href="#data-section" class="button">Discover More</a>
     </div>
@@ -255,6 +255,6 @@ st.plotly_chart(fig, use_container_width=True)
 # Footer
 st.markdown('''
     <div class="footer">
-        &copy; 2023 <a href="#">FoxEdge</a>. All rights reserved.
+        &copy; 2024 <a href="#">FoxEdge</a>. All rights reserved.
     </div>
 ''', unsafe_allow_html=True)
