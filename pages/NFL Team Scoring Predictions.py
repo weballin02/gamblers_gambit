@@ -67,17 +67,15 @@ def predict_team_score(team, periods=1):
 
 # Compute forecasts
 @st.cache_data
-def compute_team_forecasts(models, data):
+def compute_team_forecasts(_models, data):
     forecasts = {}
-    for team, model in models.items():
+    for team, model in _models.items():
         scores = data[data['team'] == team]['score']
         if not scores.empty:
             forecast_dates = pd.date_range(start=scores.index[-1] + timedelta(days=7), periods=5, freq='7D')
             predictions = model.predict(n_periods=5)
             forecasts[team] = pd.DataFrame({'Date': forecast_dates, 'Predicted_Score': predictions, 'Team': team})
     return pd.concat(forecasts.values(), ignore_index=True) if forecasts else pd.DataFrame(columns=['Date', 'Predicted_Score', 'Team'])
-
-all_forecasts = compute_team_forecasts(team_models, team_data)
 
 # Interactive UI for team selection
 st.sidebar.markdown("### Select a Team for Analysis")
