@@ -21,30 +21,6 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-# Synesthetic Interface CSS
-st.markdown('''
-    <style>
-        /* Import Fonts */
-        @import url('https://fonts.googleapis.com/css2?family=Raleway:wght@400;700&family=Open+Sans:wght@400;600&display=swap');
-        /* Styles omitted for brevity but the same as the previous version */
-    </style>
-''', unsafe_allow_html=True)
-
-# Streamlit App
-st.markdown('''
-    <div class="hero">
-        <h1>FoxEdge - NFL Scoring Predictions</h1>
-        <p>View projected NFL team scores for upcoming games based on recent stats.</p>
-    </div>
-''', unsafe_allow_html=True)
-
-st.markdown('''
-    <div class="data-section">
-        <h2>Select Team to View Scoring Predictions</h2>
-        <p>Choose a team to see historical scores and predictions for the upcoming games.</p>
-    </div>
-''', unsafe_allow_html=True)
-
 # Load and Preprocess Data Using nfl_data_py
 @st.cache_data
 def load_and_preprocess_data():
@@ -96,23 +72,38 @@ def get_team_models(team_data):
         team_scores.reset_index(drop=True, inplace=True)
 
         if os.path.exists(model_path):
-            model = joblib.load(model_path)
-        else:
-            # Check if there are enough data points to train the model
-            if len(team_scores) < 10:
-                # Skip teams with insufficient data
+            # Load the model if it exists
+            try:
+                model = joblib.load(model_path)
+                st.write(f"Model loaded successfully for team: {team}")
+            except Exception as e:
+                st.write(f"Error loading model for team {team}: {e}")
                 continue
-            model = auto_arima(
-                team_scores,
-                seasonal=False,
-                trace=False,
-                error_action='ignore',
-                suppress_warnings=True
-            )
-            model.fit(team_scores)
-            joblib.dump(model, model_path)
+        else:
+            # Train the model if it doesn't exist
+            if len(team_scores) < 5:
+                st.write(f"Not enough data points to train a model for team: {team}. (Data points: {len(team_scores)})")
+                continue
+
+            try:
+                model = auto_arima(
+                    team_scores,
+                    seasonal=False,
+                    trace=False,
+                    error_action='ignore',
+                    suppress_warnings=True
+                )
+                model.fit(team_scores)
+                joblib.dump(model, model_path)
+                st.write(f"Model trained and saved successfully for team: {team}")
+            except Exception as e:
+                st.write(f"Error training model for team {team}: {e}")
+                continue
 
         team_models[team] = model
+
+    if not team_models:
+        st.write("No models were successfully created. Please check data availability and model configurations.")
 
     return team_models
 
@@ -129,6 +120,7 @@ def predict_team_score(team, periods=1):
             forecast = forecast.values
         return forecast[0]
     else:
+        st.write(f"Prediction model not found for team: {team}")
         return None
 
 # Forecast the Next 5 Games for Each Team
@@ -194,179 +186,51 @@ if team:
     st.write(team_forecast[['Date', 'Predicted_Score']])
 
     # Plot the historical and predicted scores
-    fig, ax = plt.subplots(figsize=(10, 6))
+    if not team_forecast.empty:
+        fig, ax = plt.subplots(figsize=(10, 6))
 
-    # Convert dates to Matplotlib's numeric format
-    forecast_dates = mdates.date2num(team_forecast['Date'])
-    historical_dates = mdates.date2num(team_scores.index)
+        # Convert dates to Matplotlib's numeric format
+        forecast_dates = mdates.date2num(team_forecast['Date'])
+        historical_dates = mdates.date2num(team_scores.index)
 
-    # Plot historical scores
-    ax.plot(
-        historical_dates,
-        team_scores.values,
-        label=f'Historical Scores for {team}',
-        color='blue'
-    )
-    # Plot predicted scores
-    ax.plot(
-        forecast_dates,
-        team_forecast['Predicted_Score'],
-        label='Predicted Scores',
-        color='red'
-    )
-    # Plot confidence interval (using +/- 5 as placeholder)
-    lower_bound = team_forecast['Predicted_Score'] - 5
-    upper_bound = team_forecast['Predicted_Score'] + 5
+        # Plot historical scores
+        ax.plot(
+            historical_dates,
+            team_scores.values,
+            label=f'Historical Scores for {team}',
+            color='blue'
+        )
+        # Plot predicted scores
+        ax.plot(
+            forecast_dates,
+            team_forecast['Predicted_Score'],
+            label='Predicted Scores',
+            color='red'
+        )
+        # Plot confidence interval (using +/- 5 as placeholder)
+        lower_bound = team_forecast['Predicted_Score'] - 5
+        upper_bound = team_forecast['Predicted_Score'] + 5
 
-    # Ensure no non-finite values
-    finite_indices = np.isfinite(forecast_dates) & np.isfinite(lower_bound) & np.isfinite(upper_bound)
+        # Ensure no non-finite values
+        finite_indices = np.isfinite(forecast_dates) & np.isfinite(lower_bound) & np.isfinite(upper_bound)
 
-    ax.fill_between(
-        forecast_dates[finite_indices],
-        lower_bound.values[finite_indices],
-        upper_bound.values[finite_indices],
-        color='gray',
-        alpha=0.2,
-        label='Confidence Interval'
-    )
+        ax.fill_between(
+            forecast_dates[finite_indices],
+            lower_bound.values[finite_indices],
+            upper_bound.values[finite_indices],
+            color='gray',
+            alpha=0.2,
+            label='Confidence Interval'
+        )
 
-    ax.xaxis_date()
-    fig.autofmt_xdate()
+        ax.xaxis_date()
+        fig.autofmt_xdate()
 
-    ax.set_title(f'Score Prediction for {team}')
-    ax.set_xlabel('Date')
-    ax.set_ylabel('Score')
-    ax.legend()
-    ax.grid(True)
-    st.pyplot(fig)
-
-# NFL Game Predictions Section
-st.write('---')
-st.markdown('''
-    <div class="data-section">
-        <h2>NFL Game Predictions for Upcoming Games</h2>
-        <p>Select an upcoming game to view predicted scores and the likely winner.</p>
-    </div>
-''', unsafe_allow_html=True)
-
-# Fetch upcoming games
-@st.cache_data(ttl=3600)
-def fetch_upcoming_games():
-    current_year = datetime.now().year
-    schedule = nfl.import_schedules([current_year])
-
-    # Combine 'gameday' and 'gametime' to create 'game_datetime'
-    schedule['game_datetime'] = pd.to_datetime(
-        schedule['gameday'].astype(str) + ' ' + schedule['gametime'].astype(str),
-        errors='coerce',
-        utc=True
-    )
-
-    # Drop rows where 'game_datetime' could not be parsed
-    schedule.dropna(subset=['game_datetime'], inplace=True)
-
-    # Get current time in UTC
-    now = datetime.now(pytz.UTC)
-
-    # Filter for upcoming regular-season games
-    upcoming_games = schedule[
-        (schedule['game_type'] == 'REG') &
-        (schedule['game_datetime'] >= now)
-    ]
-
-    # Select necessary columns
-    upcoming_games = upcoming_games[['game_id', 'game_datetime', 'home_team', 'away_team']]
-
-    # Mapping from team abbreviations to full names
-    team_abbrev_mapping = {
-        'ARI': 'Arizona Cardinals',
-        'ATL': 'Atlanta Falcons',
-        'BAL': 'Baltimore Ravens',
-        'BUF': 'Buffalo Bills',
-        'CAR': 'Carolina Panthers',
-        'CHI': 'Chicago Bears',
-        'CIN': 'Cincinnati Bengals',
-        'CLE': 'Cleveland Browns',
-        'DAL': 'Dallas Cowboys',
-        'DEN': 'Denver Broncos',
-        'DET': 'Detroit Lions',
-        'GB': 'Green Bay Packers',
-        'HOU': 'Houston Texans',
-        'IND': 'Indianapolis Colts',
-        'JAX': 'Jacksonville Jaguars',
-        'KC': 'Kansas City Chiefs',
-        'LAC': 'Los Angeles Chargers',
-        'LAR': 'Los Angeles Rams',
-        'LV': 'Las Vegas Raiders',
-        'MIA': 'Miami Dolphins',
-        'MIN': 'Minnesota Vikings',
-        'NE': 'New England Patriots',
-        'NO': 'New Orleans Saints',
-        'NYG': 'New York Giants',
-        'NYJ': 'New York Jets',
-        'PHI': 'Philadelphia Eagles',
-        'PIT': 'Pittsburgh Steelers',
-        'SEA': 'Seattle Seahawks',
-        'SF': 'San Francisco 49ers',
-        'TB': 'Tampa Bay Buccaneers',
-        'TEN': 'Tennessee Titans',
-        'WAS': 'Washington Commanders',
-    }
-
-    # Apply mapping
-    upcoming_games['home_team_full'] = upcoming_games['home_team'].map(team_abbrev_mapping)
-    upcoming_games['away_team_full'] = upcoming_games['away_team'].map(team_abbrev_mapping)
-
-    # Remove games where team names couldn't be mapped
-    upcoming_games.dropna(subset=['home_team_full', 'away_team_full'], inplace=True)
-
-    # Reset index
-    upcoming_games.reset_index(drop=True, inplace=True)
-
-    return upcoming_games
-
-# Fetch upcoming games
-upcoming_games = fetch_upcoming_games()
-
-# Create game labels
-upcoming_games['game_label'] = [
-    f"{row['away_team_full']} at {row['home_team_full']} ({row['game_datetime'].strftime('%Y-%m-%d %H:%M %Z')})"
-    for _, row in upcoming_games.iterrows()
-]
-
-# Let the user select a game
-if not upcoming_games.empty:
-    game_selection = st.selectbox('Select an upcoming game:', upcoming_games['game_label'])
-    selected_game = upcoming_games[upcoming_games['game_label'] == game_selection].iloc[0]
-
-    home_team = selected_game['home_team_full']
-    away_team = selected_game['away_team_full']
-
-    # Predict scores
-    home_team_score = predict_team_score(home_team)
-    away_team_score = predict_team_score(away_team)
-
-    if home_team_score is not None and away_team_score is not None:
-        st.markdown(f'''
-            <div class="summary-section">
-                <h3>Predicted Scores</h3>
-                <p><strong>{home_team}: {home_team_score:.2f}</strong></p>
-                <p><strong>{away_team}: {away_team_score:.2f}</strong></p>
-            </div>
-        ''', unsafe_allow_html=True)
-
-        if home_team_score > away_team_score:
-            st.success(f"**Predicted Winner:** {home_team}")
-        elif away_team_score > home_team_score:
-            st.success(f"**Predicted Winner:** {away_team}")
-        else:
-            st.info("**Predicted Outcome:** Tie")
+        ax.set_title(f'Score Prediction for {team}')
+        ax.set_xlabel('Date')
+        ax.set_ylabel('Score')
+        ax.legend()
+        ax.grid(True)
+        st.pyplot(fig)
     else:
-        st.error("Prediction models for one or both teams are not available.")
-
-# Footer
-st.markdown('''
-    <div class="footer">
-        &copy; 2023 <a href="#">FoxEdge</a>. All rights reserved.
-    </div>
-''', unsafe_allow_html=True)
+        st.write("No forecast data available for this team.")
