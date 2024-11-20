@@ -225,7 +225,7 @@ if 'nba_team_stats' not in st.session_state:
     game_logs = load_nba_game_logs(season=current_season)
     st.session_state.nba_team_stats = calculate_team_stats(game_logs)
 
-with st.sidebar:
+with st.markdown:
     st.header("Simulation Controls")
     upcoming_games = get_upcoming_games()
     
