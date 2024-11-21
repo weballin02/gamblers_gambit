@@ -25,6 +25,79 @@ try:
 except Exception as e:
     st.error(f"Error initializing Firebase: {e}")
 
+# Add CSS for the animated box around "FoxEdge"
+st.markdown('''
+    <style>
+/* Hero Section */
+.hero {
+    position: relative;
+    text-align: center;
+    padding: 4em 1em;
+    overflow: hidden;
+}
+
+.hero::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle at center, rgba(255, 255, 255, 0.1), transparent);
+    animation: rotate 30s linear infinite;
+}
+
+@keyframes rotate {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.hero h1 {
+    font-size: 3.5em;
+    margin-bottom: 0.2em;
+}
+
+.hero p {
+    font-size: 1.5em;
+    margin-bottom: 1em;
+    color: #CCCCCC;
+}
+
+.hero p {
+    font-size: 1.2em;
+    color: #CCCCCC;
+}
+
+.hero .button {
+    display: inline-block;
+    margin-top: 1em;
+    padding: 10px 20px;
+    font-size: 1em;
+    color: #FFFFFF;
+    background: linear-gradient(45deg, #2CFFAA, #A56BFF);
+    text-decoration: none;
+    border-radius: 20px;
+    transition: transform 0.3s ease;
+}
+
+.hero .button:hover {
+    transform: translateY(-5px);
+}
+
+/* Footer Styles */
+.footer {
+    text-align: center;
+    margin-top: 3em;
+    color: #999999;
+}
+
+.footer a {
+    color: #2CFFAA;
+    text-decoration: none;
+}
+    </style>
+''', unsafe_allow_html=True)
+
 # Sidebar Navigation
 if "user" not in st.session_state:
     pages = ["Home", "Key Stats Analysis", "NCAAB Quantum-Inspired Game Simulations"]
@@ -68,9 +141,8 @@ if page == "Home":
     # Hero Section
     st.markdown('''
         <div class="hero">
-            <h1>FoxEdge Predictive Analytics</h1>
-            <p>The Future of Sports Betting Confidence</p>
-            <a href="#data-section" class="button">Discover More</a>
+            <h1>FoxEdge</h1>
+            <p>Enhanced NFL Betting Insights</p>
         </div>
     ''', unsafe_allow_html=True)
 
