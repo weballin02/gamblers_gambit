@@ -18,7 +18,7 @@ firebase_config = {
 
 
 # Replace '/Users/matthewfox/Downloads/gamblers_gambit-master/utils/serviceAccountKey.json' with your Firebase service account key file
-cred = credentials.Certificate('path/to/serviceAccountKey.json')
+cred = credentials.Certificate('utils/serviceAccountKey.json')
 firebase_admin.initialize_app(cred)
 
 # Firebase Authentication Example
