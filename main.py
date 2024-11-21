@@ -25,14 +25,14 @@ def login_user(email, password):
         user = auth.sign_in_with_email_and_password(email, password)
         st.session_state['user'] = user
         st.success(f"Logged in as: {email}")
-    except Exception as e:
+    except (KeyError, ValueError) as e:  # Parenthesize multiple exceptions
         st.error(f"Login failed: {e}")
 
 def register_user(email, password):
     try:
         user = auth.create_user_with_email_and_password(email, password)
         st.success("User registered successfully!")
-    except Exception as e:
+    except (KeyError, ValueError) as e:  # Parenthesize multiple exceptions
         st.error(f"Error registering user: {e}")
 
 def logout_user():
