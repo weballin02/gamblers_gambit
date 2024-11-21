@@ -2,7 +2,8 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
-import pyrebase
+import firebase_admin
+from firebase_admin import credentials, auth
 
 # Firebase configuration
 firebase_config = {
@@ -15,10 +16,18 @@ firebase_config = {
     "appId": "1:476155174210:web:4d4faf2a314c8c76d03cdb"
 }
 
-# Initialize Firebase
-firebase = pyrebase.initialize_app(firebase_config)
-auth = firebase.auth()
 
+# Replace '/Users/matthewfox/Downloads/gamblers_gambit-master/utils/serviceAccountKey.json' with your Firebase service account key file
+cred = credentials.Certificate('path/to/serviceAccountKey.json')
+firebase_admin.initialize_app(cred)
+
+# Firebase Authentication Example
+def login_user(email, password):
+    try:
+        user = auth.get_user_by_email(email)
+        st.success(f"Logged in as: {user.email}")
+    except Exception as e:
+        st.error(f"Login failed: {e}")
 # Helper functions for authentication
 def login_user(email, password):
     try:
@@ -39,6 +48,7 @@ def logout_user():
     if 'user' in st.session_state:
         del st.session_state['user']
         st.success("Logged out successfully!")
+
 
 # Set page configuration
 st.set_page_config(
