@@ -27,14 +27,14 @@ except Exception as e:
 
 # Sidebar Navigation
 if "user" not in st.session_state:
-    pages = ["Home", "Key Stats Analysis"]
+    pages = ["Home", "Key Stats Analysis", "NCAAB Quantum-Inspired Game Simulations"]
     page = st.sidebar.radio("Go to:", pages, key="public_navigation")
 else:
     st.sidebar.success(f"Welcome, {st.session_state['user']['email']}!")
     if st.sidebar.button("Logout", key="logout_button"):
         del st.session_state['user']
         st.experimental_rerun()
-    pages = ["Home", "Key Stats Analysis", "Predictive Analytics"]
+    pages = ["Home", "Key Stats Analysis", "Predictive Analytics", "NCAAB Quantum-Inspired Game Simulations"]
     page = st.sidebar.radio("Go to:", pages, key="private_navigation")
 
 # Authentication Tabs
@@ -149,3 +149,8 @@ if page == "Home":
             &copy; 2024 <a href="#">FoxEdge</a>. All rights reserved.
         </div>
     ''', unsafe_allow_html=True)
+
+elif page == "NCAAB Quantum-Inspired Game Simulations":
+    # Import and display the content from the new script
+    import pages.NCAAB_Quantum_Inspired_Game_Simulations as ncaab_simulations
+    ncaab_simulations.display()
