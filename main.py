@@ -55,15 +55,15 @@ if "user" not in st.session_state:
     tab1, tab2 = st.tabs(["Login", "Register"])
     with tab1:
         st.subheader("Login")
-        email = st.text_input("Email", key="login_email")
-        if st.button("Login", key="login_button"):
-            login_user(email)
-
+        email = st.text_input("Email", key="login_email_tab1")
+        password = st.text_input("Password", type="password", key="login_password_tab1")
+        if st.button("Login", key="login_button_tab1"):
+            login_user(email, password)
     with tab2:
         st.subheader("Register")
-        email = st.text_input("Register Email", key="register_email")
-        password = st.text_input("Register Password", type="password", key="register_password")
-        if st.button("Register", key="register_button"):
+        email = st.text_input("Register Email", key="register_email_tab2")
+        password = st.text_input("Register Password", type="password", key="register_password_tab2")
+        if st.button("Register", key="register_button_tab2"):
             register_user(email, password)
 else:
     st.sidebar.success(f"Welcome, {st.session_state['user']['email']}!")
