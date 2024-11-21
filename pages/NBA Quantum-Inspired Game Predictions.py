@@ -20,6 +20,11 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
+# Restrict access if not logged in
+if "user" not in st.session_state:
+    st.error("Access denied. Please log in to view this page.")
+    st.stop()
+
 # Custom CSS Styling for Consistency
 st.markdown(
     """
