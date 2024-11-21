@@ -6,6 +6,14 @@ import os
 import firebase_admin
 from firebase_admin import credentials, auth  # Import auth for Firebase operations
 
+# Set page configuration
+st.set_page_config(
+    page_title="FoxEdge - Predictive Analytics",
+    page_icon="🦊",
+    layout="wide",
+    initial_sidebar_state="collapsed",
+)
+
 # Dynamically construct the path to the JSON file
 base_dir = os.path.dirname(os.path.abspath(__file__))  # Get the directory of the current script
 service_account_path = os.path.join(base_dir, "utils", "serviceAccountKey.json")
@@ -61,15 +69,6 @@ else:
     st.sidebar.success(f"Welcome, {st.session_state['user']['email']}!")
     if st.sidebar.button("Logout", key="logout_button"):
         logout_user()
-
-
-# Set page configuration
-st.set_page_config(
-    page_title="FoxEdge - Predictive Analytics",
-    page_icon="🦊",
-    layout="wide",
-    initial_sidebar_state="collapsed",
-)
 
 # Synesthetic Interface CSS
 st.markdown('''
