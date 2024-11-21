@@ -2,6 +2,43 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
+import pyrebase
+
+# Firebase configuration
+firebase_config = {
+    "apiKey": "AIzaSyAlXXmQF51shNnY0FKoYQa7wRNaM1yXR60",
+    "authDomain": "foxedge-89ef2.firebaseapp.com",
+    "databaseURL": "https://foxedge-89ef2.firebaseio.com",
+    "projectId": "foxedge-89ef2",
+    "storageBucket": "foxedge-89ef2.appspot.com",
+    "messagingSenderId": "476155174210",
+    "appId": "1:476155174210:web:4d4faf2a314c8c76d03cdb"
+}
+
+# Initialize Firebase
+firebase = pyrebase.initialize_app(firebase_config)
+auth = firebase.auth()
+
+# Helper functions for authentication
+def login_user(email, password):
+    try:
+        user = auth.sign_in_with_email_and_password(email, password)
+        st.session_state['user'] = user
+        st.success(f"Logged in as: {email}")
+    except Exception as e:
+        st.error(f"Login failed: {e}")
+
+def register_user(email, password):
+    try:
+        user = auth.create_user_with_email_and_password(email, password)
+        st.success("User registered successfully!")
+    except Exception as e:
+        st.error(f"Error registering user: {e}")
+
+def logout_user():
+    if 'user' in st.session_state:
+        del st.session_state['user']
+        st.success("Logged out successfully!")
 
 # Set page configuration
 st.set_page_config(
@@ -96,165 +133,138 @@ st.markdown('''
         .button:hover {
             transform: translateY(-5px);
         }
-
-        /* Data Section */
-        .data-section {
-            padding: 4em 1em;
-            text-align: center;
-        }
-
-        .data-section h2 {
-            font-size: 2.5em;
-            margin-bottom: 0.5em;
-        }
-
-        .data-section p {
-            font-size: 1.2em;
-            color: #CCCCCC;
-            margin-bottom: 2em;
-        }
-
-        /* Footer */
-        .footer {
-            text-align: center;
-            padding: 2em 1em;
-            color: #999999;
-            font-size: 0.9em;
-        }
-
-        .footer a {
-            color: var(--accent-color-teal);
-            text-decoration: none;
-        }
-
-        /* Responsive Design */
-        @media (max-width: 768px) {
-            .hero h1 {
-                font-size: 2.5em;
-            }
-
-            .hero p {
-                font-size: 1.2em;
-            }
-        }
     </style>
 ''', unsafe_allow_html=True)
 
-# Main Content
+# Authentication Tabs
+if "user" not in st.session_state:
+    tab1, tab2 = st.tabs(["Login", "Register"])
+    with tab1:
+        st.subheader("Login")
+        email = st.text_input("Email", key="login_email")
+        password = st.text_input("Password", type="password", key="login_password")
+        if st.button("Login"):
+            login_user(email, password)
+    with tab2:
+        st.subheader("Register")
+        email = st.text_input("Register Email", key="register_email")
+        password = st.text_input("Register Password", type="password", key="register_password")
+        if st.button("Register"):
+            register_user(email, password)
+else:
+    st.sidebar.title("Navigation")
+    st.sidebar.success(f"Welcome, {st.session_state['user']['email']}!")
+    if st.sidebar.button("Logout"):
+        logout_user()
+    pages = ["Home", "Key Stats Analysis", "Predictive Analytics"]
+    page = st.sidebar.radio("Go to:", pages)
 
-# Hero Section
-st.markdown('''
-    <div class="hero">
-        <h1>FoxEdge Predictive Analytics</h1>
-        <p>The Future of Sports Betting Confidence</p>
-        <a href="#data-section" class="button">Discover More</a>
-    </div>
-''', unsafe_allow_html=True)
+# Page Logic
+if page == "Home":
+    # Hero Section
+    st.markdown('''
+        <div class="hero">
+            <h1>FoxEdge Predictive Analytics</h1>
+            <p>The Future of Sports Betting Confidence</p>
+            <a href="#data-section" class="button">Discover More</a>
+        </div>
+    ''', unsafe_allow_html=True)  # Properly closed the string
 
-# Data Section
-st.markdown('''
-    <div class="data-section" id="data-section">
-        <!-- Removed the top label as per your request -->
-        <p>Unlock insights with our advanced analytics.</p>
-    </div>
-''', unsafe_allow_html=True)
+    # Data for the Chart
+    categories = ['3+ Toward Favorite', '2.0-2.5 Toward Favorite', '0.5-1.5 Toward Favorite', 
+                  'No Movement', '0.5-1.5 Toward Underdog', '2.0-2.5 Toward Underdog', '3+ Toward Underdog']
+    ats_cover = [42.1, 49.2, 50.3, 48.7, 48.3, 48.8, 48.0]
+    over_under = [49.7, 51.0, 51.6, 53.3, 50.7, 52.1, 53.7]
 
-# Data for the Chart
-categories = ['3+ Toward Favorite', '2.0-2.5 Toward Favorite', '0.5-1.5 Toward Favorite', 
-              'No Movement', '0.5-1.5 Toward Underdog', '2.0-2.5 Toward Underdog', '3+ Toward Underdog']
-ats_cover = [42.1, 49.2, 50.3, 48.7, 48.3, 48.8, 48.0]
-over_under = [49.7, 51.0, 51.6, 53.3, 50.7, 52.1, 53.7]
+    # Simulate Predictive Ranges (Replace with actual predictive data if available)
+    np.random.seed(42)
+    ats_prediction_upper = [x + np.random.uniform(1, 3) for x in ats_cover]
+    ats_prediction_lower = [x - np.random.uniform(1, 3) for x in ats_cover]
+    over_under_upper = [x + np.random.uniform(1, 3) for x in over_under]
+    over_under_lower = [x - np.random.uniform(1, 3) for x in over_under]
 
-# Simulate Predictive Ranges (Replace with actual predictive data if available)
-np.random.seed(42)
-ats_prediction_upper = [x + np.random.uniform(1, 3) for x in ats_cover]
-ats_prediction_lower = [x - np.random.uniform(1, 3) for x in ats_cover]
-over_under_upper = [x + np.random.uniform(1, 3) for x in over_under]
-over_under_lower = [x - np.random.uniform(1, 3) for x in over_under]
+    # Build the Chart
+    fig = go.Figure()
 
-# Build the Chart
-fig = go.Figure()
+    # ATS Cover Line
+    fig.add_trace(go.Scatter(
+        x=categories,
+        y=ats_cover,
+        mode='lines+markers',
+        name='ATS Cover %',
+        line=dict(color='#2CFFAA', width=4),
+        marker=dict(size=10, color='#2CFFAA'),
+        hovertemplate='<b>%{x}</b><br>ATS Cover: %{y:.1f}%<extra></extra>'
+    ))
 
-# ATS Cover Line
-fig.add_trace(go.Scatter(
-    x=categories,
-    y=ats_cover,
-    mode='lines+markers',
-    name='ATS Cover %',
-    line=dict(color='#2CFFAA', width=4),
-    marker=dict(size=10, color='#2CFFAA'),
-    hovertemplate='<b>%{x}</b><br>ATS Cover: %{y:.1f}%<extra></extra>'
-))
+    # ATS Predictive Range
+    fig.add_trace(go.Scatter(
+        x=categories + categories[::-1],
+        y=ats_prediction_upper + ats_prediction_lower[::-1],
+        fill='toself',
+        fillcolor='rgba(44, 255, 170, 0.1)',
+        line=dict(color='rgba(255,255,255,0)'),
+        hoverinfo="skip",
+        showlegend=False
+    ))
 
-# ATS Predictive Range
-fig.add_trace(go.Scatter(
-    x=categories + categories[::-1],
-    y=ats_prediction_upper + ats_prediction_lower[::-1],
-    fill='toself',
-    fillcolor='rgba(44, 255, 170, 0.1)',
-    line=dict(color='rgba(255,255,255,0)'),
-    hoverinfo="skip",
-    showlegend=False
-))
+    # Over/Under Line
+    fig.add_trace(go.Scatter(
+        x=categories,
+        y=over_under,
+        mode='lines+markers',
+        name='Over/Under %',
+        line=dict(color='#A56BFF', width=4, dash='dot'),
+        marker=dict(size=10, color='#A56BFF'),
+        hovertemplate='<b>%{x}</b><br>Over/Under: %{y:.1f}%<extra></extra>'
+    ))
 
-# Over/Under Line
-fig.add_trace(go.Scatter(
-    x=categories,
-    y=over_under,
-    mode='lines+markers',
-    name='Over/Under %',
-    line=dict(color='#A56BFF', width=4, dash='dot'),
-    marker=dict(size=10, color='#A56BFF'),
-    hovertemplate='<b>%{x}</b><br>Over/Under: %{y:.1f}%<extra></extra>'
-))
+    # Over/Under Predictive Range
+    fig.add_trace(go.Scatter(
+        x=categories + categories[::-1],
+        y=over_under_upper + over_under_lower[::-1],
+        fill='toself',
+        fillcolor='rgba(165, 107, 255, 0.1)',
+        line=dict(color='rgba(255,255,255,0)'),
+        hoverinfo="skip",
+        showlegend=False
+    ))
 
-# Over/Under Predictive Range
-fig.add_trace(go.Scatter(
-    x=categories + categories[::-1],
-    y=over_under_upper + over_under_lower[::-1],
-    fill='toself',
-    fillcolor='rgba(165, 107, 255, 0.1)',
-    line=dict(color='rgba(255,255,255,0)'),
-    hoverinfo="skip",
-    showlegend=False
-))
+    # Update Layout
+    fig.update_layout(
+        template='plotly_dark',
+        paper_bgcolor='rgba(0, 0, 0, 0)',
+        plot_bgcolor='rgba(0, 0, 0, 0)',
+        xaxis=dict(
+            title='Line Movement Category',
+            titlefont=dict(size=18, color='#F5F5F5'),
+            tickfont=dict(size=12),
+            showgrid=False,
+        ),
+        yaxis=dict(
+            title='Percentage (%)',
+            titlefont=dict(size=18, color='#F5F5F5'),
+            tickfont=dict(size=12),
+            showgrid=False,
+        ),
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.05,
+            xanchor="center",
+            x=0.5,
+            font=dict(size=12)
+        ),
+        margin=dict(l=20, r=20, t=20, b=20),
+        hovermode='x unified'
+    )
 
-# Update Layout
-fig.update_layout(
-    template='plotly_dark',
-    paper_bgcolor='rgba(0, 0, 0, 0)',
-    plot_bgcolor='rgba(0, 0, 0, 0)',
-    # Removed the title from the chart
-    xaxis=dict(
-        title='Line Movement Category',
-        titlefont=dict(size=18, color='#F5F5F5'),
-        tickfont=dict(size=12),
-        showgrid=False,
-    ),
-    yaxis=dict(
-        title='Percentage (%)',
-        titlefont=dict(size=18, color='#F5F5F5'),
-        tickfont=dict(size=12),
-        showgrid=False,
-    ),
-    legend=dict(
-        orientation="h",
-        yanchor="bottom",
-        y=1.05,
-        xanchor="center",
-        x=0.5,
-        font=dict(size=12)
-    ),
-    margin=dict(l=20, r=20, t=20, b=20),
-    hovermode='x unified'
-)
+    # Display the Chart
+    st.plotly_chart(fig, use_container_width=True)
 
-# Display the Chart
-st.plotly_chart(fig, use_container_width=True)
-
-# Footer
-st.markdown('''
-    <div class="footer">
-        &copy; 2024 <a href="#">FoxEdge</a>. All rights reserved.
-    </div>
-''', unsafe_allow_html=True)
+    # Footer
+    st.markdown('''
+        <div class="footer">
+            &copy; 2024 <a href="#">FoxEdge</a>. All rights reserved.
+        </div>
+    ''', unsafe_allow_html=True)
