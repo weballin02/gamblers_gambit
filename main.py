@@ -2,52 +2,65 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
+import os
 import firebase_admin
-from firebase_admin import credentials, auth
+from firebase_admin import credentials, auth  # Import auth for Firebase operations
 
-# Firebase configuration
-firebase_config = {
-    "apiKey": "AIzaSyAlXXmQF51shNnY0FKoYQa7wRNaM1yXR60",
-    "authDomain": "foxedge-89ef2.firebaseapp.com",
-    "databaseURL": "https://foxedge-89ef2.firebaseio.com",
-    "projectId": "foxedge-89ef2",
-    "storageBucket": "foxedge-89ef2.appspot.com",
-    "messagingSenderId": "476155174210",
-    "appId": "1:476155174210:web:4d4faf2a314c8c76d03cdb"
-}
+# Dynamically construct the path to the JSON file
+base_dir = os.path.dirname(os.path.abspath(__file__))  # Get the directory of the current script
+service_account_path = os.path.join(base_dir, "utils", "serviceAccountKey.json")
 
-
-# Replace '/Users/matthewfox/Downloads/gamblers_gambit-master/utils/serviceAccountKey.json' with your Firebase service account key file
-cred = credentials.Certificate('utils/serviceAccountKey.json')
-firebase_admin.initialize_app(cred)
+# Initialize Firebase Admin SDK
+try:
+    if not firebase_admin._apps:  # Ensure Firebase is initialized only once
+        cred = credentials.Certificate(service_account_path)
+        firebase_admin.initialize_app(cred)
+    print("Firebase initialized successfully!")
+except Exception as e:
+    print(f"Error initializing Firebase: {e}")
 
 # Firebase Authentication Example
-def login_user(email, password):
+def login_user(email):
     try:
-        user = auth.get_user_by_email(email)
+        user = auth.get_user_by_email(email)  # Use Firebase Admin SDK to get user details
         st.success(f"Logged in as: {user.email}")
     except Exception as e:
-        st.error(f"Login failed: {e}")
-# Helper functions for authentication
-def login_user(email, password):
-    try:
-        user = auth.sign_in_with_email_and_password(email, password)
-        st.session_state['user'] = user
-        st.success(f"Logged in as: {email}")
-    except (KeyError, ValueError) as e:  # Parenthesize multiple exceptions
         st.error(f"Login failed: {e}")
 
 def register_user(email, password):
     try:
-        user = auth.create_user_with_email_and_password(email, password)
+        user = auth.create_user(
+            email=email,
+            password=password
+        )
         st.success("User registered successfully!")
-    except (KeyError, ValueError) as e:  # Parenthesize multiple exceptions
+    except Exception as e:
         st.error(f"Error registering user: {e}")
 
 def logout_user():
     if 'user' in st.session_state:
         del st.session_state['user']
         st.success("Logged out successfully!")
+
+# Example Usage (Streamlit UI)
+if "user" not in st.session_state:
+    tab1, tab2 = st.tabs(["Login", "Register"])
+    with tab1:
+        st.subheader("Login")
+        email = st.text_input("Email", key="login_email")
+        if st.button("Login", key="login_button"):
+            login_user(email)
+
+    with tab2:
+        st.subheader("Register")
+        email = st.text_input("Register Email", key="register_email")
+        password = st.text_input("Register Password", type="password", key="register_password")
+        if st.button("Register", key="register_button"):
+            register_user(email, password)
+else:
+    st.sidebar.success(f"Welcome, {st.session_state['user']['email']}!")
+    if st.sidebar.button("Logout", key="logout_button"):
+        logout_user()
 
 
 # Set page configuration
