@@ -72,5 +72,4 @@ joblib
 pytz
 matplotlib
 plotly
-cbbpy.mens_scraper
-multiprocessing
+cbbpy
