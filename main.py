@@ -31,7 +31,25 @@ except Exception as e:
 # Add CSS for branding, animation, and styling
 st.markdown('''
     <style>
-    /* Hero Section with Rotating Animation */
+    /* Hero Section with Moving Box Animation */
+    .hero-container {
+        position: relative;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 300px;
+        overflow: hidden;
+        animation: move-box 10s ease-in-out infinite;
+    }
+
+    @keyframes move-box {
+        0% { transform: translateY(0); }
+        25% { transform: translateY(-10px); }
+        50% { transform: translateY(0); }
+        75% { transform: translateY(10px); }
+        100% { transform: translateY(0); }
+    }
+
     .hero {
         position: relative;
         text-align: center;
@@ -40,7 +58,9 @@ st.markdown('''
         background: linear-gradient(135deg, #2CFFAA, #A56BFF);
         color: #FFFFFF;
         border-radius: 10px;
-        margin-bottom: 2em;
+        width: 80%;
+        max-width: 900px;
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
     }
 
     .hero::before {
@@ -129,10 +149,12 @@ st.markdown('''
 
 # App Homepage with Animated Hero Section
 st.markdown('''
-    <div class="hero">
-        <h1>FoxEdge</h1>
-        <p>Your Ultimate Toolkit for Predictive Betting Insights</p>
-        <a href="#tools" class="cta-button">Get Started</a>
+    <div class="hero-container">
+        <div class="hero">
+            <h1>FoxEdge</h1>
+            <p>Your Ultimate Toolkit for Predictive Betting Insights</p>
+            <a href="#tools" class="cta-button">Get Started</a>
+        </div>
     </div>
 ''', unsafe_allow_html=True)
 
