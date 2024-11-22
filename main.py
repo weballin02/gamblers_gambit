@@ -1,3 +1,6 @@
+# Toggle this flag to show or hide the login functionality
+SHOW_LOGIN = False
+
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -25,83 +28,14 @@ try:
 except Exception as e:
     st.error(f"Error initializing Firebase: {e}")
 
-# Add CSS for the animated box around "FoxEdge"
-st.markdown('''
-    <style>
-/* Hero Section */
-.hero {
-    position: relative;
-    text-align: center;
-    padding: 4em 1em;
-    overflow: hidden;
-}
-
-.hero::before {
-    content: '';
-    position: absolute;
-    top: -50%;
-    left: -50%;
-    width: 200%;
-    height: 200%;
-    background: radial-gradient(circle at center, rgba(255, 255, 255, 0.1), transparent);
-    animation: rotate 30s linear infinite;
-}
-
-@keyframes rotate {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
-}
-
-.hero h1 {
-    font-size: 3.5em;
-    margin-bottom: 0.2em;
-}
-
-.hero p {
-    font-size: 1.5em;
-    margin-bottom: 1em;
-    color: #CCCCCC;
-}
-
-.hero p {
-    font-size: 1.2em;
-    color: #CCCCCC;
-}
-
-.hero .button {
-    display: inline-block;
-    margin-top: 1em;
-    padding: 10px 20px;
-    font-size: 1em;
-    color: #FFFFFF;
-    background: linear-gradient(45deg, #2CFFAA, #A56BFF);
-    text-decoration: none;
-    border-radius: 20px;
-    transition: transform 0.3s ease;
-}
-
-.hero .button:hover {
-    transform: translateY(-5px);
-}
-
-/* Footer Styles */
-.footer {
-    text-align: center;
-    margin-top: 3em;
-    color: #999999;
-}
-
-.footer a {
-    color: #2CFFAA;
-    text-decoration: none;
-}
-    </style>
-''', unsafe_allow_html=True)
-
 # Sidebar Navigation
-if "user" not in st.session_state:
+if SHOW_LOGIN and "user" not in st.session_state:
     pages = ["Home", "Key Stats Analysis", "NCAAB Quantum-Inspired Game Simulations"]
     page = st.sidebar.radio("Go to:", pages, key="public_navigation")
+elif not SHOW_LOGIN:
+    # If login is hidden, everyone can access all pages
+    pages = ["Home", "Key Stats Analysis", "Predictive Analytics", "NCAAB Quantum-Inspired Game Simulations"]
+    page = st.sidebar.radio("Go to:", pages, key="default_navigation")
 else:
     st.sidebar.success(f"Welcome, {st.session_state['user']['email']}!")
     if st.sidebar.button("Logout", key="logout_button"):
@@ -111,7 +45,7 @@ else:
     page = st.sidebar.radio("Go to:", pages, key="private_navigation")
 
 # Authentication Tabs
-if "user" not in st.session_state:
+if SHOW_LOGIN and "user" not in st.session_state:
     tab1, tab2 = st.tabs(["Login", "Register"])
     with tab1:
         st.subheader("Login")
