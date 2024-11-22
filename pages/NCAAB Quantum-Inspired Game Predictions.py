@@ -607,51 +607,56 @@ if run_all_simulations and not upcoming_games_df.empty:
             for _, row in upcoming_games_df.iterrows()
         ]
             
-            # Run simulations in parallel
-            results = run_parallel_simulations(upcoming_games_df, spread_adjustment, num_simulations, team_metrics)
-            
-            for game, result in zip(upcoming_games_df.itertuples(index=False), results):
-                if result:
-                    simulation_results.append({
-                        'Game Label': game._2,  # Adjust based on actual DataFrame columns
-                        'Home Win %': f"{result['win_prob']:.1f}%",
-                        'Away Win %': f"{100 - result['win_prob']:.1f}%",
-                        'Projected Home Score': f"{result['home_score']:.1f}",
-                        'Projected Away Score': f"{result['away_score']:.1f}",
-                        'Projected Total Score': f"{result['total_score']:.1f}",
-                        'Spread': f"{result['spread']:.1f} pts"
-                    })
+       if run_all_simulations and not upcoming_games_df.empty:
+    st.subheader("Simulations for All Upcoming Games")
+    simulation_results = []
+    
+    with st.spinner("Running simulations for all upcoming games..."):
+        # Run simulations in parallel
+        results = run_parallel_simulations(upcoming_games_df, spread_adjustment, num_simulations, team_metrics)
 
-        # Create DataFrame for Results
-        results_df = pd.DataFrame(simulation_results)
-        st.dataframe(results_df)
-        
-        # Detailed Analysis per Game
-        for result in simulation_results:
-            with st.expander(f"Details: {result['Game Label']}"):
-                home, away = result['Game Label'].split(' at ')
-                st.metric("Home Team Win Probability", result['Home Win %'])
-                st.metric("Away Team Win Probability", result['Away Win %'])  # Fixed syntax error here
-                st.metric("Projected Home Score", result['Projected Home Score'])
-                st.metric("Projected Away Score", result['Projected Away Score'])
-                st.metric("Projected Total Score", result['Projected Total Score'])
-                st.metric("Spread", result['Spread'])
-                
-                # Additional Insights (Customize as needed)
-                insights = []
-                
-                # Example insights based on spread and scores
-                spread_val = float(result['Spread'].split()[0])
-                if spread_val > 5:
-                    insights.append(f"{home} has a significant advantage over {away}.")
-                elif spread_val < -5:
-                    insights.append(f"{away} has a significant advantage over {home}.")
-                else:
-                    insights.append("The game is expected to be competitive.")
-                
-                # Display insights
-                for insight in insights:
-                    st.write(f"- {insight}")
+        for game, result in zip(upcoming_games_df.itertuples(index=False), results):
+            if result:
+                simulation_results.append({
+                    'Game Label': game.Game_Label,  # Replace `_2` with the actual column name
+                    'Home Win %': f"{result['win_prob']:.1f}%",
+                    'Away Win %': f"{100 - result['win_prob']:.1f}%",
+                    'Projected Home Score': f"{result['home_score']:.1f}",
+                    'Projected Away Score': f"{result['away_score']:.1f}",
+                    'Projected Total Score': f"{result['total_score']:.1f}",
+                    'Spread': f"{result['spread']:.1f} pts"
+                })
+
+    # Create DataFrame for Results
+    results_df = pd.DataFrame(simulation_results)
+    st.dataframe(results_df)
+
+    # Detailed Analysis per Game
+    for result in simulation_results:
+        with st.expander(f"Details: {result['Game Label']}"):
+            home, away = result['Game Label'].split(' at ')
+            st.metric("Home Team Win Probability", result['Home Win %'])
+            st.metric("Away Team Win Probability", result['Away Win %'])
+            st.metric("Projected Home Score", result['Projected Home Score'])
+            st.metric("Projected Away Score", result['Projected Away Score'])
+            st.metric("Projected Total Score", result['Projected Total Score'])
+            st.metric("Spread", result['Spread'])
+            
+            # Additional Insights
+            insights = []
+
+            # Example insights based on spread and scores
+            spread_val = float(result['Spread'].split()[0])
+            if spread_val > 5:
+                insights.append(f"{home} has a significant advantage over {away}.")
+            elif spread_val < -5:
+                insights.append(f"{away} has a significant advantage over {home}.")
+            else:
+                insights.append("The game is expected to be competitive.")
+            
+            # Display insights
+            for insight in insights:
+                st.write(f"- {insight}")
 
 # ===========================
 # 13. Run the App
