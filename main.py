@@ -36,22 +36,10 @@ st.markdown('''
         text-align: center;
         padding: 4em 1em;
         overflow: hidden;
-    }
-
-    .hero::before {
-        content: '';
-        position: absolute;
-        top: -50%;
-        left: -50%;
-        width: 200%;
-        height: 200%;
-        background: radial-gradient(circle at center, rgba(255, 255, 255, 0.1), transparent);
-        animation: rotate 30s linear infinite;
-    }
-
-    @keyframes rotate {
-        from { transform: rotate(0deg); }
-        to { transform: rotate(360deg); }
+        background: linear-gradient(135deg, #2CFFAA, #A56BFF);
+        color: #FFFFFF;
+        border-radius: 10px;
+        margin-bottom: 2em;
     }
 
     .hero h1 {
@@ -62,7 +50,23 @@ st.markdown('''
     .hero p {
         font-size: 1.5em;
         margin-bottom: 1em;
-        color: #CCCCCC;
+        color: #FFFFFF;
+    }
+
+    .cta-button {
+        display: inline-block;
+        padding: 0.8em 1.5em;
+        font-size: 1.2em;
+        color: #FFFFFF;
+        background-color: #FF5733;
+        border-radius: 5px;
+        text-decoration: none;
+        margin-top: 1em;
+        transition: background-color 0.3s ease;
+    }
+
+    .cta-button:hover {
+        background-color: #C70039;
     }
 
     .footer {
@@ -75,6 +79,38 @@ st.markdown('''
         color: #2CFFAA;
         text-decoration: none;
     }
+
+    .tool-card {
+        background-color: rgba(44, 255, 170, 0.1);
+        border: 1px solid #2CFFAA;
+        border-radius: 8px;
+        padding: 1em;
+        margin-bottom: 1em;
+        text-align: center;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .tool-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 4px 10px rgba(44, 255, 170, 0.3);
+    }
+
+    .tool-card h3 {
+        font-size: 1.5em;
+        color: #2CFFAA;
+        margin-bottom: 0.5em;
+    }
+
+    .tool-card p {
+        font-size: 1em;
+        color: #FFFFFF;
+    }
+
+    .tooltip {
+        font-size: 0.9em;
+        color: #CCCCCC;
+        margin-top: 0.5em;
+    }
     </style>
 ''', unsafe_allow_html=True)
 
@@ -83,6 +119,7 @@ st.markdown('''
     <div class="hero">
         <h1>FoxEdge</h1>
         <p>Your Ultimate Toolkit for Predictive Betting Insights</p>
+        <a href="#tools" class="cta-button">Get Started</a>
     </div>
 ''', unsafe_allow_html=True)
 
@@ -157,30 +194,33 @@ fig.update_layout(
 )
 st.plotly_chart(fig, use_container_width=True)
 
-# Main Dashboard Layout with All Items
+# Explore Tools Section
+st.markdown('<div id="tools"></div>', unsafe_allow_html=True)
 st.subheader("Explore Our Tools and Features")
 tools = [
-    "Key Stats Analysis",
-    "Predictive Analytics",
-    "NCAAB Quantum Simulations",
-    "Upcoming Games",
-    "Betting Trends",
-    "Line Movement Insights",
-    "Odds Comparisons",
-    "Simulation Settings",
-    "Team Statistics"
+    {"name": "Key Stats Analysis", "description": "Uncover the most impactful stats driving game outcomes."},
+    {"name": "Predictive Analytics", "description": "Advanced tools for smarter betting decisions."},
+    {"name": "NCAAB Quantum Simulations", "description": "Quantum-inspired NCAA basketball predictions."},
+    {"name": "Upcoming Games", "description": "Analyze and predict outcomes for upcoming matchups."},
+    {"name": "Betting Trends", "description": "Explore betting patterns and trends."},
+    {"name": "Line Movement Insights", "description": "See how line movements impact predictions."},
+    {"name": "Odds Comparisons", "description": "Compare odds across sportsbooks."},
+    {"name": "Simulation Settings", "description": "Customize simulation parameters for better accuracy."},
+    {"name": "Team Statistics", "description": "Dive deep into team performance stats."}
 ]
 
-# Use a 3-column layout to display all tools
 cols = st.columns(3)
 for idx, tool in enumerate(tools):
     with cols[idx % 3]:
-        st.markdown(f"### {tool}")
-        st.markdown(f"Description for {tool} goes here...")
-        if st.button(f"Explore {tool}", key=f"btn_{tool.replace(' ', '_')}"):
-            st.session_state.page = tool
+        st.markdown(f'''
+            <div class="tool-card">
+                <h3>{tool["name"]}</h3>
+                <p>{tool["description"]}</p>
+                <a href="#!" class="cta-button">Explore</a>
+            </div>
+        ''', unsafe_allow_html=True)
 
-# Conditional Navigation Logic
+# Placeholder Feature Pages
 page = st.session_state.get("page", "Home")
 
 if page == "Key Stats Analysis":
