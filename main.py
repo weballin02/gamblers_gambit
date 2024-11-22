@@ -68,7 +68,7 @@ st.markdown('''
             padding: 6em 1em;
             overflow: hidden;
             background: radial-gradient(circle, var(--color1), var(--color2));
-            animation: expanding-colors 12s infinite ease-in-out;
+            animation: expanding-colors 16s infinite ease-in-out;
             border-radius: 10px;
             box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
         }
@@ -78,14 +78,17 @@ st.markdown('''
             0% {
                 background: radial-gradient(circle, var(--color1) 10%, var(--color2) 40%, black 100%);
             }
-            25% {
-                background: radial-gradient(circle, var(--color2) 30%, black 70%, var(--color3) 100%);
+            20% {
+                background: radial-gradient(circle, var(--color1) 30%, var(--color3) 60%, var(--color2) 100%);
             }
-            50% {
-                background: radial-gradient(circle, var(--color3) 50%, var(--color4) 80%, black 100%);
+            40% {
+                background: radial-gradient(circle, var(--color3) 50%, black 80%, var(--color4) 100%);
             }
-            75% {
-                background: radial-gradient(circle, var(--color4) 70%, black 90%, var(--color1) 100%);
+            60% {
+                background: radial-gradient(circle, var(--color4) 70%, var(--color2) 90%, black 100%);
+            }
+            80% {
+                background: radial-gradient(circle, var(--color2) 40%, var(--color1) 80%, var(--color3) 100%);
             }
             100% {
                 background: radial-gradient(circle, var(--color1) 10%, var(--color2) 40%, black 100%);
