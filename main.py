@@ -157,30 +157,28 @@ fig.update_layout(
 )
 st.plotly_chart(fig, use_container_width=True)
 
-# Main Dashboard Layout
-st.subheader("Explore Our Tools")
-col1, col2, col3 = st.columns(3)
+# Main Dashboard Layout with All Items
+st.subheader("Explore Our Tools and Features")
+tools = [
+    "Key Stats Analysis",
+    "Predictive Analytics",
+    "NCAAB Quantum Simulations",
+    "Upcoming Games",
+    "Betting Trends",
+    "Line Movement Insights",
+    "Odds Comparisons",
+    "Simulation Settings",
+    "Team Statistics"
+]
 
-# Column 1: Key Stats Analysis
-with col1:
-    st.markdown("### Key Stats Analysis")
-    st.markdown("Uncover key statistics to refine your betting strategies.")
-    if st.button("Explore Key Stats"):
-        st.session_state.page = "Key Stats Analysis"
-
-# Column 2: Predictive Analytics
-with col2:
-    st.markdown("### Predictive Analytics")
-    st.markdown("Run advanced simulations and predictive models for upcoming games.")
-    if st.button("Run Simulations"):
-        st.session_state.page = "Predictive Analytics"
-
-# Column 3: Quantum-Inspired Tools
-with col3:
-    st.markdown("### NCAAB Quantum Tools")
-    st.markdown("Leverage quantum-inspired simulations for college basketball predictions.")
-    if st.button("Explore NCAAB Simulations"):
-        st.session_state.page = "NCAAB Quantum-Inspired Game Simulations"
+# Use a 3-column layout to display all tools
+cols = st.columns(3)
+for idx, tool in enumerate(tools):
+    with cols[idx % 3]:
+        st.markdown(f"### {tool}")
+        st.markdown(f"Description for {tool} goes here...")
+        if st.button(f"Explore {tool}", key=f"btn_{tool.replace(' ', '_')}"):
+            st.session_state.page = tool
 
 # Conditional Navigation Logic
 page = st.session_state.get("page", "Home")
@@ -193,10 +191,9 @@ elif page == "Predictive Analytics":
     st.subheader("Predictive Analytics")
     st.markdown("**Feature coming soon...**")
 
-elif page == "NCAAB Quantum-Inspired Game Simulations":
-    # Import and display the content from the NCAAB script
-    import pages.NCAAB_Quantum_Inspired_Game_Simulations as ncaab_simulations
-    ncaab_simulations.display()
+elif page == "NCAAB Quantum Simulations":
+    st.subheader("NCAAB Quantum Simulations")
+    st.markdown("**Feature coming soon...**")
 
 # Add Footer
 st.markdown('''
