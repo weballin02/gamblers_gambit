@@ -31,106 +31,108 @@ except Exception as e:
 # Add CSS for branding, animation, and styling
 st.markdown('''
     <style>
-        /* Import Fonts */
-        @import url('https://fonts.googleapis.com/css2?family=Raleway:wght@400;700&family=Open+Sans:wght@400;600&display=swap');
+    /* Hero Section with Rotating Animation */
+    .hero {
+        position: relative;
+        text-align: center;
+        padding: 4em 1em;
+        overflow: hidden;
+        background: linear-gradient(135deg, #2CFFAA, #A56BFF);
+        color: #FFFFFF;
+        border-radius: 10px;
+        margin-bottom: 2em;
+    }
 
-        /* Root Variables with Updated Colors */
-        :root {
-            --background-gradient-start: #2CFFAA;  /* Teal start */
-            --background-gradient-end: #A56BFF;   /* Purple end */
-            --primary-text-color: #ECECEC;
-            --heading-text-color: #F5F5F5;
-            --accent-color-teal: #FF5733;         /* Accent */
-            --accent-color-purple: #C70039;      /* Accent */
-            --highlight-color: #FFC300;          /* Highlight */
-            --font-heading: 'Raleway', sans-serif;
-            --font-body: 'Open Sans', sans-serif;
-        }
+    .hero::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(circle at center, rgba(255, 255, 255, 0.1), transparent);
+        animation: rotate 30s linear infinite;
+    }
 
-        /* Global Styles */
-        body, html {
-            background: linear-gradient(135deg, var(--background-gradient-start), var(--background-gradient-end));
-            color: var(--primary-text-color);
-            font-family: var(--font-body);
-            margin: 0;
-            padding: 0;
-            overflow-x: hidden;
-        }
+    @keyframes rotate {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
 
-        h1, h2, h3 {
-            font-family: var(--font-heading);
-            color: var(--heading-text-color);
-        }
+    .hero h1 {
+        font-size: 3.5em;
+        margin-bottom: 0.2em;
+    }
 
-        /* Hero Section */
-        .hero {
-            position: relative;
-            text-align: center;
-            padding: 6em 1em;
-            overflow: hidden;
-            background: linear-gradient(135deg, var(--background-gradient-start), var(--background-gradient-end));
-            border-radius: 10px;
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
-        }
+    .hero p {
+        font-size: 1.5em;
+        margin-bottom: 1em;
+        color: #FFFFFF;
+    }
 
-        /* Radial Rotation Animation */
-        .hero::before {
-            content: '';
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: radial-gradient(circle at center, rgba(255, 255, 255, 0.2), transparent);
-            animation: rotate-background 30s linear infinite;
-        }
+    .cta-button {
+        display: inline-block;
+        padding: 0.8em 1.5em;
+        font-size: 1.2em;
+        color: #FFFFFF;
+        background-color: #FF5733;
+        border-radius: 5px;
+        text-decoration: none;
+        margin-top: 1em;
+        transition: background-color 0.3s ease;
+    }
 
-        @keyframes rotate-background {
-            from {
-                transform: rotate(0deg);
-            }
-            to {
-                transform: rotate(360deg);
-            }
-        }
+    .cta-button:hover {
+        background-color: #C70039;
+    }
 
-        /* Text and Buttons */
-        .hero h1 {
-            font-size: 4em;
-            margin-bottom: 0.2em;
-            color: var(--heading-text-color);
-        }
+    /* Footer Styling */
+    .footer {
+        text-align: center;
+        margin-top: 3em;
+        color: #999999;
+    }
 
-        .hero p {
-            font-size: 1.5em;
-            margin-bottom: 1em;
-            color: #CCCCCC;
-        }
+    .footer a {
+        color: #2CFFAA;
+        text-decoration: none;
+    }
 
-        .button {
-            background: linear-gradient(45deg, var(--accent-color-teal), var(--accent-color-purple));
-            border: none;
-            padding: 1em 2em;
-            color: #FFFFFF;
-            font-size: 1.2em;
-            border-radius: 30px;
-            cursor: pointer;
-            transition: transform 0.3s ease;
-            text-decoration: none;
-        }
+    /* Tool Card Styling */
+    .tool-card {
+        background-color: rgba(44, 255, 170, 0.1);
+        border: 1px solid #2CFFAA;
+        border-radius: 8px;
+        padding: 1em;
+        margin-bottom: 1em;
+        text-align: center;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
 
-        .button:hover {
-            transform: translateY(-5px);
-        }
+    .tool-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 4px 10px rgba(44, 255, 170, 0.3);
+    }
+
+    .tool-card h3 {
+        font-size: 1.5em;
+        color: #2CFFAA;
+        margin-bottom: 0.5em;
+    }
+
+    .tool-card p {
+        font-size: 1em;
+        color: #FFFFFF;
+    }
     </style>
 ''', unsafe_allow_html=True)
 
-# Hero Section with Radial Rotation Animation
+# App Homepage with Animated Hero Section
 st.markdown('''
     <div class="hero">
         <h1>FoxEdge</h1>
         <p>Your Ultimate Toolkit for Predictive Betting Insights</p>
-        <a href="#tools" class="button">Get Started</a>
+        <a href="#tools" class="cta-button">Get Started</a>
     </div>
 ''', unsafe_allow_html=True)
 
