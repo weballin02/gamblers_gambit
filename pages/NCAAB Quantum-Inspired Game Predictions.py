@@ -28,11 +28,6 @@ st.set_page_config(
     layout="wide"
 )
 
-# Restrict access if not logged in
-if "user" not in st.session_state:
-    st.error("Access denied. Please log in to view this page.")
-    st.stop()
-
 # ===========================
 # 3. App Title and Description
 # ===========================
