@@ -36,19 +36,20 @@ st.markdown('''
 
         /* Root Variables with Updated Colors */
         :root {
-            --color1: #2CFFAA;  /* Teal */
-            --color2: #A56BFF;  /* Purple */
-            --color3: #FF5733;  /* Red-Orange */
-            --color4: #FFC300;  /* Yellow */
+            --background-gradient-start: #2CFFAA;  /* Teal start */
+            --background-gradient-end: #A56BFF;   /* Purple end */
             --primary-text-color: #ECECEC;
             --heading-text-color: #F5F5F5;
+            --accent-color-teal: #FF5733;         /* Accent */
+            --accent-color-purple: #C70039;      /* Accent */
+            --highlight-color: #FFC300;          /* Highlight */
             --font-heading: 'Raleway', sans-serif;
             --font-body: 'Open Sans', sans-serif;
         }
 
         /* Global Styles */
         body, html {
-            background: linear-gradient(135deg, var(--color1), var(--color2));
+            background: linear-gradient(135deg, var(--background-gradient-start), var(--background-gradient-end));
             color: var(--primary-text-color);
             font-family: var(--font-body);
             margin: 0;
@@ -67,31 +68,29 @@ st.markdown('''
             text-align: center;
             padding: 6em 1em;
             overflow: hidden;
-            background: radial-gradient(circle, var(--color1), var(--color2));
-            animation: expanding-colors 16s infinite ease-in-out;
+            background: linear-gradient(135deg, var(--background-gradient-start), var(--background-gradient-end));
             border-radius: 10px;
             box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
         }
 
-        /* Expanding Color Animation */
-        @keyframes expanding-colors {
-            0% {
-                background: radial-gradient(circle, var(--color1) 10%, var(--color2) 40%, black 100%);
+        /* Radial Rotation Animation */
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle at center, rgba(255, 255, 255, 0.2), transparent);
+            animation: rotate-background 30s linear infinite;
+        }
+
+        @keyframes rotate-background {
+            from {
+                transform: rotate(0deg);
             }
-            20% {
-                background: radial-gradient(circle, var(--color1) 30%, var(--color3) 60%, var(--color2) 100%);
-            }
-            40% {
-                background: radial-gradient(circle, var(--color3) 50%, black 80%, var(--color4) 100%);
-            }
-            60% {
-                background: radial-gradient(circle, var(--color4) 70%, var(--color2) 90%, black 100%);
-            }
-            80% {
-                background: radial-gradient(circle, var(--color2) 40%, var(--color1) 80%, var(--color3) 100%);
-            }
-            100% {
-                background: radial-gradient(circle, var(--color1) 10%, var(--color2) 40%, black 100%);
+            to {
+                transform: rotate(360deg);
             }
         }
 
@@ -109,7 +108,7 @@ st.markdown('''
         }
 
         .button {
-            background: linear-gradient(45deg, var(--color3), var(--color4));
+            background: linear-gradient(45deg, var(--accent-color-teal), var(--accent-color-purple));
             border: none;
             padding: 1em 2em;
             color: #FFFFFF;
@@ -126,7 +125,7 @@ st.markdown('''
     </style>
 ''', unsafe_allow_html=True)
 
-# Hero Section with Expanding Animation
+# Hero Section with Radial Rotation Animation
 st.markdown('''
     <div class="hero">
         <h1>FoxEdge</h1>
