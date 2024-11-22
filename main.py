@@ -28,9 +28,10 @@ try:
 except Exception as e:
     st.error(f"Error initializing Firebase: {e}")
 
-# Add CSS for branding and animation
+# Add CSS for branding, animation, and styling
 st.markdown('''
     <style>
+    /* Hero Section with Rotating Animation */
     .hero {
         position: relative;
         text-align: center;
@@ -40,6 +41,22 @@ st.markdown('''
         color: #FFFFFF;
         border-radius: 10px;
         margin-bottom: 2em;
+    }
+
+    .hero::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(circle at center, rgba(255, 255, 255, 0.1), transparent);
+        animation: rotate 30s linear infinite;
+    }
+
+    @keyframes rotate {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
     }
 
     .hero h1 {
@@ -69,6 +86,7 @@ st.markdown('''
         background-color: #C70039;
     }
 
+    /* Footer Styling */
     .footer {
         text-align: center;
         margin-top: 3em;
@@ -80,6 +98,7 @@ st.markdown('''
         text-decoration: none;
     }
 
+    /* Tool Card Styling */
     .tool-card {
         background-color: rgba(44, 255, 170, 0.1);
         border: 1px solid #2CFFAA;
@@ -105,16 +124,10 @@ st.markdown('''
         font-size: 1em;
         color: #FFFFFF;
     }
-
-    .tooltip {
-        font-size: 0.9em;
-        color: #CCCCCC;
-        margin-top: 0.5em;
-    }
     </style>
 ''', unsafe_allow_html=True)
 
-# App Homepage
+# App Homepage with Animated Hero Section
 st.markdown('''
     <div class="hero">
         <h1>FoxEdge</h1>
