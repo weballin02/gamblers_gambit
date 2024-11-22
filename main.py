@@ -69,10 +69,31 @@ st.markdown('''
             padding: 6em 1em;
             overflow: hidden;
             background: linear-gradient(135deg, var(--background-gradient-start), var(--background-gradient-end));
+            animation: gradient-flip 10s infinite ease-in-out, rotate-background 30s infinite linear;
             border-radius: 10px;
             box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
         }
 
+        /* Gradient Flip Animation */
+        @keyframes gradient-flip {
+            0% {
+                background: linear-gradient(135deg, var(--background-gradient-start), var(--background-gradient-end));
+            }
+            25% {
+                background: linear-gradient(135deg, var(--background-gradient-end), black);
+            }
+            50% {
+                background: linear-gradient(135deg, black, var(--background-gradient-start));
+            }
+            75% {
+                background: linear-gradient(135deg, black, var(--background-gradient-end));
+            }
+            100% {
+                background: linear-gradient(135deg, var(--background-gradient-start), var(--background-gradient-end));
+            }
+        }
+
+        /* Radial Gradient Rotation */
         .hero::before {
             content: '';
             position: absolute;
@@ -81,17 +102,23 @@ st.markdown('''
             width: 200%;
             height: 200%;
             background: radial-gradient(circle at center, rgba(255, 255, 255, 0.2), transparent);
-            animation: rotate 30s linear infinite;
+            animation: rotate-background 30s linear infinite;
         }
 
-        @keyframes rotate {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
+        @keyframes rotate-background {
+            from {
+                transform: rotate(0deg);
+            }
+            to {
+                transform: rotate(360deg);
+            }
         }
 
+        /* Text and Buttons */
         .hero h1 {
             font-size: 4em;
             margin-bottom: 0.2em;
+            color: var(--heading-text-color);
         }
 
         .hero p {
@@ -100,7 +127,6 @@ st.markdown('''
             color: #CCCCCC;
         }
 
-        /* Buttons */
         .button {
             background: linear-gradient(45deg, var(--accent-color-teal), var(--accent-color-purple));
             border: none;
