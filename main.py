@@ -31,14 +31,13 @@ except Exception as e:
 # Add CSS for branding, animation, and styling
 st.markdown('''
     <style>
-    /* Hero Section with Moving Box Animation */
+    /* Hero Section with Moving Box and Rotating Radial Gradient */
     .hero-container {
         position: relative;
         display: flex;
         justify-content: center;
         align-items: center;
         height: 300px;
-        overflow: hidden;
         animation: move-box 10s ease-in-out infinite;
     }
 
