@@ -68,49 +68,22 @@ st.markdown('''
             text-align: center;
             padding: 6em 1em;
             overflow: hidden;
-            background: linear-gradient(135deg, var(--background-gradient-start), var(--background-gradient-end));
-            animation: gradient-flip 10s infinite ease-in-out, rotate-background 30s infinite linear;
+            background: radial-gradient(circle, var(--background-gradient-start), var(--background-gradient-end));
+            animation: gradient-pulse 8s infinite ease-in-out;
             border-radius: 10px;
             box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
         }
 
-        /* Gradient Flip Animation */
-        @keyframes gradient-flip {
+        /* Gradient Pulse Animation */
+        @keyframes gradient-pulse {
             0% {
-                background: linear-gradient(135deg, var(--background-gradient-start), var(--background-gradient-end));
-            }
-            25% {
-                background: linear-gradient(135deg, var(--background-gradient-end), black);
+                background: radial-gradient(circle, var(--background-gradient-start), var(--background-gradient-end));
             }
             50% {
-                background: linear-gradient(135deg, black, var(--background-gradient-start));
-            }
-            75% {
-                background: linear-gradient(135deg, black, var(--background-gradient-end));
+                background: radial-gradient(circle, var(--background-gradient-end), var(--background-gradient-start));
             }
             100% {
-                background: linear-gradient(135deg, var(--background-gradient-start), var(--background-gradient-end));
-            }
-        }
-
-        /* Radial Gradient Rotation */
-        .hero::before {
-            content: '';
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: radial-gradient(circle at center, rgba(255, 255, 255, 0.2), transparent);
-            animation: rotate-background 30s linear infinite;
-        }
-
-        @keyframes rotate-background {
-            from {
-                transform: rotate(0deg);
-            }
-            to {
-                transform: rotate(360deg);
+                background: radial-gradient(circle, var(--background-gradient-start), var(--background-gradient-end));
             }
         }
 
@@ -153,6 +126,7 @@ st.markdown('''
         <a href="#tools" class="button">Get Started</a>
     </div>
 ''', unsafe_allow_html=True)
+
 
 # Chart Section
 st.subheader("Betting Line Movement Analysis")
