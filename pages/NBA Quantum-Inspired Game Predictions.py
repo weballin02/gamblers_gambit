@@ -13,7 +13,7 @@ warnings.filterwarnings('ignore')
 
 # Streamlit App Title and Configuration
 st.set_page_config(
-    page_title="NBA Quantum Predictions",
+    page_title="NBA Quantum-Inspired Simulations",
     page_icon="🔮",
     layout="wide",
     initial_sidebar_state="collapsed",
@@ -435,44 +435,43 @@ if 'nba_team_stats' not in st.session_state:
     game_logs = load_nba_game_logs(season=current_season)
     st.session_state.nba_team_stats = calculate_team_stats(game_logs)
 
-# Sidebar for Controls
-with st.sidebar:
-    st.header("Simulation Controls")
-    upcoming_games = get_upcoming_games()
+# Main Area for Controls
+st.header("Simulation Controls")
+upcoming_games = get_upcoming_games()
+
+if not upcoming_games.empty:
+    game_options = [
+        f"{row['Game Label']} on {row['Game ID']}"
+        for _, row in upcoming_games.iterrows()
+    ]
+    selected_game = st.selectbox("Select Game", game_options)
     
-    if not upcoming_games.empty:
-        game_options = [
-            f"{row['Game Label']} on {row['Game ID']}"
-            for _, row in upcoming_games.iterrows()
-        ]
-        selected_game = st.selectbox("Select Game", game_options)
-        
-        # Extract Game ID to fetch the corresponding row
-        selected_game_id = selected_game.split(' on ')[1]
-        selected_game_row = upcoming_games[upcoming_games['Game ID'] == selected_game_id].iloc[0]
-        home_team = selected_game_row['Home Team Full']
-        away_team = selected_game_row['Away Team Full']
-        
-        spread_adjustment = st.slider(
-            "Home Team Spread Adjustment",
-            -10.0, 10.0, 0.0, step=0.5
-        )
-        
-        num_simulations = st.selectbox(
-            "Number of Simulations",
-            [1000, 10000, 100000]
-        )
-        
-        run_simulation = st.button("Run Simulation")
-        predict_all = st.button("Predict All Upcoming Games")
+    # Extract Game ID to fetch the corresponding row
+    selected_game_id = selected_game.split(' on ')[1]
+    selected_game_row = upcoming_games[upcoming_games['Game ID'] == selected_game_id].iloc[0]
+    home_team = selected_game_row['Home Team Full']
+    away_team = selected_game_row['Away Team Full']
     
-    # Button to refresh data, update models, and predict
-    if st.button("Refresh Data & Predict"):
-        with st.spinner("Refreshing data and updating models..."):
-            current_season = "2024-25"
-            game_logs = load_nba_game_logs(season=current_season)
-            st.session_state.nba_team_stats = calculate_team_stats(game_logs)
-        st.success("Data refreshed and models updated.")
+    spread_adjustment = st.slider(
+        "Home Team Spread Adjustment",
+        -30.0, 30.0, 0.0, step=0.5
+    )
+    
+    num_simulations = st.selectbox(
+        "Number of Simulations",
+        [1000, 10000, 100000, 1000000]
+    )
+    
+    run_simulation = st.button("Run Simulation")
+    predict_all = st.button("Predict All Upcoming Games")
+
+# Button to refresh data, update models, and predict
+if st.button("Refresh Data & Predict"):
+    with st.spinner("Refreshing data and updating models..."):
+        current_season = "2024-25"
+        game_logs = load_nba_game_logs(season=current_season)
+        st.session_state.nba_team_stats = calculate_team_stats(game_logs)
+    st.success("Data refreshed and models updated.")
 
 # Run Simulation Buttons
 if 'nba_team_stats' in st.session_state:
