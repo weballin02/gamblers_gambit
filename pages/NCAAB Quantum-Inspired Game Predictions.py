@@ -23,7 +23,7 @@ warnings.filterwarnings('ignore')
 # ===========================
 
 st.set_page_config(
-    page_title="NCAAB Basketball Predictor",
+    page_title="NCAAB Basketball Quantum-Inspired Simulator",
     page_icon="🏀",
     layout="wide"
 )
@@ -32,7 +32,7 @@ st.set_page_config(
 # 3. App Title and Description
 # ===========================
 
-st.title("NCAAB Quantum-Inspired Game Predictions")
+st.title("NCAAB Basketball Quantum-Inspired Simulator")
 # Removed the Features section as per user request
 
 # ===========================
@@ -512,99 +512,100 @@ def main():
     # Fetch Upcoming Games
     upcoming_games_df = fetch_upcoming_games()
 
-    # Sidebar for Inputs
-    with st.sidebar:
-        st.header("Game Settings")
-        if not upcoming_games_df.empty:
-            # Sort games alphabetically for better navigation
-            game_options = sorted(upcoming_games_df['Game Label'].tolist())
-            selected_game = st.selectbox("Select Game", options=["Select a Game"] + game_options)
+# Game Settings Section
+st.header("Game Settings")
+if not upcoming_games_df.empty:
+    # Sort games alphabetically for better navigation
+    game_options = sorted(upcoming_games_df['Game Label'].tolist())
+    selected_game = st.selectbox("Select Game", options=["Select a Game"] + game_options)
 
-            if selected_game != "Select a Game":
-                selected_game_info = upcoming_games_df[upcoming_games_df['Game Label'] == selected_game].iloc[0]
-                home_team = selected_game_info['Home Team']
-                away_team = selected_game_info['Away Team']
+    if selected_game != "Select a Game":
+        selected_game_info = upcoming_games_df[upcoming_games_df['Game Label'] == selected_game].iloc[0]
+        home_team = selected_game_info['Home Team']
+        away_team = selected_game_info['Away Team']
+    else:
+        home_team = None
+        away_team = None
+else:
+    st.info("No upcoming games to display.")
+    home_team = None
+    away_team = None
+
+# Simulation Settings Section
+st.header("Simulation Settings")
+spread_adjustment = st.slider(
+    "Home Team Spread Adjustment",
+    -30.0, 30.0, 0.0, step=0.5
+)
+num_simulations = st.selectbox(
+    "Number of Simulations",
+    [1000, 10000, 100000, 1000000],
+    index=1
+)
+
+# Simulation Actions Section
+st.header("Simulation Actions")
+run_simulation = st.button("Run Simulation for Selected Game")
+run_all_simulations = st.button("Run Simulations for All Upcoming Games")
+
+# Display and Run Simulation for Selected Game
+if run_simulation and home_team and away_team:
+    st.subheader(f"Simulation: {away_team} at {home_team}")
+    
+    # Display Team Statistics
+    col1, col2 = st.columns(2)
+    with col1:
+        display_team_stats(home_team, team_metrics[home_team], is_home=True)
+    with col2:
+        display_team_stats(away_team, team_metrics[away_team], is_home=False)
+    
+    # Run Simulation
+    with st.spinner("Running simulation..."):
+        results = simulate_game(
+            home_team=home_team,
+            away_team=away_team,
+            spread=spread_adjustment,
+            num_sims=num_simulations,
+            team_metrics=team_metrics
+        )
+        if results:
+            st.divider()
+            display_prediction(results, home_team, away_team)
+            
+            # Analysis based on actual performance metrics
+            st.subheader("Game Analysis")
+            
+            insights = []
+            
+            # Scoring trend analysis
+            if abs(results['home_score'] - team_metrics[home_team]['points_per_game']) > 5:
+                insights.append(f"Model projects significant deviation from {home_team}'s average scoring.")
+            if abs(results['away_score'] - team_metrics[away_team]['points_per_game']) > 5:
+                insights.append(f"Model projects significant deviation from {away_team}'s average scoring.")
+            
+            # Matchup analysis
+            if results['win_prob'] > 75:
+                insights.append(f"Strong favorite: {home_team} projected for a convincing home win.")
+            elif results['win_prob'] < 25:
+                insights.append(f"Strong favorite: {away_team} projected for a road victory.")
             else:
-                home_team = None
-                away_team = None
-        else:
-            st.info("No upcoming games to display.")
-            home_team = None
-            away_team = None
+                insights.append("Competitive matchup projected with no clear favorite.")
+            
+            # Display insights
+            for insight in insights:
+                st.write(f"- {insight}")
 
-        st.header("Simulation Settings")
-        spread_adjustment = st.slider(
-            "Home Team Spread Adjustment",
-            -30.0, 30.0, 0.0, step=0.5
-        )
-        num_simulations = st.selectbox(
-            "Number of Simulations",
-            [1000, 10000, 100000, 1000000],
-            index=1
-        )
-        
-        st.header("Simulation Actions")
-        run_simulation = st.button("Run Simulation for Selected Game")
-        run_all_simulations = st.button("Run Simulations for All Upcoming Games")
-
-    # Display and Run Simulation for Selected Game
-    if run_simulation and home_team and away_team:
-        st.subheader(f"Simulation: {away_team} at {home_team}")
-        
-        # Display Team Statistics
-        col1, col2 = st.columns(2)
-        with col1:
-            display_team_stats(home_team, team_metrics[home_team], is_home=True)
-        with col2:
-            display_team_stats(away_team, team_metrics[away_team], is_home=False)
-        
-        # Run Simulation
-        with st.spinner("Running simulation..."):
-            results = simulate_game(
-                home_team=home_team,
-                away_team=away_team,
-                spread=spread_adjustment,
-                num_sims=num_simulations,
-                team_metrics=team_metrics
-            )
-            if results:
-                st.divider()
-                display_prediction(results, home_team, away_team)
-                
-                # Analysis based on actual performance metrics
-                st.subheader("Game Analysis")
-                
-                insights = []
-                
-                # Scoring trend analysis
-                if abs(results['home_score'] - team_metrics[home_team]['points_per_game']) > 5:
-                    insights.append(f"Model projects significant deviation from {home_team}'s average scoring.")
-                if abs(results['away_score'] - team_metrics[away_team]['points_per_game']) > 5:
-                    insights.append(f"Model projects significant deviation from {away_team}'s average scoring.")
-                
-                # Matchup analysis
-                if results['win_prob'] > 75:
-                    insights.append(f"Strong favorite: {home_team} projected for a convincing home win.")
-                elif results['win_prob'] < 25:
-                    insights.append(f"Strong favorite: {away_team} projected for a road victory.")
-                else:
-                    insights.append("Competitive matchup projected with no clear favorite.")
-                
-                # Display insights
-                for insight in insights:
-                    st.write(f"- {insight}")
-
-    # Display and Run Simulations for All Upcoming Games
-    if run_all_simulations and not upcoming_games_df.empty:
-        st.subheader("Simulations for All Upcoming Games")
-        simulation_results = []
-        
-        with st.spinner("Running simulations for all upcoming games..."):
-            # Prepare parameters for parallel simulation
-            game_params = [
-                (row['Home Team'], row['Away Team'], spread_adjustment, num_simulations, team_metrics)
-                for _, row in upcoming_games_df.iterrows()
-            ]
+# Display and Run Simulations for All Upcoming Games
+if run_all_simulations and not upcoming_games_df.empty:
+    st.subheader("Simulations for All Upcoming Games")
+    simulation_results = []
+    
+    with st.spinner("Running simulations for all upcoming games..."):
+        # Prepare parameters for parallel simulation
+        game_params = [
+            (row['Home Team'], row['Away Team'], spread_adjustment, num_simulations, team_metrics)
+            for _, row in upcoming_games_df.iterrows()
+        ]
             
             # Run simulations in parallel
             results = run_parallel_simulations(upcoming_games_df, spread_adjustment, num_simulations, team_metrics)
