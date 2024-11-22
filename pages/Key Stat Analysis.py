@@ -14,17 +14,17 @@ from utils.database import save_model, get_saved_models, load_model
 from utils.sports_data import fetch_sport_data
 
 # Title of the page
-st.title("Key Stat Analysis")
+st.title("Key Stat Correlation Analysis")
 st.markdown("Uncover which stats impact game outcomes the most. Upload your data or use built-in options to analyze stat correlations and feature importance. The visual heatmaps and weighted formulas help you understand what drives performance.")
 
 # Sidebar for inputs
-st.sidebar.header("Analysis Settings")
+st.header("Analysis Settings")
 
 # Sport Selector
-sport = st.sidebar.selectbox("Select Sport", options=["NFL", "NBA"])
+sport = st.selectbox("Select Sport", options=["NFL", "NBA"])
 
 # Select Season Year(s)
-season_year = st.sidebar.number_input("Select Season Year", min_value=2000, max_value=2100, value=2023)
+season_year = st.number_input("Select Season Year", min_value=2000, max_value=2100, value=2024)
 
 # File upload
 uploaded_file = st.file_uploader("Upload your CSV file", type=["csv", "xlsx"])
@@ -39,7 +39,7 @@ if uploaded_file:
     st.write("Data Preview:")
     st.write(df.head())
 else:
-    fetch_data_option = st.sidebar.checkbox("Fetch Data Using Selected Sport", value=False)
+    fetch_data_option = st.checkbox("Fetch Data Using Selected Sport", value=False)
     if fetch_data_option:
         try:
             df = fetch_sport_data(sport, [season_year])
