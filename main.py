@@ -1,4 +1,13 @@
-        st.success("Logged out successfully!")
+# Toggle this flag to show or hide the login functionality
+SHOW_LOGIN = False
+
+import streamlit as st
+import pandas as pd
+import numpy as np
+import plotly.graph_objects as go
+import os
+import firebase_admin
+from firebase_admin import credentials
 
 # Set page configuration
 st.set_page_config(
@@ -8,21 +17,32 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-# Synesthetic Interface CSS
+# Firebase Admin Initialization
+base_dir = os.path.dirname(os.path.abspath(__file__))
+service_account_path = os.path.join(base_dir, "utils", "serviceAccountKey.json")
+
+try:
+    cred = credentials.Certificate(service_account_path)
+    if not firebase_admin._apps:
+        firebase_admin.initialize_app(cred)
+except Exception as e:
+    st.error(f"Error initializing Firebase: {e}")
+
+# Add CSS for branding, animation, and styling
 st.markdown('''
     <style>
         /* Import Fonts */
         @import url('https://fonts.googleapis.com/css2?family=Raleway:wght@400;700&family=Open+Sans:wght@400;600&display=swap');
 
-        /* Root Variables */
+        /* Root Variables with Updated Colors */
         :root {
-            --background-gradient-start: #0F2027;
-            --background-gradient-end: #203A43;
+            --background-gradient-start: #2CFFAA;  /* Teal start */
+            --background-gradient-end: #A56BFF;   /* Purple end */
             --primary-text-color: #ECECEC;
             --heading-text-color: #F5F5F5;
-            --accent-color-teal: #2CFFAA;
-            --accent-color-purple: #A56BFF;
-            --highlight-color: #FF6B6B;
+            --accent-color-teal: #FF5733;         /* Accent */
+            --accent-color-purple: #C70039;      /* Accent */
+            --highlight-color: #FFC300;          /* Highlight */
             --font-heading: 'Raleway', sans-serif;
             --font-body: 'Open Sans', sans-serif;
         }
@@ -48,8 +68,12 @@ st.markdown('''
             text-align: center;
             padding: 6em 1em;
             overflow: hidden;
+            background: linear-gradient(135deg, var(--background-gradient-start), var(--background-gradient-end));
+            border-radius: 10px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
         }
 
+        /* Radial Rotation Animation */
         .hero::before {
             content: '';
             position: absolute;
@@ -57,18 +81,24 @@ st.markdown('''
             left: -50%;
             width: 200%;
             height: 200%;
-            background: radial-gradient(circle at center, rgba(255, 255, 255, 0.1), transparent);
-            animation: rotate 30s linear infinite;
+            background: radial-gradient(circle at center, rgba(255, 255, 255, 0.2), transparent);
+            animation: rotate-background 30s linear infinite;
         }
 
-        @keyframes rotate {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
+        @keyframes rotate-background {
+            from {
+                transform: rotate(0deg);
+            }
+            to {
+                transform: rotate(360deg);
+            }
         }
 
+        /* Text and Buttons */
         .hero h1 {
             font-size: 4em;
             margin-bottom: 0.2em;
+            color: var(--heading-text-color);
         }
 
         .hero p {
@@ -77,7 +107,6 @@ st.markdown('''
             color: #CCCCCC;
         }
 
-        /* Buttons */
         .button {
             background: linear-gradient(45deg, var(--accent-color-teal), var(--accent-color-purple));
             border: none;
@@ -96,39 +125,14 @@ st.markdown('''
     </style>
 ''', unsafe_allow_html=True)
 
-# Authentication Tabs
-if "user" not in st.session_state:
-    tab1, tab2 = st.tabs(["Login", "Register"])
-    with tab1:
-        st.subheader("Login")
-        email = st.text_input("Email", key="login_email")
-        password = st.text_input("Password", type="password", key="login_password")
-        if st.button("Login"):
-            login_user(email, password)
-    with tab2:
-        st.subheader("Register")
-        email = st.text_input("Register Email", key="register_email")
-        password = st.text_input("Register Password", type="password", key="register_password")
-        if st.button("Register"):
-            register_user(email, password)
-else:
-    st.sidebar.title("Navigation")
-    st.sidebar.success(f"Welcome, {st.session_state['user']['email']}!")
-    if st.sidebar.button("Logout"):
-        logout_user()
-    pages = ["Home", "Key Stats Analysis", "Predictive Analytics"]
-    page = st.sidebar.radio("Go to:", pages)
-
-# Page Logic
-if page == "Home":
-    # Hero Section
-    st.markdown('''
-        <div class="hero">
-            <h1>FoxEdge Predictive Analytics</h1>
-            <p>The Future of Sports Betting Confidence</p>
-            <a href="#data-section" class="button">Discover More</a>
-        </div>
-    ''', unsafe_allow_html=True)  # Properly closed the string
+# Hero Section with Radial Rotation Animation
+st.markdown('''
+    <div class="hero">
+        <h1>FoxEdge</h1>
+        <p>Your Ultimate Toolkit for Predictive Betting Insights</p>
+        <a href="#tools" class="button">Get Started</a>
+    </div>
+''', unsafe_allow_html=True)
 
 
 # Chart Section
