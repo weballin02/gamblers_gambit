@@ -136,7 +136,6 @@ st.markdown('''
     </div>
 ''', unsafe_allow_html=True)
 
-
 # Chart Section
 st.subheader("Betting Line Movement Analysis")
 categories = ['3+ Toward Favorite', '2.0-2.5 Toward Favorite', '0.5-1.5 Toward Favorite', 
@@ -215,6 +214,7 @@ tools = [
     {"name": "Key Stats Analysis", "description": "Uncover the most impactful stats driving game outcomes."},
     {"name": "Predictive Analytics", "description": "Advanced tools for smarter betting decisions."},
     {"name": "NCAAB Quantum Simulations", "description": "Quantum-inspired NCAA basketball predictions."},
+    {"name": "FoxEdge NFL", "description": "NFL-specific predictive analytics and tools."},
     {"name": "Upcoming Games", "description": "Analyze and predict outcomes for upcoming matchups."},
     {"name": "Betting Trends", "description": "Explore betting patterns and trends."},
     {"name": "Line Movement Insights", "description": "See how line movements impact predictions."},
@@ -247,6 +247,12 @@ elif page == "Predictive Analytics":
 
 elif page == "NCAAB Quantum Simulations":
     st.subheader("NCAAB Quantum Simulations")
+    st.markdown("**Feature coming soon...**")
+
+elif page == "FoxEdge NFL":
+    st.subheader("FoxEdge NFL")
+    st.markdown("Welcome to the FoxEdge NFL analytics page. This section will feature NFL-specific predictive analytics, stats breakdowns, and tools for smarter betting on NFL games.")
+    # Add additional content or widgets for FoxEdge NFL page
     st.markdown("**Feature coming soon...**")
 
 # Add Footer
