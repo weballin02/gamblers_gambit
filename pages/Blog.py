@@ -16,7 +16,7 @@ TRASH_DIR.mkdir(parents=True, exist_ok=True)
 
 # Set Streamlit page configuration
 st.set_page_config(
-    page_title="Gambler's Gambit",
+    page_title="Streamlit Blog Manager",
     page_icon="📝",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -64,7 +64,7 @@ def view_blog_posts():
     st.header("📖 Explore Gambler's Gambit")
     posts = list_posts()
     if not posts:
-        st.info("No posts available.")
+        st.info("No blog posts available.")
         return
     
     # Search Functionality
@@ -79,26 +79,26 @@ def view_blog_posts():
     st.markdown("""
         <style>
         .post-card {
-            background-color: #f9f9f9;
+            background-color: #1E1E1E;
             border-radius: 10px;
-            padding: 15px;
+            padding: 20px;
             margin-bottom: 20px;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            color: #FFF;
         }
         .post-title {
-            font-size: 1.5em;
-            color: #333333;
+            font-size: 1.8em;
+            font-weight: bold;
             margin-bottom: 10px;
         }
         .post-meta {
             font-size: 0.9em;
-            color: #666666;
+            color: #AAAAAA;
             margin-bottom: 15px;
         }
         .post-content {
             font-size: 1em;
             line-height: 1.6;
-            color: #444444;
         }
         .post-image {
             max-width: 100%;
@@ -143,9 +143,10 @@ def view_blog_posts():
                 <div class="post-content">{content_preview}</div>
                 <a href="#" class="read-more" onClick="document.getElementById('{post}').style.display='block'; return false;">Read More</a>
             </div>
-            <div id="{post}" style="display:none;">
+            <div id="{post}" style="display:none; margin-top: 20px;">
                 <div class="post-card">
                     <div class="post-title">{post_title}</div>
+                    <div class="post-meta">Published on: {pub_date}</div>
                     <div class="post-content">{content}</div>
                 </div>
             </div>
