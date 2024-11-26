@@ -247,7 +247,7 @@ def view_blog_posts():
             # Capture the "Read More" click using Streamlit's button
             if st.button("Read More", key=read_more_key):
                 st.session_state.selected_post = post
-                st.experimental_rerun()  # Immediately rerun to display the post
+                st.rerun()  # Immediately rerun to display the post
 
     st.markdown("---")
     st.markdown("""
@@ -260,7 +260,7 @@ def display_full_post(post_name):
     st.subheader("🔙 Back to Posts")
     if st.button("← Back"):
         st.session_state.selected_post = None
-        st.experimental_rerun()
+        st.rerun()
 
     post_title = post_name.replace('.md', '').replace('_', ' ').title()
     post_file = POSTS_DIR / post_name
@@ -325,7 +325,7 @@ def create_blog_post():
                         else:
                             st.success(f"✅ Published post: **{title}** (No image uploaded)")
 
-                        st.experimental_rerun()
+                        st.rerun()
                 else:
                     st.warning("⚠️ Please provide both a title and content for the post.")
 
@@ -372,7 +372,7 @@ def create_blog_post():
                         else:
                             st.success(f"✅ Published post: **{title}** (No image uploaded)")
 
-                        st.experimental_rerun()
+                        st.rerun()
                 else:
                     st.warning("⚠️ Please upload a PDF or HTML file to create a post.")
 
@@ -409,7 +409,7 @@ def delete_blog_posts():
                         st.success(f"✅ Moved to trash: **{post.replace('.md', '').replace('_', ' ').title()}**")
                     else:
                         st.error(f"❌ Failed to move: **{post}**")
-                st.experimental_rerun()
+                st.rerun()
             else:
                 st.warning("⚠️ No posts selected for deletion.")
         else:
