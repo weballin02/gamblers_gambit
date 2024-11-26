@@ -2,14 +2,22 @@ import os
 import streamlit as st
 from pathlib import Path
 from PIL import Image
+import shutil
+import datetime
 
 # Define directories
 POSTS_DIR = Path('posts')
 TRASH_DIR = Path('trash')
+IMAGES_DIR = Path('images')  # New directory for images
+
+# Ensure directories exist
+for directory in [POSTS_DIR, TRASH_DIR, IMAGES_DIR]:
+    if not directory.exists():
+        directory.mkdir(parents=True)
 
 # Set Streamlit page configuration
 st.set_page_config(
-    page_title="Gambler's Gambit",
+    page_title="Streamlit Blog Manager",
     page_icon="📝",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -42,8 +50,11 @@ def list_posts():
 
 def delete_post(post_name):
     post_path = POSTS_DIR / post_name
+    image_path = IMAGES_DIR / f"{post_path.stem}.png"  # Assuming PNG; adjust as needed
     if post_path.exists():
         os.remove(post_path)
+        if image_path.exists():
+            os.remove(image_path)
         return True
     else:
         return False
@@ -52,19 +63,24 @@ def move_to_trash(post_name):
     if not TRASH_DIR.exists():
         TRASH_DIR.mkdir(parents=True)
     post_path = POSTS_DIR / post_name
-    trash_path = TRASH_DIR / post_name
+    trash_post_path = TRASH_DIR / post_name
+    image_path = IMAGES_DIR / f"{post_path.stem}.png"  # Assuming PNG; adjust as needed
+    trash_image_path = TRASH_DIR / f"{post_path.stem}.png"
+
     if post_path.exists():
-        post_path.rename(trash_path)
+        post_path.rename(trash_post_path)
+        if image_path.exists():
+            image_path.rename(trash_image_path)
         return True
     else:
         return False
 
 # Streamlit Interface Functions
 def view_blog_posts():
-    st.header("📖 Explore Gambler's Gambit")
+    st.header("📖 Explore Our Blog")
     posts = list_posts()
     if not posts:
-        st.info("No posts available.")
+        st.info("No blog posts available.")
         return
     
     # Search Functionality
@@ -82,21 +98,33 @@ def view_blog_posts():
     st.markdown("""
         <style>
         .post-card {
+            display: flex;
             background-color: #f9f9f9;
             border-radius: 10px;
             padding: 15px;
             margin-bottom: 20px;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            align-items: center;
+        }
+        .thumbnail {
+            width: 150px;
+            height: 100px;
+            object-fit: cover;
+            border-radius: 5px;
+            margin-right: 20px;
+        }
+        .post-details {
+            flex: 1;
         }
         .post-title {
             font-size: 1.5em;
             color: #333333;
-            margin-bottom: 10px;
+            margin-bottom: 5px;
         }
         .post-meta {
             font-size: 0.9em;
             color: #666666;
-            margin-bottom: 15px;
+            margin-bottom: 10px;
         }
         .post-content {
             font-size: 1em;
@@ -126,13 +154,40 @@ def view_blog_posts():
             content = file.read()
             content_preview = content[:200] + "..." if len(content) > 200 else content
         
+        # Check for associated image
+        image_file = IMAGES_DIR / f"{post_file.stem}.png"  # Assuming PNG; adjust as needed
+        if image_file.exists():
+            image_path = image_file
+        else:
+            image_path = None  # Placeholder or default image can be set here
+
+        # Convert image to base64 for embedding
+        if image_path:
+            img = Image.open(image_path)
+            img.thumbnail((150, 100))
+            from io import BytesIO
+            buf = BytesIO()
+            img.save(buf, format="PNG")
+            img_bytes = buf.getvalue()
+            import base64
+            encoded = base64.b64encode(img_bytes).decode()
+            img_html = f'<img src="data:image/png;base64,{encoded}" class="thumbnail"/>'
+        else:
+            img_html = '<div style="width:150px; height:100px; background-color:#cccccc; border-radius:5px; margin-right:20px;"></div>'
+
+        # Format publication date
+        pub_date = datetime.datetime.fromtimestamp(post_file.stat().st_mtime).strftime('%Y-%m-%d %H:%M')
+
         # Display post in a card
         st.markdown(f"""
             <div class="post-card">
-                <div class="post-title">{post_title}</div>
-                <div class="post-meta">Published on: {post_file.stat().st_mtime}</div>
-                <div class="post-content">{content_preview}</div>
-                <a href="#" class="read-more">Read More</a>
+                {img_html}
+                <div class="post-details">
+                    <div class="post-title">{post_title}</div>
+                    <div class="post-meta">Published on: {pub_date}</div>
+                    <div class="post-content">{content_preview}</div>
+                    <a href="#" class="read-more">Read More</a>
+                </div>
             </div>
         """, unsafe_allow_html=True)
 
@@ -148,18 +203,35 @@ def create_blog_post():
     with st.form(key='create_post_form'):
         title = st.text_input("🖊️ Post Title", placeholder="Enter the title of your post")
         content = st.text_area("📝 Content", height=300, placeholder="Write your post content here...")
+        image = st.file_uploader("🖼️ Upload Thumbnail Image", type=["png", "jpg", "jpeg"], accept_multiple_files=False)
         submitted = st.form_submit_button("📤 Publish")
         
         if submitted:
             if title and content:
                 filename = f"{title.replace(' ', '_').lower()}.md"
                 filepath = POSTS_DIR / filename
+                image_filename = f"{filepath.stem}.png"  # Saving all images as PNG for consistency
+                image_path = IMAGES_DIR / image_filename
+
                 if filepath.exists():
                     st.error("❌ A post with this title already exists. Please choose a different title.")
                 else:
+                    # Save the markdown file
                     with open(filepath, 'w') as file:
                         file.write(content)
-                    st.success(f"✅ Published post: **{title}**")
+                    
+                    # Save the uploaded image if provided
+                    if image:
+                        try:
+                            img = Image.open(image)
+                            img.save(image_path, format="PNG")
+                            st.success(f"✅ Published post with image: **{title}**")
+                        except Exception as e:
+                            st.error(f"❌ Failed to save image: {e}")
+                            # Optionally, you might want to delete the markdown file if image saving fails
+                    else:
+                        st.success(f"✅ Published post: **{title}** (No image uploaded)")
+                    
                     st.experimental_rerun()
             else:
                 st.warning("⚠️ Please provide both a title and content for the post.")
