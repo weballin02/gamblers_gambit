@@ -239,8 +239,8 @@ for idx, tool in enumerate(tools):
 # Placeholder Feature Pages
 page = st.session_state.get("page", "Home")
 
-if page == "Key Stats Analysis":
-    st.subheader("Key Stats Analysis")
+if page == "Key Stats Correlation Analysis":
+    st.subheader("Conduct Key Stats Correlation Analysis & Create Betting Model")
     st.markdown("**Feature coming soon...**")
 
 elif page == "Predictive Analytics":
