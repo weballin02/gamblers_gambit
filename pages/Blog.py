@@ -23,7 +23,7 @@ for directory in [POSTS_DIR, TRASH_DIR, IMAGES_DIR]:
 
 # Set Streamlit page configuration
 st.set_page_config(
-    page_title="Streamlit Blog Manager",
+    page_title="Gambler's Gambit",
     page_icon="📝",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -115,7 +115,7 @@ def process_html(file):
 
 # Streamlit Interface Functions
 def view_blog_posts():
-    st.header("📖 Explore Our Blog")
+    st.header("📖 Explore The Gambit")
 
     # Check if a post is selected for detailed view
     if st.session_state.selected_post:
