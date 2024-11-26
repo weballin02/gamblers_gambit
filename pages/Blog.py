@@ -29,20 +29,22 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
+# Initialize session state variables
+if 'logged_in' not in st.session_state:
+    st.session_state.logged_in = False
+
+if 'selected_post' not in st.session_state:
+    st.session_state.selected_post = None
+
 # Authentication (Basic Example)
-from streamlit import session_state as state
-
 def login():
-    if 'logged_in' not in state:
-        state.logged_in = False
-
-    if not state.logged_in:
+    if not st.session_state.logged_in:
         st.sidebar.header("🔒 Login")
         username = st.sidebar.text_input("Username")
         password = st.sidebar.text_input("Password", type="password")
         if st.sidebar.button("Login"):
             if username == "admin" and password == "password":  # Replace with secure authentication
-                state.logged_in = True
+                st.session_state.logged_in = True
                 st.sidebar.success("✅ Logged in successfully!")
             else:
                 st.sidebar.error("❌ Invalid credentials")
@@ -116,8 +118,8 @@ def view_blog_posts():
     st.header("📖 Explore Our Blog")
 
     # Check if a post is selected for detailed view
-    if 'selected_post' in state and state.selected_post:
-        display_full_post(state.selected_post)
+    if st.session_state.selected_post:
+        display_full_post(st.session_state.selected_post)
         return
 
     posts = list_posts()
@@ -242,9 +244,10 @@ def view_blog_posts():
                 </div>
             """, unsafe_allow_html=True)
 
-            # Capture the "Read More" click using Streamlit's experimental components
+            # Capture the "Read More" click using Streamlit's button
             if st.button("Read More", key=read_more_key):
-                state.selected_post = post
+                st.session_state.selected_post = post
+                st.experimental_rerun()  # Immediately rerun to display the post
 
     st.markdown("---")
     st.markdown("""
@@ -256,8 +259,8 @@ def view_blog_posts():
 def display_full_post(post_name):
     st.subheader("🔙 Back to Posts")
     if st.button("← Back"):
-        state.selected_post = None
-        st.rerun()
+        st.session_state.selected_post = None
+        st.experimental_rerun()
 
     post_title = post_name.replace('.md', '').replace('_', ' ').title()
     post_file = POSTS_DIR / post_name
@@ -322,7 +325,7 @@ def create_blog_post():
                         else:
                             st.success(f"✅ Published post: **{title}** (No image uploaded)")
 
-                        st.rerun()
+                        st.experimental_rerun()
                 else:
                     st.warning("⚠️ Please provide both a title and content for the post.")
 
@@ -369,7 +372,7 @@ def create_blog_post():
                         else:
                             st.success(f"✅ Published post: **{title}** (No image uploaded)")
 
-                        st.rerun()
+                        st.experimental_rerun()
                 else:
                     st.warning("⚠️ Please upload a PDF or HTML file to create a post.")
 
@@ -397,19 +400,20 @@ def delete_blog_posts():
                 st.write(f"- {post.replace('.md', '').replace('_', ' ').title()}")
 
     # Delete Button
-    if st.button("🗑️ Move Selected Posts to Trash") and confirm_delete:
-        if selected_posts:
-            for post in selected_posts:
-                success = move_to_trash(post)
-                if success:
-                    st.success(f"✅ Moved to trash: **{post.replace('.md', '').replace('_', ' ').title()}**")
-                else:
-                    st.error(f"❌ Failed to move: **{post}**")
-            st.experimental_rerun()
+    if st.button("🗑️ Move Selected Posts to Trash"):
+        if confirm_delete:
+            if selected_posts:
+                for post in selected_posts:
+                    success = move_to_trash(post)
+                    if success:
+                        st.success(f"✅ Moved to trash: **{post.replace('.md', '').replace('_', ' ').title()}**")
+                    else:
+                        st.error(f"❌ Failed to move: **{post}**")
+                st.experimental_rerun()
+            else:
+                st.warning("⚠️ No posts selected for deletion.")
         else:
-            st.warning("⚠️ No posts selected for deletion.")
-    elif st.button("🗑️ Move Selected Posts to Trash") and not confirm_delete:
-        st.warning("⚠️ Please confirm deletion by checking the box above.")
+            st.warning("⚠️ Please confirm deletion by checking the box above.")
 
 # Additional Features
 def display_header():
@@ -429,7 +433,7 @@ def main():
         view_blog_posts()
     elif page in ["Create Post", "Delete Post"]:
         login()
-        if state.logged_in:
+        if st.session_state.logged_in:
             if page == "Create Post":
                 create_blog_post()
             elif page == "Delete Post":
