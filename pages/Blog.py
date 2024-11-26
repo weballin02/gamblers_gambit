@@ -9,7 +9,7 @@ TRASH_DIR = Path('trash')
 
 # Set Streamlit page configuration
 st.set_page_config(
-    page_title="Streamlit Blog Manager",
+    page_title="Gambler's Gambit",
     page_icon="📝",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -61,10 +61,10 @@ def move_to_trash(post_name):
 
 # Streamlit Interface Functions
 def view_blog_posts():
-    st.header("📖 View Blog Posts")
+    st.header("📖 View Gambit Posts")
     posts = list_posts()
     if not posts:
-        st.info("No blog posts available.")
+        st.info("No posts available.")
         return
     
     # Search Functionality
@@ -152,7 +152,7 @@ def display_header():
     # Display a banner image or logo
     # banner = Image.open('path_to_banner_image.jpg')
     # st.image(banner, use_column_width=True)
-    st.title("📝 Streamlit Blog Manager")
+    st.title("📝 Gambler's Gambit")
     st.markdown("""
     Welcome to the **Streamlit Blog Manager**! Use the sidebar to navigate between viewing, creating, and deleting blog posts.
     """)
