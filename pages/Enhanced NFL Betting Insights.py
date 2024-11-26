@@ -11,7 +11,7 @@ warnings.filterwarnings('ignore')
 
 # Set page configuration
 st.set_page_config(
-    page_title="FoxEdge - Enhanced NFL Betting Insights",
+    page_title="FoxEdge - NFL Betting Insights",
     page_icon="🦊",
     layout="wide",
     initial_sidebar_state="collapsed",
@@ -223,7 +223,7 @@ st.markdown('''
 st.markdown('''
     <div class="hero">
         <h1>FoxEdge</h1>
-        <p>Enhanced NFL Betting Insights</p>
+        <p>NFL Betting Insights</p>
     </div>
 ''', unsafe_allow_html=True)
 
