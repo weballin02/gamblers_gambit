@@ -13,7 +13,7 @@ warnings.filterwarnings('ignore')
 
 # Streamlit App Title
 st.set_page_config(
-    page_title="Enhanced NBA Betting Insights",
+    page_title="NBA Betting Insights",
     page_icon="🏀",
     layout="centered",
     initial_sidebar_state="collapsed",
@@ -65,7 +65,7 @@ st.markdown("""
 # Header Section
 st.markdown('''
     <div style="text-align: center; margin-bottom: 1.5em;">
-        <h1 class="header-title">Enhanced NBA Betting Insights</h1>
+        <h1 class="header-title">NBA Betting Insights</h1>
         <p style="color: #9CA3AF; font-size: 1.2em;">
             Analyze NBA team performance with detailed insights for smarter betting decisions.
         </p>
