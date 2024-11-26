@@ -252,7 +252,7 @@ def view_blog_posts():
     st.markdown("---")
     st.markdown("""
         <div style="text-align:center; margin-top:20px;">
-            Want to contribute or learn more? Reach out to us at <a href="mailto:foxedgeai@gmail.com">info@yourblog.com</a>.
+            Want to contribute or learn more? Reach out to us at <a href="mailto:foxedgeai@gmail.com">foxedgeai@gmail.com</a>.
         </div>
     """, unsafe_allow_html=True)
 
