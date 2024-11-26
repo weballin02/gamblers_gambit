@@ -1,4 +1,3 @@
-
 import os
 import streamlit as st
 from pathlib import Path
@@ -7,6 +6,10 @@ import shutil
 import datetime
 from io import BytesIO
 import base64
+
+# New imports for handling PDF and HTML
+import fitz  # PyMuPDF
+import html2text
 
 # Define directories
 POSTS_DIR = Path('posts')
@@ -32,7 +35,7 @@ from streamlit import session_state as state
 def login():
     if 'logged_in' not in state:
         state.logged_in = False
-    
+
     if not state.logged_in:
         st.sidebar.header("🔒 Login")
         username = st.sidebar.text_input("Username")
@@ -69,7 +72,7 @@ def move_to_trash(post_name):
     trash_post_path = TRASH_DIR / post_name
     image_path = IMAGES_DIR / f"{post_path.stem}.png"  # Assuming PNG; adjust as needed
     trash_image_path = TRASH_DIR / f"{post_path.stem}.png"
-    
+
     if post_path.exists():
         post_path.rename(trash_post_path)
         if image_path.exists():
@@ -81,32 +84,54 @@ def move_to_trash(post_name):
 def get_post_content(post_name):
     post_file = POSTS_DIR / post_name
     if post_file.exists():
-        with open(post_file, 'r') as file:
+        with open(post_file, 'r', encoding='utf-8') as file:
             content = file.read()
         return content
     return "Post content not found."
 
+# Function to process PDF files
+def process_pdf(file):
+    try:
+        with fitz.open(stream=file.read(), filetype="pdf") as doc:
+            text = ""
+            for page in doc:
+                text += page.get_text()
+        return text
+    except Exception as e:
+        st.error(f"❌ Failed to process PDF: {e}")
+        return None
+
+# Function to process HTML files
+def process_html(file):
+    try:
+        html_content = file.read().decode("utf-8")
+        markdown = html2text.html2text(html_content)
+        return markdown
+    except Exception as e:
+        st.error(f"❌ Failed to process HTML: {e}")
+        return None
+
 # Streamlit Interface Functions
 def view_blog_posts():
     st.header("📖 Explore Our Blog")
-    
+
     # Check if a post is selected for detailed view
     if 'selected_post' in state and state.selected_post:
         display_full_post(state.selected_post)
         return
-    
+
     posts = list_posts()
     if not posts:
         st.info("No blog posts available.")
         return
-    
+
     # Search Functionality
     search_query = st.text_input("🔍 Search Posts", "")
     if search_query:
         filtered_posts = [post for post in posts if search_query.lower() in post.lower()]
     else:
         filtered_posts = posts
-    
+
     if not filtered_posts:
         st.warning("No posts match your search.")
         return
@@ -167,11 +192,17 @@ def view_blog_posts():
     for post in filtered_posts:
         post_title = post.replace('.md', '').replace('_', ' ').title()
         post_file = POSTS_DIR / post
-        
+
         # Read and process post content
         content = get_post_content(post)
-        content_preview = content[:200] + "..." if len(content) > 200 else content
-        
+        # Optionally, strip markdown to get plain text for preview
+        import re
+        content_preview = re.sub(r'\[(.*?)\]\(.*?\)', r'\1', content)  # Remove markdown links
+        content_preview = re.sub(r'!\[.*?\]\(.*?\)', '', content_preview)  # Remove images
+        content_preview = re.sub(r'#+', '', content_preview)  # Remove headers
+        content_preview = re.sub(r'\n+', ' ', content_preview)  # Remove newlines
+        content_preview = (content_preview[:200] + "...") if len(content_preview) > 200 else content_preview
+
         # Check for associated image
         image_file = IMAGES_DIR / f"{post_file.stem}.png"  # Assuming PNG; adjust as needed
         if image_file.exists():
@@ -210,7 +241,7 @@ def view_blog_posts():
                     </div>
                 </div>
             """, unsafe_allow_html=True)
-            
+
             # Capture the "Read More" click using Streamlit's experimental components
             if st.button("Read More", key=read_more_key):
                 state.selected_post = post
@@ -227,78 +258,135 @@ def display_full_post(post_name):
     if st.button("← Back"):
         state.selected_post = None
         st.experimental_rerun()
-    
+
     post_title = post_name.replace('.md', '').replace('_', ' ').title()
     post_file = POSTS_DIR / post_name
     content = get_post_content(post_name)
-    
+
     # Display the post title
     st.title(post_title)
-    
+
     # Display publication date
     pub_date = datetime.datetime.fromtimestamp(post_file.stat().st_mtime).strftime('%Y-%m-%d %H:%M')
     st.markdown(f"**Published on:** {pub_date}")
-    
+
     # Display the image if exists
     image_file = IMAGES_DIR / f"{post_file.stem}.png"
     if image_file.exists():
         st.image(str(image_file), use_column_width=True)
-    
+
     # Display the full content
     st.markdown(content)
 
 def create_blog_post():
     st.header("📝 Create a New Blog Post")
     with st.form(key='create_post_form'):
-        title = st.text_input("🖊️ Post Title", placeholder="Enter the title of your post")
-        content = st.text_area("📝 Content", height=300, placeholder="Write your post content here...")
+        # Option to create manually or upload a file
+        post_type = st.radio("Choose Post Creation Method", ["Manual Entry", "Upload PDF/HTML"], horizontal=True)
+
+        if post_type == "Manual Entry":
+            title = st.text_input("🖊️ Post Title", placeholder="Enter the title of your post")
+            content = st.text_area("📝 Content", height=300, placeholder="Write your post content here...")
+        elif post_type == "Upload PDF/HTML":
+            uploaded_file = st.file_uploader("📂 Upload PDF or HTML File", type=["pdf", "html"])
+            title = st.text_input("🖊️ Post Title (Optional)", placeholder="Enter the title of your post (optional)")
+            content = None  # Will be populated after processing the file
+
         image = st.file_uploader("🖼️ Upload Thumbnail Image", type=["png", "jpg", "jpeg"], accept_multiple_files=False)
         submitted = st.form_submit_button("📤 Publish")
-        
-        if submitted:
-            if title and content:
-                filename = f"{title.replace(' ', '_').lower()}.md"
-                filepath = POSTS_DIR / filename
-                image_filename = f"{filepath.stem}.png"  # Saving all images as PNG for consistency
-                image_path = IMAGES_DIR / image_filename
 
-                if filepath.exists():
-                    st.error("❌ A post with this title already exists. Please choose a different title.")
-                else:
-                    # Save the markdown file
-                    with open(filepath, 'w') as file:
-                        file.write(content)
-                    
-                    # Save the uploaded image if provided
-                    if image:
-                        try:
-                            img = Image.open(image)
-                            img.save(image_path, format="PNG")
-                            st.success(f"✅ Published post with image: **{title}**")
-                        except Exception as e:
-                            st.error(f"❌ Failed to save image: {e}")
-                            # Optionally, you might want to delete the markdown file if image saving fails
+        if submitted:
+            if post_type == "Manual Entry":
+                if title and content:
+                    filename = f"{title.replace(' ', '_').lower()}.md"
+                    filepath = POSTS_DIR / filename
+                    image_filename = f"{filepath.stem}.png"  # Saving all images as PNG for consistency
+                    image_path = IMAGES_DIR / image_filename
+
+                    if filepath.exists():
+                        st.error("❌ A post with this title already exists. Please choose a different title.")
                     else:
-                        st.success(f"✅ Published post: **{title}** (No image uploaded)")
-                    
-                    st.experimental_rerun()
-            else:
-                st.warning("⚠️ Please provide both a title and content for the post.")
+                        # Save the markdown file
+                        with open(filepath, 'w', encoding='utf-8') as file:
+                            file.write(content)
+
+                        # Save the uploaded image if provided
+                        if image:
+                            try:
+                                img = Image.open(image)
+                                img.save(image_path, format="PNG")
+                                st.success(f"✅ Published post with image: **{title}**")
+                            except Exception as e:
+                                st.error(f"❌ Failed to save image: {e}")
+                                # Optionally, you might want to delete the markdown file if image saving fails
+                        else:
+                            st.success(f"✅ Published post: **{title}** (No image uploaded)")
+
+                        st.experimental_rerun()
+                else:
+                    st.warning("⚠️ Please provide both a title and content for the post.")
+
+            elif post_type == "Upload PDF/HTML":
+                if uploaded_file:
+                    # Determine file type and process accordingly
+                    if uploaded_file.type == "application/pdf":
+                        extracted_content = process_pdf(uploaded_file)
+                        if not extracted_content:
+                            st.stop()  # Stop if processing failed
+                    elif uploaded_file.type in ["text/html", "application/xhtml+xml"]:
+                        extracted_content = process_html(uploaded_file)
+                        if not extracted_content:
+                            st.stop()  # Stop if processing failed
+                    else:
+                        st.error("❌ Unsupported file type.")
+                        st.stop()
+
+                    # If title not provided, derive from file name
+                    if not title:
+                        title = uploaded_file.name.rsplit('.', 1)[0].replace('_', ' ').title()
+
+                    filename = f"{title.replace(' ', '_').lower()}.md"
+                    filepath = POSTS_DIR / filename
+                    image_filename = f"{filepath.stem}.png"  # Saving all images as PNG for consistency
+                    image_path = IMAGES_DIR / image_filename
+
+                    if filepath.exists():
+                        st.error("❌ A post with this title already exists. Please choose a different title.")
+                    else:
+                        # Save the markdown file
+                        with open(filepath, 'w', encoding='utf-8') as file:
+                            file.write(extracted_content)
+
+                        # Save the uploaded image if provided
+                        if image:
+                            try:
+                                img = Image.open(image)
+                                img.save(image_path, format="PNG")
+                                st.success(f"✅ Published post with image: **{title}**")
+                            except Exception as e:
+                                st.error(f"❌ Failed to save image: {e}")
+                                # Optionally, you might want to delete the markdown file if image saving fails
+                        else:
+                            st.success(f"✅ Published post: **{title}** (No image uploaded)")
+
+                        st.experimental_rerun()
+                else:
+                    st.warning("⚠️ Please upload a PDF or HTML file to create a post.")
 
 def delete_blog_posts():
     st.header("🗑️ Delete Blog Posts")
-    
+
     posts = list_posts()
     if not posts:
         st.info("No blog posts available to delete.")
         return
-    
+
     # Confirmation Checkbox
     confirm_delete = st.checkbox("⚠️ I understand that deleting a post is irreversible.")
-    
+
     # Display posts with delete options
     selected_posts = st.multiselect("Select posts to delete", posts)
-    
+
     if selected_posts:
         cols = st.columns([1, 5])
         with cols[0]:
@@ -307,7 +395,7 @@ def delete_blog_posts():
             st.markdown("### Selected Posts for Deletion")
             for post in selected_posts:
                 st.write(f"- {post.replace('.md', '').replace('_', ' ').title()}")
-    
+
     # Delete Button
     if st.button("🗑️ Move Selected Posts to Trash") and confirm_delete:
         if selected_posts:
@@ -333,10 +421,10 @@ def display_header():
 # Main Function
 def main():
     display_header()
-    
+
     st.sidebar.title("📂 Blog Management")
     page = st.sidebar.radio("🛠️ Choose an option", ["View Posts", "Create Post", "Delete Post"])
-    
+
     if page == "View Posts":
         view_blog_posts()
     elif page in ["Create Post", "Delete Post"]:
