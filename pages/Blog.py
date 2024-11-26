@@ -1,3 +1,4 @@
+
 import os
 import streamlit as st
 from pathlib import Path
@@ -6,17 +7,14 @@ import shutil
 import datetime
 from io import BytesIO
 import base64
-import mimetypes
 
 # Define directories
 POSTS_DIR = Path('posts')
 TRASH_DIR = Path('trash')
-IMAGES_DIR = Path('images')    # Directory for images
-PDFS_DIR = Path('pdfs')        # Directory for PDFs
-HTML_DIR = Path('htmls')        # Directory for HTML files
+IMAGES_DIR = Path('images')  # Directory for images
 
 # Ensure directories exist
-for directory in [POSTS_DIR, TRASH_DIR, IMAGES_DIR, PDFS_DIR, HTML_DIR]:
+for directory in [POSTS_DIR, TRASH_DIR, IMAGES_DIR]:
     if not directory.exists():
         directory.mkdir(parents=True)
 
@@ -56,16 +54,10 @@ def list_posts():
 def delete_post(post_name):
     post_path = POSTS_DIR / post_name
     image_path = IMAGES_DIR / f"{post_path.stem}.png"  # Assuming PNG; adjust as needed
-    pdf_path = PDFS_DIR / f"{post_path.stem}.pdf"
-    html_path = HTML_DIR / f"{post_path.stem}.html"
     if post_path.exists():
         os.remove(post_path)
         if image_path.exists():
             os.remove(image_path)
-        if pdf_path.exists():
-            os.remove(pdf_path)
-        if html_path.exists():
-            os.remove(html_path)
         return True
     else:
         return False
@@ -75,21 +67,13 @@ def move_to_trash(post_name):
         TRASH_DIR.mkdir(parents=True)
     post_path = POSTS_DIR / post_name
     trash_post_path = TRASH_DIR / post_name
-    image_path = IMAGES_DIR / f"{post_path.stem}.png"
+    image_path = IMAGES_DIR / f"{post_path.stem}.png"  # Assuming PNG; adjust as needed
     trash_image_path = TRASH_DIR / f"{post_path.stem}.png"
-    pdf_path = PDFS_DIR / f"{post_path.stem}.pdf"
-    trash_pdf_path = TRASH_DIR / f"{post_path.stem}.pdf"
-    html_path = HTML_DIR / f"{post_path.stem}.html"
-    trash_html_path = TRASH_DIR / f"{post_path.stem}.html"
     
     if post_path.exists():
         post_path.rename(trash_post_path)
         if image_path.exists():
             image_path.rename(trash_image_path)
-        if pdf_path.exists():
-            pdf_path.rename(trash_pdf_path)
-        if html_path.exists():
-            html_path.rename(trash_html_path)
         return True
     else:
         return False
@@ -97,33 +81,10 @@ def move_to_trash(post_name):
 def get_post_content(post_name):
     post_file = POSTS_DIR / post_name
     if post_file.exists():
-        with open(post_file, 'r', encoding='utf-8') as file:
+        with open(post_file, 'r') as file:
             content = file.read()
         return content
     return "Post content not found."
-
-# File Serving Functions
-def serve_pdf(pdf_path):
-    if pdf_path.exists():
-        with open(pdf_path, "rb") as f:
-            pdf_data = f.read()
-            # Encode the PDF data in base64
-            encoded = base64.b64encode(pdf_data).decode()
-            # Create an iframe to embed the PDF
-            pdf_display = f'<iframe src="data:application/pdf;base64,{encoded}" width="700" height="800" type="application/pdf"></iframe>'
-            st.markdown(pdf_display, unsafe_allow_html=True)
-    else:
-        st.error("❌ PDF file not found.")
-
-def serve_html(html_path):
-    if html_path.exists():
-        with open(html_path, "r", encoding='utf-8') as f:
-            html_content = f.read()
-            # Use Streamlit's components to render HTML
-            import streamlit.components.v1 as components
-            components.html(html_content, height=600, scrolling=True)
-    else:
-        st.error("❌ HTML file not found.")
 
 # Streamlit Interface Functions
 def view_blog_posts():
@@ -199,19 +160,6 @@ def view_blog_posts():
         .read-more:hover {
             color: #0056b3;
         }
-        .additional-files {
-            margin-top: 10px;
-            font-size: 0.9em;
-            color: #007BFF;
-        }
-        .additional-files a {
-            margin-right: 10px;
-            text-decoration: none;
-            color: #007BFF;
-        }
-        .additional-files a:hover {
-            color: #0056b3;
-        }
         </style>
     """, unsafe_allow_html=True)
 
@@ -225,7 +173,7 @@ def view_blog_posts():
         content_preview = content[:200] + "..." if len(content) > 200 else content
         
         # Check for associated image
-        image_file = IMAGES_DIR / f"{post_file.stem}.png"
+        image_file = IMAGES_DIR / f"{post_file.stem}.png"  # Assuming PNG; adjust as needed
         if image_file.exists():
             image_path = image_file
         else:
@@ -246,19 +194,6 @@ def view_blog_posts():
         # Format publication date
         pub_date = datetime.datetime.fromtimestamp(post_file.stat().st_mtime).strftime('%Y-%m-%d %H:%M')
 
-        # Check for associated PDF and HTML
-        pdf_file = PDFS_DIR / f"{post_file.stem}.pdf"
-        html_file = HTML_DIR / f"{post_file.stem}.html"
-
-        additional_files_html = ""
-        if pdf_file.exists():
-            # Since Streamlit cannot directly link to file paths, we'll provide download and view options
-            additional_files_html += f'<a href="#" onclick="window.open(\'#\', \'_blank\')">📄 PDF</a>'
-        if html_file.exists():
-            additional_files_html += f'<a href="#" onclick="window.open(\'#\', \'_blank\')">🌐 HTML</a>'
-        if additional_files_html:
-            additional_files_html = f'<div class="additional-files">{additional_files_html}</div>'
-
         # Unique key for each "Read More" button
         read_more_key = f"read_more_{post}"
 
@@ -271,7 +206,6 @@ def view_blog_posts():
                         <div class="post-title">{post_title}</div>
                         <div class="post-meta">Published on: {pub_date}</div>
                         <div class="post-content">{content_preview}</div>
-                        {additional_files_html}
                         <a href="#" class="read-more" id="{read_more_key}">Read More</a>
                     </div>
                 </div>
@@ -280,6 +214,13 @@ def view_blog_posts():
             # Capture the "Read More" click using Streamlit's experimental components
             if st.button("Read More", key=read_more_key):
                 state.selected_post = post
+
+    st.markdown("---")
+    st.markdown("""
+        <div style="text-align:center; margin-top:20px;">
+            Want to contribute or learn more? Reach out to us at <a href="mailto:info@yourblog.com">info@yourblog.com</a>.
+        </div>
+    """, unsafe_allow_html=True)
 
 def display_full_post(post_name):
     st.subheader("🔙 Back to Posts")
@@ -304,48 +245,14 @@ def display_full_post(post_name):
         st.image(str(image_file), use_column_width=True)
     
     # Display the full content
-    st.markdown(content, unsafe_allow_html=True)
-    
-    # Display the PDF if exists
-    pdf_file = PDFS_DIR / f"{post_file.stem}.pdf"
-    if pdf_file.exists():
-        st.markdown("### 📄 PDF")
-        col1, col2 = st.columns(2)
-        with col1:
-            st.download_button(
-                label="📥 Download PDF",
-                data=pdf_file.read_bytes(),
-                file_name=pdf_file.name,
-                mime="application/pdf"
-            )
-        with col2:
-            if st.button("📖 View PDF"):
-                serve_pdf(pdf_file)
-    
-    # Display the HTML if exists
-    html_file = HTML_DIR / f"{post_file.stem}.html"
-    if html_file.exists():
-        st.markdown("### 🌐 HTML Content")
-        col1, col2 = st.columns(2)
-        with col1:
-            st.download_button(
-                label="📥 Download HTML",
-                data=html_file.read_bytes(),
-                file_name=html_file.name,
-                mime="text/html"
-            )
-        with col2:
-            if st.button("🔍 View HTML"):
-                serve_html(html_file)
+    st.markdown(content)
 
 def create_blog_post():
     st.header("📝 Create a New Blog Post")
     with st.form(key='create_post_form'):
         title = st.text_input("🖊️ Post Title", placeholder="Enter the title of your post")
         content = st.text_area("📝 Content", height=300, placeholder="Write your post content here...")
-        image = st.file_uploader("🖼️ Upload Thumbnail Image (Optional)", type=["png", "jpg", "jpeg"], accept_multiple_files=False)
-        pdf_file = st.file_uploader("📚 Upload PDF File (Optional)", type=["pdf"], accept_multiple_files=False)
-        html_file = st.file_uploader("🌐 Upload HTML File (Optional)", type=["html"], accept_multiple_files=False)
+        image = st.file_uploader("🖼️ Upload Thumbnail Image", type=["png", "jpg", "jpeg"], accept_multiple_files=False)
         submitted = st.form_submit_button("📤 Publish")
         
         if submitted:
@@ -359,142 +266,24 @@ def create_blog_post():
                     st.error("❌ A post with this title already exists. Please choose a different title.")
                 else:
                     # Save the markdown file
-                    try:
-                        with open(filepath, 'w', encoding='utf-8') as file:
-                            file.write(content)
-                        st.success(f"✅ Published post: **{title}**")
-                    except Exception as e:
-                        st.error(f"❌ Failed to save Markdown file: {e}")
-                        return
-
+                    with open(filepath, 'w') as file:
+                        file.write(content)
+                    
                     # Save the uploaded image if provided
                     if image:
-                        image_extension = Path(image.name).suffix.lower()
-                        if image_extension not in ['.png', '.jpg', '.jpeg']:
-                            st.error("❌ Unsupported image format. Please upload PNG, JPG, or JPEG files.")
-                        else:
-                            try:
-                                img = Image.open(image)
-                                img.save(image_path)
-                                st.success(f"✅ Uploaded image: **{image_filename}**")
-                            except Exception as e:
-                                st.error(f"❌ Failed to save image: {e}")
-
-                    # Save the PDF file if uploaded
-                    if pdf_file:
-                        pdf_extension = Path(pdf_file.name).suffix.lower()
-                        if pdf_extension != '.pdf':
-                            st.error("❌ Unsupported PDF format. Please upload a PDF file.")
-                        else:
-                            pdf_filename = f"{filepath.stem}.pdf"
-                            pdf_path = PDFS_DIR / pdf_filename
-                            try:
-                                with open(pdf_path, 'wb') as f:
-                                    f.write(pdf_file.getbuffer())
-                                st.success(f"✅ Uploaded PDF: **{pdf_filename}**")
-                            except Exception as e:
-                                st.error(f"❌ Failed to save PDF file: {e}")
-
-                    # Save the HTML file if uploaded
-                    if html_file:
-                        html_extension = Path(html_file.name).suffix.lower()
-                        if html_extension != '.html':
-                            st.error("❌ Unsupported HTML format. Please upload an HTML file.")
-                        else:
-                            html_filename = f"{filepath.stem}.html"
-                            html_path = HTML_DIR / html_filename
-                            try:
-                                with open(html_path, 'wb') as f:
-                                    f.write(html_file.getbuffer())
-                                st.success(f"✅ Uploaded HTML: **{html_filename}**")
-                            except Exception as e:
-                                st.error(f"❌ Failed to save HTML file: {e}")
+                        try:
+                            img = Image.open(image)
+                            img.save(image_path, format="PNG")
+                            st.success(f"✅ Published post with image: **{title}**")
+                        except Exception as e:
+                            st.error(f"❌ Failed to save image: {e}")
+                            # Optionally, you might want to delete the markdown file if image saving fails
+                    else:
+                        st.success(f"✅ Published post: **{title}** (No image uploaded)")
                     
                     st.experimental_rerun()
             else:
                 st.warning("⚠️ Please provide both a title and content for the post.")
-
-def import_blog_post():
-    st.header("📥 Import Existing Blog Post")
-    with st.form(key='import_post_form'):
-        md_file = st.file_uploader("📄 Upload Markdown File", type=["md"], accept_multiple_files=False)
-        image_file = st.file_uploader("🖼️ Upload Associated Image (Optional)", type=["png", "jpg", "jpeg"], accept_multiple_files=False)
-        pdf_file = st.file_uploader("📚 Upload PDF File (Optional)", type=["pdf"], accept_multiple_files=False)
-        html_file = st.file_uploader("🌐 Upload HTML File (Optional)", type=["html"], accept_multiple_files=False)
-        submitted = st.form_submit_button("📥 Import Post")
-        
-        if submitted:
-            if not md_file:
-                st.error("❌ Please upload a Markdown (.md) file.")
-            else:
-                # Extract filename and ensure it's unique
-                md_filename = md_file.name
-                if not md_filename.lower().endswith('.md'):
-                    st.error("❌ The uploaded file is not a Markdown (.md) file.")
-                else:
-                    # Sanitize and create a valid filename
-                    sanitized_title = Path(md_filename).stem.replace(' ', '_').lower()
-                    new_md_filename = f"{sanitized_title}.md"
-                    new_md_filepath = POSTS_DIR / new_md_filename
-
-                    if new_md_filepath.exists():
-                        st.error("❌ A post with this title already exists. Please choose a different file or rename it.")
-                    else:
-                        # Save the Markdown file
-                        try:
-                            with open(new_md_filepath, 'wb') as f:
-                                f.write(md_file.getbuffer())
-                            st.success(f"✅ Imported Markdown file: **{new_md_filename}**")
-                        except Exception as e:
-                            st.error(f"❌ Failed to save Markdown file: {e}")
-                            return  # Exit if saving fails
-
-                        # Handle the image file if uploaded
-                        if image_file:
-                            image_extension = Path(image_file.name).suffix.lower()
-                            if image_extension not in ['.png', '.jpg', '.jpeg']:
-                                st.error("❌ Unsupported image format. Please upload PNG, JPG, or JPEG files.")
-                            else:
-                                image_filename = f"{new_md_filepath.stem}{image_extension}"
-                                image_path = IMAGES_DIR / image_filename
-                                try:
-                                    img = Image.open(image_file)
-                                    img.save(image_path)
-                                    st.success(f"✅ Imported image: **{image_filename}**")
-                                except Exception as e:
-                                    st.error(f"❌ Failed to save image: {e}")
-                        
-                        # Handle the PDF file if uploaded
-                        if pdf_file:
-                            pdf_extension = Path(pdf_file.name).suffix.lower()
-                            if pdf_extension != '.pdf':
-                                st.error("❌ Unsupported PDF format. Please upload a PDF file.")
-                            else:
-                                pdf_filename = f"{new_md_filepath.stem}.pdf"
-                                pdf_path = PDFS_DIR / pdf_filename
-                                try:
-                                    with open(pdf_path, 'wb') as f:
-                                        f.write(pdf_file.getbuffer())
-                                    st.success(f"✅ Imported PDF: **{pdf_filename}**")
-                                except Exception as e:
-                                    st.error(f"❌ Failed to save PDF file: {e}")
-                        
-                        # Handle the HTML file if uploaded
-                        if html_file:
-                            html_extension = Path(html_file.name).suffix.lower()
-                            if html_extension != '.html':
-                                st.error("❌ Unsupported HTML format. Please upload an HTML file.")
-                            else:
-                                html_filename = f"{new_md_filepath.stem}.html"
-                                html_path = HTML_DIR / html_filename
-                                try:
-                                    with open(html_path, 'wb') as f:
-                                        f.write(html_file.getbuffer())
-                                    st.success(f"✅ Imported HTML: **{html_filename}**")
-                                except Exception as e:
-                                    st.error(f"❌ Failed to save HTML file: {e}")
-                        
-                        st.experimental_rerun()
 
 def delete_blog_posts():
     st.header("🗑️ Delete Blog Posts")
@@ -534,10 +323,11 @@ def delete_blog_posts():
     elif st.button("🗑️ Move Selected Posts to Trash") and not confirm_delete:
         st.warning("⚠️ Please confirm deletion by checking the box above.")
 
+# Additional Features
 def display_header():
     st.title("📝 Streamlit Blog Manager")
     st.markdown("""
-    Welcome to the **Streamlit Blog Manager**! Use the sidebar to navigate between viewing, creating, importing, and deleting blog posts.
+    Welcome to the **Streamlit Blog Manager**! Use the sidebar to navigate between viewing, creating, and deleting blog posts.
     """)
 
 # Main Function
@@ -545,17 +335,15 @@ def main():
     display_header()
     
     st.sidebar.title("📂 Blog Management")
-    page = st.sidebar.radio("🛠️ Choose an option", ["View Posts", "Create Post", "Import Post", "Delete Post"])
+    page = st.sidebar.radio("🛠️ Choose an option", ["View Posts", "Create Post", "Delete Post"])
     
     if page == "View Posts":
         view_blog_posts()
-    elif page in ["Create Post", "Import Post", "Delete Post"]:
+    elif page in ["Create Post", "Delete Post"]:
         login()
         if state.logged_in:
             if page == "Create Post":
                 create_blog_post()
-            elif page == "Import Post":
-                import_blog_post()
             elif page == "Delete Post":
                 delete_blog_posts()
         else:
