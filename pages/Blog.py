@@ -257,7 +257,7 @@ def display_full_post(post_name):
     st.subheader("🔙 Back to Posts")
     if st.button("← Back"):
         state.selected_post = None
-        st.experimental_rerun()
+        st.rerun()
 
     post_title = post_name.replace('.md', '').replace('_', ' ').title()
     post_file = POSTS_DIR / post_name
@@ -322,7 +322,7 @@ def create_blog_post():
                         else:
                             st.success(f"✅ Published post: **{title}** (No image uploaded)")
 
-                        st.experimental_rerun()
+                        st.rerun()
                 else:
                     st.warning("⚠️ Please provide both a title and content for the post.")
 
@@ -369,7 +369,7 @@ def create_blog_post():
                         else:
                             st.success(f"✅ Published post: **{title}** (No image uploaded)")
 
-                        st.experimental_rerun()
+                        st.rerun()
                 else:
                     st.warning("⚠️ Please upload a PDF or HTML file to create a post.")
 
