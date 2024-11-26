@@ -73,3 +73,5 @@ pytz
 matplotlib
 plotly
 cbbpy
+PyMuPDF
+html2text
