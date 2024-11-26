@@ -61,10 +61,10 @@ def move_to_trash(post_name):
 
 # Streamlit Interface Functions
 def view_blog_posts():
-    st.header("📖 View Gambit Posts")
+    st.header("📖 View Blog Posts")
     posts = list_posts()
     if not posts:
-        st.info("No posts available.")
+        st.info("No blog posts available.")
         return
     
     # Search Functionality
@@ -85,8 +85,6 @@ def view_blog_posts():
             with open(POSTS_DIR / post, 'r') as file:
                 content = file.read()
                 st.markdown(content)
-            # Optional: Display post metadata (e.g., date)
-            # st.caption(f"Published on: {publish_date}")
 
 def create_blog_post():
     st.header("📝 Create a New Blog Post")
@@ -149,10 +147,7 @@ def delete_blog_posts():
 
 # Additional Features
 def display_header():
-    # Display a banner image or logo
-    # banner = Image.open('path_to_banner_image.jpg')
-    # st.image(banner, use_column_width=True)
-    st.title("📝 Gambler's Gambit")
+    st.title("📝 Streamlit Blog Manager")
     st.markdown("""
     Welcome to the **Streamlit Blog Manager**! Use the sidebar to navigate between viewing, creating, and deleting blog posts.
     """)
@@ -160,19 +155,21 @@ def display_header():
 # Main Function
 def main():
     display_header()
-    login()
-    if state.logged_in:
-        st.sidebar.title("📂 Blog Management")
-        page = st.sidebar.radio("🛠️ Choose an option", ["View Posts", "Create Post", "Delete Post"])
-        
-        if page == "View Posts":
-            view_blog_posts()
-        elif page == "Create Post":
-            create_blog_post()
-        elif page == "Delete Post":
-            delete_blog_posts()
-    else:
-        st.warning("🔒 Please log in to manage blog posts.")
+    
+    st.sidebar.title("📂 Blog Management")
+    page = st.sidebar.radio("🛠️ Choose an option", ["View Posts", "Create Post", "Delete Post"])
+    
+    if page == "View Posts":
+        view_blog_posts()
+    elif page in ["Create Post", "Delete Post"]:
+        login()
+        if state.logged_in:
+            if page == "Create Post":
+                create_blog_post()
+            elif page == "Delete Post":
+                delete_blog_posts()
+        else:
+            st.warning("🔒 Please log in to access this feature.")
 
 if __name__ == "__main__":
     main()
