@@ -221,7 +221,8 @@ tools = [
     {"name": "Line Movement Insights", "description": "See how line movements impact predictions."},
     {"name": "Odds Comparisons", "description": "Compare odds across sportsbooks."},
     {"name": "Simulation Settings", "description": "Customize simulation parameters for better accuracy."},
-    {"name": "Team Statistics", "description": "Dive deep into team performance stats."}
+    {"name": "Team Statistics", "description": "Dive deep into team performance stats."},
+    {"name": "Blog", "description": "Read articles and insights from FoxEdge."}
 ]
 
 cols = st.columns(3)
@@ -259,6 +260,10 @@ elif page == "NBA FoxEdge":
     st.subheader("NBA FoxEdge")
     st.markdown("Welcome to the NBA FoxEdge analytics page. This section will feature NBA-specific predictive analytics, player stats, and team performance tools for smarter betting on NBA games. Get the NBA FoxEdge now!")
     st.markdown("**Feature coming soon...**")
+
+elif page == "Blog":
+    st.subheader("FoxEdge Blog")
+    st.markdown("**Read the latest articles and insights from FoxEdge! Feature coming soon...**")
 
 # Add Footer
 st.markdown('''
