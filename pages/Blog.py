@@ -419,7 +419,7 @@ def delete_blog_posts():
 def display_header():
     st.title("📝 Gambler's Gambit")
     st.markdown("""
-    Welcome to the ** Gambler's Gambit**! Use the sidebar to navigate between viewing, creating, and deleting blog posts.
+    Welcome to **Gambler's Gambit**! Use the sidebar to navigate between viewing, creating, and deleting blog posts.
     """)
 
 # Main Function
