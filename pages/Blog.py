@@ -61,10 +61,10 @@ def move_to_trash(post_name):
 
 # Streamlit Interface Functions
 def view_blog_posts():
-    st.header("📖 View Blog Posts")
+    st.header("📖 Explore Gambler's Gambit")
     posts = list_posts()
     if not posts:
-        st.info("No blog posts available.")
+        st.info("No posts available.")
         return
     
     # Search Functionality
@@ -77,14 +77,71 @@ def view_blog_posts():
     if not filtered_posts:
         st.warning("No posts match your search.")
         return
-    
-    # Display Posts in an Accordion
+
+    # Display Posts in a Card Layout
+    st.markdown("""
+        <style>
+        .post-card {
+            background-color: #f9f9f9;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        .post-title {
+            font-size: 1.5em;
+            color: #333333;
+            margin-bottom: 10px;
+        }
+        .post-meta {
+            font-size: 0.9em;
+            color: #666666;
+            margin-bottom: 15px;
+        }
+        .post-content {
+            font-size: 1em;
+            line-height: 1.6;
+            color: #444444;
+        }
+        .read-more {
+            display: inline-block;
+            margin-top: 10px;
+            font-size: 1em;
+            color: #007BFF;
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+        .read-more:hover {
+            color: #0056b3;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+
     for post in filtered_posts:
         post_title = post.replace('.md', '').replace('_', ' ').title()
-        with st.expander(post_title, expanded=False):
-            with open(POSTS_DIR / post, 'r') as file:
-                content = file.read()
-                st.markdown(content)
+        post_file = POSTS_DIR / post
+        
+        # Read and process post content
+        with open(post_file, 'r') as file:
+            content = file.read()
+            content_preview = content[:200] + "..." if len(content) > 200 else content
+        
+        # Display post in a card
+        st.markdown(f"""
+            <div class="post-card">
+                <div class="post-title">{post_title}</div>
+                <div class="post-meta">Published on: {post_file.stat().st_mtime}</div>
+                <div class="post-content">{content_preview}</div>
+                <a href="#" class="read-more">Read More</a>
+            </div>
+        """, unsafe_allow_html=True)
+
+    st.markdown("---")
+    st.markdown("""
+        <div style="text-align:center; margin-top:20px;">
+            Want to contribute or learn more? Reach out to us at <a href="mailto:info@yourblog.com">info@yourblog.com</a>.
+        </div>
+    """, unsafe_allow_html=True)
 
 def create_blog_post():
     st.header("📝 Create a New Blog Post")
