@@ -4,11 +4,13 @@ from pathlib import Path
 from PIL import Image
 import shutil
 import datetime
+from io import BytesIO
+import base64
 
 # Define directories
 POSTS_DIR = Path('posts')
 TRASH_DIR = Path('trash')
-IMAGES_DIR = Path('images')  # New directory for images
+IMAGES_DIR = Path('images')  # Directory for images
 
 # Ensure directories exist
 for directory in [POSTS_DIR, TRASH_DIR, IMAGES_DIR]:
@@ -66,7 +68,7 @@ def move_to_trash(post_name):
     trash_post_path = TRASH_DIR / post_name
     image_path = IMAGES_DIR / f"{post_path.stem}.png"  # Assuming PNG; adjust as needed
     trash_image_path = TRASH_DIR / f"{post_path.stem}.png"
-
+    
     if post_path.exists():
         post_path.rename(trash_post_path)
         if image_path.exists():
@@ -75,9 +77,23 @@ def move_to_trash(post_name):
     else:
         return False
 
+def get_post_content(post_name):
+    post_file = POSTS_DIR / post_name
+    if post_file.exists():
+        with open(post_file, 'r') as file:
+            content = file.read()
+        return content
+    return "Post content not found."
+
 # Streamlit Interface Functions
 def view_blog_posts():
     st.header("📖 Explore Our Blog")
+    
+    # Check if a post is selected for detailed view
+    if 'selected_post' in state and state.selected_post:
+        display_full_post(state.selected_post)
+        return
+    
     posts = list_posts()
     if not posts:
         st.info("No blog posts available.")
@@ -94,7 +110,7 @@ def view_blog_posts():
         st.warning("No posts match your search.")
         return
 
-    # Display Posts in a Card Layout
+    # CSS for Post Cards
     st.markdown("""
         <style>
         .post-card {
@@ -137,6 +153,7 @@ def view_blog_posts():
             font-size: 1em;
             color: #007BFF;
             text-decoration: none;
+            cursor: pointer;
             transition: color 0.3s ease;
         }
         .read-more:hover {
@@ -145,14 +162,14 @@ def view_blog_posts():
         </style>
     """, unsafe_allow_html=True)
 
+    # Display Posts in a Card Layout
     for post in filtered_posts:
         post_title = post.replace('.md', '').replace('_', ' ').title()
         post_file = POSTS_DIR / post
         
         # Read and process post content
-        with open(post_file, 'r') as file:
-            content = file.read()
-            content_preview = content[:200] + "..." if len(content) > 200 else content
+        content = get_post_content(post)
+        content_preview = content[:200] + "..." if len(content) > 200 else content
         
         # Check for associated image
         image_file = IMAGES_DIR / f"{post_file.stem}.png"  # Assuming PNG; adjust as needed
@@ -165,11 +182,9 @@ def view_blog_posts():
         if image_path:
             img = Image.open(image_path)
             img.thumbnail((150, 100))
-            from io import BytesIO
             buf = BytesIO()
             img.save(buf, format="PNG")
             img_bytes = buf.getvalue()
-            import base64
             encoded = base64.b64encode(img_bytes).decode()
             img_html = f'<img src="data:image/png;base64,{encoded}" class="thumbnail"/>'
         else:
@@ -178,18 +193,26 @@ def view_blog_posts():
         # Format publication date
         pub_date = datetime.datetime.fromtimestamp(post_file.stat().st_mtime).strftime('%Y-%m-%d %H:%M')
 
-        # Display post in a card
-        st.markdown(f"""
-            <div class="post-card">
-                {img_html}
-                <div class="post-details">
-                    <div class="post-title">{post_title}</div>
-                    <div class="post-meta">Published on: {pub_date}</div>
-                    <div class="post-content">{content_preview}</div>
-                    <a href="#" class="read-more">Read More</a>
+        # Unique key for each "Read More" button
+        read_more_key = f"read_more_{post}"
+
+        # Display post in a card with "Read More" button
+        with st.container():
+            st.markdown(f"""
+                <div class="post-card">
+                    {img_html}
+                    <div class="post-details">
+                        <div class="post-title">{post_title}</div>
+                        <div class="post-meta">Published on: {pub_date}</div>
+                        <div class="post-content">{content_preview}</div>
+                        <a href="#" class="read-more" id="{read_more_key}">Read More</a>
+                    </div>
                 </div>
-            </div>
-        """, unsafe_allow_html=True)
+            """, unsafe_allow_html=True)
+            
+            # Capture the "Read More" click using Streamlit's experimental components
+            if st.button("Read More", key=read_more_key):
+                state.selected_post = post
 
     st.markdown("---")
     st.markdown("""
@@ -197,6 +220,31 @@ def view_blog_posts():
             Want to contribute or learn more? Reach out to us at <a href="mailto:info@yourblog.com">info@yourblog.com</a>.
         </div>
     """, unsafe_allow_html=True)
+
+def display_full_post(post_name):
+    st.subheader("🔙 Back to Posts")
+    if st.button("← Back"):
+        state.selected_post = None
+        st.experimental_rerun()
+    
+    post_title = post_name.replace('.md', '').replace('_', ' ').title()
+    post_file = POSTS_DIR / post_name
+    content = get_post_content(post_name)
+    
+    # Display the post title
+    st.title(post_title)
+    
+    # Display publication date
+    pub_date = datetime.datetime.fromtimestamp(post_file.stat().st_mtime).strftime('%Y-%m-%d %H:%M')
+    st.markdown(f"**Published on:** {pub_date}")
+    
+    # Display the image if exists
+    image_file = IMAGES_DIR / f"{post_file.stem}.png"
+    if image_file.exists():
+        st.image(str(image_file), use_column_width=True)
+    
+    # Display the full content
+    st.markdown(content)
 
 def create_blog_post():
     st.header("📝 Create a New Blog Post")
