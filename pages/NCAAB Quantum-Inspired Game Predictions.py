@@ -630,6 +630,35 @@ def main():
             results_df = pd.DataFrame(simulation_results)
             st.dataframe(results_df)
 
+            # ===========================
+            # 13. Best Bets Section
+            # ===========================
+            st.subheader("Best Bets")
+
+            # Define criteria for Best Bets
+            # Example: Home Win % > 70% or Away Win % > 70%
+            # You can adjust these thresholds as needed
+            high_win_threshold = 70.0
+            large_spread_threshold = 5.0  # Points
+
+            best_bets_df = results_df[
+                (results_df['Home_Win_%'].astype(float) > high_win_threshold) |
+                (results_df['Away_Win_%'].astype(float) > high_win_threshold)
+            ]
+
+            # Alternatively, you can also include spread criteria
+            # best_bets_df = results_df[
+            #     ((results_df['Home_Win_%'].astype(float) > high_win_threshold) |
+            #     (results_df['Away_Win_%'].astype(float) > high_win_threshold)) &
+            #     (results_df['Spread'].astype(float).abs() > large_spread_threshold)
+            # ]
+
+            if not best_bets_df.empty:
+                st.markdown("### Top Recommended Bets")
+                st.dataframe(best_bets_df)
+            else:
+                st.info("No best bets found based on the current criteria.")
+
             # Detailed Analysis per Game
             for result in simulation_results:
                 with st.expander(f"Details: {result['Game_Label']}"):
