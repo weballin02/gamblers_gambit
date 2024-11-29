@@ -385,7 +385,7 @@ def simulate_game(
         home_wins = np.sum(score_diff > 0)
 
         return {
-            "win_prob": home_wins / num_sims * 100,
+            "win_prob": home_wins / num_sims * 100,  # Stored as float
             "home_score": np.mean(home_scores),
             "away_score": np.mean(away_scores),
             "total_score": np.mean(home_scores + away_scores),
@@ -547,6 +547,28 @@ def main():
         index=1
     )
 
+    # Best Bets Criteria Section
+    st.markdown("### Best Bets Criteria")
+    col1, col2 = st.columns(2)
+    with col1:
+        high_win_threshold = st.number_input(
+            "Win Probability Threshold (%)",
+            min_value=50.0,
+            max_value=100.0,
+            value=70.0,
+            step=1.0,
+            help="Minimum win probability to qualify as a Best Bet."
+        )
+    with col2:
+        large_spread_threshold = st.number_input(
+            "Minimum Spread (points)",
+            min_value=0.0,
+            max_value=30.0,
+            value=5.0,
+            step=0.5,
+            help="Minimum point spread to qualify as a Best Bet."
+        )
+
     # Simulation Actions Section
     st.header("Simulation Actions")
     run_simulation = st.button("Run Simulation for Selected Game")
@@ -613,8 +635,8 @@ def main():
                     if result:
                         simulation_results.append({
                             'Game_Label': game_row['Game_Label'],
-                            'Home_Win_%': f"{result['win_prob']:.1f}%",
-                            'Away_Win_%': f"{100 - result['win_prob']:.1f}%",
+                            'Home_Win_%': result['win_prob'],           # Stored as float
+                            'Away_Win_%': 100 - result['win_prob'],     # Stored as float
                             'Projected_Home_Score': f"{result['home_score']:.1f}",
                             'Projected_Away_Score': f"{result['away_score']:.1f}",
                             'Projected_Total_Score': f"{result['total_score']:.1f}",
@@ -628,67 +650,95 @@ def main():
         if simulation_results:
             # Create DataFrame for Results
             results_df = pd.DataFrame(simulation_results)
-            st.dataframe(results_df)
+            
+            # Debugging statement to verify data
+            st.write("### Simulation Results Preview")
+            st.write(results_df.head())
 
             # ===========================
             # 13. Best Bets Section
             # ===========================
             st.subheader("Best Bets")
 
-            # Define criteria for Best Bets
-            # Example: Home Win % > 70% or Away Win % > 70%
-            # You can adjust these thresholds as needed
-            high_win_threshold = 70.0
-            large_spread_threshold = 5.0  # Points
+            # Convert 'Spread' from string to float for comparison
+            results_df['Spread_Value'] = results_df['Spread'].str.replace(' pts', '').astype(float)
 
+            # Define criteria:
+            # 1. Home Win % > high_win_threshold OR Away Win % > high_win_threshold
+            # 2. Spread > large_spread_threshold (absolute value)
             best_bets_df = results_df[
-                (results_df['Home_Win_%'].astype(float) > high_win_threshold) |
-                (results_df['Away_Win_%'].astype(float) > high_win_threshold)
+                (
+                    (results_df['Home_Win_%'] > high_win_threshold) |
+                    (results_df['Away_Win_%'] > high_win_threshold)
+                ) &
+                (results_df['Spread_Value'].abs() > large_spread_threshold)
             ]
 
-            # Alternatively, you can also include spread criteria
-            # best_bets_df = results_df[
-            #     ((results_df['Home_Win_%'].astype(float) > high_win_threshold) |
-            #     (results_df['Away_Win_%'].astype(float) > high_win_threshold)) &
-            #     (results_df['Spread'].astype(float).abs() > large_spread_threshold)
-            # ]
-
             if not best_bets_df.empty:
+                # Format the DataFrame for display by appending '%' symbol
+                display_best_bets_df = best_bets_df.copy()
+                display_best_bets_df['Home_Win_%'] = display_best_bets_df['Home_Win_%'].astype(float).map("{:.1f}%".format)
+                display_best_bets_df['Away_Win_%'] = display_best_bets_df['Away_Win_%'].astype(float).map("{:.1f}%".format)
+                display_best_bets_df['Spread'] = display_best_bets_df['Spread'].astype(str)
+                
                 st.markdown("### Top Recommended Bets")
-                st.dataframe(best_bets_df)
+                st.dataframe(display_best_bets_df[['Game_Label', 'Home_Win_%', 'Away_Win_%', 'Spread']])
+                
+                # Download Best Bets as CSV
+                csv = best_bets_df.to_csv(index=False).encode('utf-8')
+                st.download_button(
+                    label="Download Best Bets as CSV",
+                    data=csv,
+                    file_name='best_bets.csv',
+                    mime='text/csv',
+                )
+                
+                # Visualization: Bar Chart for Win Probabilities
+                st.markdown("#### Win Probabilities")
+                st.bar_chart(best_bets_df[['Home_Win_%', 'Away_Win_%']])
+                
+                # Visualization: Scatter Plot for Spread vs. Win Probability
+                st.markdown("#### Spread vs. Win Probability")
+                scatter_data = best_bets_df.copy()
+                scatter_data['Home_Win_%'] = scatter_data['Home_Win_%'].astype(float)
+                scatter_data['Away_Win_%'] = scatter_data['Away_Win_%'].astype(float)
+                scatter_data['Spread_Value'] = scatter_data['Spread_Value'].astype(float)
+                st.scatter_chart(scatter_data[['Spread_Value', 'Home_Win_%', 'Away_Win_%']])
             else:
                 st.info("No best bets found based on the current criteria.")
 
-            # Detailed Analysis per Game
-            for result in simulation_results:
-                with st.expander(f"Details: {result['Game_Label']}"):
-                    try:
-                        home, away = result['Game_Label'].split(' at ')
-                        st.metric("Home Team Win Probability", result['Home_Win_%'])
-                        st.metric("Away Team Win Probability", result['Away_Win_%'])
-                        st.metric("Projected Home Score", result['Projected_Home_Score'])
-                        st.metric("Projected Away Score", result['Projected_Away_Score'])
-                        st.metric("Projected Total Score", result['Projected_Total_Score'])
-                        st.metric("Spread", result['Spread'])
-                        
-                        # Additional Insights
-                        insights = []
-
-                        # Example insights based on spread and scores
-                        spread_val = float(result['Spread'].split()[0])
-                        if spread_val > 5:
-                            insights.append(f"{home} has a significant advantage over {away}.")
-                        elif spread_val < -5:
-                            insights.append(f"{away} has a significant advantage over {home}.")
-                        else:
-                            insights.append("The game is expected to be competitive.")
-                        
-                        # Display insights
-                        for insight in insights:
-                            st.write(f"- {insight}")
-                    except Exception as e:
-                        st.warning(f"Error processing game details: {e}")
-                        logging.warning(f"Error processing game details for {result['Game_Label']}: {e}")
+            # Detailed Analysis per Best Bet
+            if not best_bets_df.empty:
+                st.markdown("### Detailed Analysis of Best Bets")
+                for _, best_bet in best_bets_df.iterrows():
+                    with st.expander(f"Details: {best_bet['Game_Label']}"):
+                        try:
+                            home, away = best_bet['Game_Label'].split(' at ')
+                            st.metric("Home Team Win Probability", f"{best_bet['Home_Win_%']:.1f}%")
+                            st.metric("Away Team Win Probability", f"{best_bet['Away_Win_%']:.1f}%")
+                            st.metric("Projected Home Score", best_bet['Projected_Home_Score'])
+                            st.metric("Projected Away Score", best_bet['Projected_Away_Score'])
+                            st.metric("Projected Total Score", best_bet['Projected_Total_Score'])
+                            st.metric("Spread", best_bet['Spread'])
+                            
+                            # Additional Insights
+                            insights = []
+        
+                            # Example insights based on spread and win probability
+                            spread_val = best_bet['Spread_Value']
+                            if spread_val > large_spread_threshold:
+                                insights.append(f"{home} is projected to win by more than {large_spread_threshold} points.")
+                            elif spread_val < -large_spread_threshold:
+                                insights.append(f"{away} is projected to win by more than {large_spread_threshold} points.")
+                            else:
+                                insights.append("The game is expected to be competitive with a close spread.")
+                            
+                            # Display insights
+                            for insight in insights:
+                                st.write(f"- {insight}")
+                        except Exception as e:
+                            st.warning(f"Error processing game details: {e}")
+                            logging.warning(f"Error processing game details for {best_bet['Game_Label']}: {e}")
 
 # ===========================
 # 13. Run the App
