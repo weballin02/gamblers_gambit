@@ -674,8 +674,8 @@ def main():
                 (results_df['Spread_Value'].abs() > large_spread_threshold)
             ]
 
-            # Display the number of Best Bets found
-            st.write(f"Number of Best Bets Found: {len(best_bets_df)}")
+            # Debugging statement to check the number of best bets found
+            st.write(f"Number of Best Bets Found: {len(best_bets_df)}")  # Debugging output
 
             if not best_bets_df.empty:
                 # Format the DataFrame for display by appending '%' symbol
