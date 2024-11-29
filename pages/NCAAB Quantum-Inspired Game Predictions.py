@@ -658,91 +658,66 @@ def main():
             # ===========================
             # 13. Best Bets Section
             # ===========================
-            st.subheader("Best Bets")
 
-            # Convert 'Spread' from string to float for comparison
-            results_df['Spread_Value'] = results_df['Spread'].str.replace(' pts', '').astype(float)
+            # Debugging statement to check if we reach this section
+            st.write("Reached Best Bets Section")  # Debugging output
 
-            # Define criteria:
-            # 1. Home Win % > high_win_threshold OR Away Win % > high_win_threshold
-            # 2. Spread > large_spread_threshold (absolute value)
-            best_bets_df = results_df[
-                (
-                    (results_df['Home_Win_%'] > high_win_threshold) |
-                    (results_df['Away_Win_%'] > high_win_threshold)
-                ) &
-                (results_df['Spread_Value'].abs() > large_spread_threshold)
-            ]
+            # Check if results_df is populated
+            if 'results_df' in locals() and not results_df.empty:
+                st.subheader("Best Bets")
 
-            # Debugging statement to check the number of best bets found
-            st.write(f"Number of Best Bets Found: {len(best_bets_df)}")  # Debugging output
+                # Convert 'Spread' from string to float for comparison
+                results_df['Spread_Value'] = results_df['Spread'].str.replace(' pts', '').astype(float)
 
-            if not best_bets_df.empty:
-                # Format the DataFrame for display by appending '%' symbol
-                display_best_bets_df = best_bets_df.copy()
-                display_best_bets_df['Home_Win_%'] = display_best_bets_df['Home_Win_%'].astype(float).map("{:.1f}%".format)
-                display_best_bets_df['Away_Win_%'] = display_best_bets_df['Away_Win_%'].astype(float).map("{:.1f}%".format)
-                display_best_bets_df['Spread'] = display_best_bets_df['Spread'].astype(str)
-                
-                st.markdown("### Top Recommended Bets")
-                st.dataframe(display_best_bets_df[['Game_Label', 'Home_Win_%', 'Away_Win_%', 'Spread']])
-                
-                # Download Best Bets as CSV
-                csv = best_bets_df.to_csv(index=False).encode('utf-8')
-                st.download_button(
-                    label="Download Best Bets as CSV",
-                    data=csv,
-                    file_name='best_bets.csv',
-                    mime='text/csv',
-                )
-                
-                # Visualization: Bar Chart for Win Probabilities
-                st.markdown("#### Win Probabilities")
-                st.bar_chart(best_bets_df[['Home_Win_%', 'Away_Win_%']])
-                
-                # Visualization: Scatter Plot for Spread vs. Win Probability
-                st.markdown("#### Spread vs. Win Probability")
-                scatter_data = best_bets_df.copy()
-                scatter_data['Home_Win_%'] = scatter_data['Home_Win_%'].astype(float)
-                scatter_data['Away_Win_%'] = scatter_data['Away_Win_%'].astype(float)
-                scatter_data['Spread_Value'] = scatter_data['Spread_Value'].astype(float)
-                st.scatter_chart(scatter_data[['Spread_Value', 'Home_Win_%', 'Away_Win_%']])
+                # Define criteria:
+                # 1. Home Win % > high_win_threshold OR Away Win % > high_win_threshold
+                # 2. Spread > large_spread_threshold (absolute value)
+                best_bets_df = results_df[
+                    (
+                        (results_df['Home_Win_%'] > high_win_threshold) |
+                        (results_df['Away_Win_%'] > high_win_threshold)
+                    ) &
+                    (results_df['Spread_Value'].abs() > large_spread_threshold)
+                ]
+
+                # Debugging statement to check the number of best bets found
+                st.write(f"Number of Best Bets Found: {len(best_bets_df)}")  # Debugging output
+
+                if not best_bets_df.empty:
+                    # Format the DataFrame for display by appending '%' symbol
+                    display_best_bets_df = best_bets_df.copy()
+                    display_best_bets_df['Home_Win_%'] = display_best_bets_df['Home_Win_%'].astype(float).map("{:.1f}%".format)
+                    display_best_bets_df['Away_Win_%'] = display_best_bets_df['Away_Win_%'].astype(float).map("{:.1f}%".format)
+                    display_best_bets_df['Spread'] = display_best_bets_df['Spread'].astype(str)
+                    
+                    st.markdown("### Top Recommended Bets")
+                    st.dataframe(display_best_bets_df[['Game_Label', 'Home_Win_%', 'Away_Win_%', 'Spread']])
+                    
+                    # Download Best Bets as CSV
+                    csv = best_bets_df.to_csv(index=False).encode('utf-8')
+                    st.download_button(
+                        label="Download Best Bets as CSV",
+                        data=csv,
+                        file_name='best_bets.csv',
+                        mime='text/csv',
+                    )
+                    
+                    # Visualization: Bar Chart for Win Probabilities
+                    st.markdown("#### Win Probabilities")
+                    st.bar_chart(best_bets_df[['Home_Win_%', 'Away_Win_%']])
+                    
+                    # Visualization: Scatter Plot for Spread vs. Win Probability
+                    st.markdown("#### Spread vs. Win Probability")
+                    scatter_data = best_bets_df.copy()
+                    scatter_data['Home_Win_%'] = scatter_data['Home_Win_%'].astype(float)
+                    scatter_data['Away_Win_%'] = scatter_data['Away_Win_%'].astype(float)
+                    scatter_data['Spread_Value'] = scatter_data['Spread_Value'].astype(float)
+                    st.scatter_chart(scatter_data[['Spread_Value', 'Home_Win_%', 'Away_Win_%']])
+                else:
+                    # Display message indicating no bets qualify
+                    st.info("No best bets found based on the current criteria.")
             else:
-                # Display message indicating no bets qualify
-                st.info("No best bets found based on the current criteria.")
-
-            # Detailed Analysis per Best Bet
-            if not best_bets_df.empty:
-                st.markdown("### Detailed Analysis of Best Bets")
-                for _, best_bet in best_bets_df.iterrows():
-                    with st.expander(f"Details: {best_bet['Game_Label']}"):
-                        try:
-                            home, away = best_bet['Game_Label'].split(' at ')
-                            st.metric("Home Team Win Probability", f"{best_bet['Home_Win_%']:.1f}%")
-                            st.metric("Away Team Win Probability", f"{best_bet['Away_Win_%']:.1f}%")
-                            st.metric("Projected Home Score", best_bet['Projected_Home_Score'])
-                            st.metric("Projected Away Score", best_bet['Projected_Away_Score'])
-                            st.metric("Projected Total Score", best_bet['Projected_Total_Score'])
-                            st.metric("Spread", best_bet['Spread'])
-                            
-                            # Additional Insights
-                            insights = []
-        
-                            # Example insights based on spread and win probability
-                            spread_val = best_bet['Spread_Value']
-                            if spread_val > large_spread_threshold:
-                                insights.append(f"{home} is projected to win by more than {large_spread_threshold} points.")
-                            elif spread_val < -large_spread_threshold:
-                                insights.append(f"{away} is projected to win by more than {large_spread_threshold} points.")
-                            else:
-                                insights.append("The game is expected to be competitive with a close spread.")
-                            
-                            # Display insights
-                            for insight in insights:
-                                st.write(f"- {insight}")
-                        except Exception as e:
-                            st.warning(f"Error processing game details: {e}")
-                            logging.warning(f"Error processing game details for {best_bet['Game_Label']}: {e}")
+                st.warning("Results DataFrame is empty or not defined.")
 
 # ===========================
 # 13. Run the App
