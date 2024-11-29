@@ -14,6 +14,10 @@ import cbbpy.mens_scraper as s  # Ensure this import is resolved
 import warnings
 from typing import Dict, Optional, Tuple, List
 import multiprocessing as mp
+import logging
+
+# Initialize logging
+logging.basicConfig(filename='app.log', level=logging.ERROR)
 
 # Suppress warnings for cleaner output
 warnings.filterwarnings('ignore')
@@ -191,9 +195,11 @@ def load_season_data(season: int = 2025) -> Tuple[Dict[str, Dict[str, any]], pd.
 
     except AttributeError:
         st.error("The 'cbbpy' library does not have the required function. Please ensure you have the latest version installed.")
+        logging.error("AttributeError: 'cbbpy' library may be missing required functions.", exc_info=True)
         return {}, pd.DataFrame()
     except Exception as e:
         st.error(f"Error loading season data: {str(e)}")
+        logging.error(f"Error loading season data: {str(e)}", exc_info=True)
         return {}, pd.DataFrame()
 
 # ===========================
@@ -236,6 +242,7 @@ def fetch_upcoming_games() -> pd.DataFrame:
         response = requests.get(url, params=params)
         if response.status_code != 200:
             st.error(f"Error: API request failed with status code {response.status_code} for date {date_str}")
+            logging.error(f"API request failed with status code {response.status_code} for date {date_str}")
             continue  # Skip to the next date
 
         data = response.json()
@@ -262,23 +269,22 @@ def fetch_upcoming_games() -> pd.DataFrame:
 
                 # Append to list
                 all_games.append({
-                    'Game ID': game['id'],
-                    'Game Label': f"{away_team} at {home_team}",
-                    'Home Team': home_team,
-                    'Away Team': away_team,
-                    'Game Day': game_time.strftime('%Y-%m-%d'),
-                    'Game Time': game_time.strftime('%I:%M %p %Z'),
+                    'Game_ID': game['id'],
+                    'Game_Label': f"{away_team} at {home_team}",
+                    'Home_Team': home_team,
+                    'Away_Team': away_team,
+                    'Game_Day': game_time.strftime('%Y-%m-%d'),
+                    'Game_Time': game_time.strftime('%I:%M %p %Z'),
                     'Arena': venue,
                     'Tournament': game.get('competitions')[0].get('tournament', {}).get('name', 'N/A')
                 })
 
-                # Removed the successful fetch message as per user request
-                # st.write(f"✅ Successfully fetched game: {away_team} at {home_team}")
-
             except KeyError as e:
                 st.warning(f"Missing key in game data: {e}")
+                logging.warning(f"Missing key in game data: {e}")
             except Exception as e:
                 st.warning(f"Unexpected error: {e}")
+                logging.warning(f"Unexpected error: {e}")
 
     if not all_games:
         st.info("No upcoming games fetched for today.")
@@ -286,10 +292,6 @@ def fetch_upcoming_games() -> pd.DataFrame:
 
     # Convert to DataFrame
     upcoming_games_df = pd.DataFrame(all_games)
-
-    # Removed the "Games Fetched:" display as per user request
-    # st.write("### Games Fetched:")
-    # st.dataframe(upcoming_games_df)
 
     return upcoming_games_df
 
@@ -396,9 +398,11 @@ def simulate_game(
 
     except KeyError as e:
         st.error(f"Missing team metrics for {e}")
+        logging.error(f"Missing team metrics for {e}", exc_info=True)
         return None
     except Exception as e:
         st.error(f"Simulation error: {str(e)}")
+        logging.error(f"Simulation error: {str(e)}", exc_info=True)
         return None
 
 # ===========================
@@ -452,7 +456,7 @@ def display_prediction(results: Dict[str, float], home_team: str, away_team: str
     with col2:
         st.metric(
             label=f"{away_team} Win Probability",
-            value=f"{(100 - results['win_prob']):.1f}%"
+            value=f"{(100 - results['win_prob']):.1f}%",
         )
         st.metric(
             label="Projected Score",
@@ -487,7 +491,7 @@ def run_parallel_simulations(upcoming_games: pd.DataFrame, spread: float, num_si
         List[Optional[Dict[str, float]]]: List of simulation results for each game.
     """
     game_params = [
-        (row['Home Team'], row['Away Team'], spread, num_sims, team_metrics)
+        (row['Home_Team'], row['Away_Team'], spread, num_sims, team_metrics)
         for _, row in upcoming_games.iterrows()
     ]
 
@@ -516,13 +520,13 @@ def main():
     st.header("Game Settings")
     if not upcoming_games_df.empty:
         # Sort games alphabetically for better navigation
-        game_options = sorted(upcoming_games_df['Game Label'].tolist())
+        game_options = sorted(upcoming_games_df['Game_Label'].tolist())
         selected_game = st.selectbox("Select Game", options=["Select a Game"] + game_options)
 
         if selected_game != "Select a Game":
-            selected_game_info = upcoming_games_df[upcoming_games_df['Game Label'] == selected_game].iloc[0]
-            home_team = selected_game_info['Home Team']
-            away_team = selected_game_info['Away Team']
+            selected_game_info = upcoming_games_df[upcoming_games_df['Game_Label'] == selected_game].iloc[0]
+            home_team = selected_game_info['Home_Team']
+            away_team = selected_game_info['Away_Team']
         else:
             home_team = None
             away_team = None
@@ -601,55 +605,69 @@ def main():
         simulation_results = []
         
         with st.spinner("Running simulations for all upcoming games..."):
-            # Run simulations in parallel
-            results = run_parallel_simulations(upcoming_games_df, spread_adjustment, num_simulations, team_metrics)
+            try:
+                # Run simulations in parallel
+                results = run_parallel_simulations(upcoming_games_df, spread_adjustment, num_simulations, team_metrics)
 
-            for game, result in zip(upcoming_games_df.itertuples(index=False), results):
-                if result:
-                    simulation_results.append({
-                        'Game Label': game.Game_Label,  # Replace `_2` with the actual column name
-                        'Home Win %': f"{result['win_prob']:.1f}%",
-                        'Away Win %': f"{100 - result['win_prob']:.1f}%",
-                        'Projected Home Score': f"{result['home_score']:.1f}",
-                        'Projected Away Score': f"{result['away_score']:.1f}",
-                        'Projected Total Score': f"{result['total_score']:.1f}",
-                        'Spread': f"{result['spread']:.1f} pts"
-                    })
+                for (_, game_row), result in zip(upcoming_games_df.iterrows(), results):
+                    if result:
+                        simulation_results.append({
+                            'Game_Label': game_row['Game_Label'],
+                            'Home_Win_%': f"{result['win_prob']:.1f}%",
+                            'Away_Win_%': f"{100 - result['win_prob']:.1f}%",
+                            'Projected_Home_Score': f"{result['home_score']:.1f}",
+                            'Projected_Away_Score': f"{result['away_score']:.1f}",
+                            'Projected_Total_Score': f"{result['total_score']:.1f}",
+                            'Spread': f"{result['spread']:.1f} pts"
+                        })
+            except Exception as e:
+                st.error(f"Error during parallel simulations: {str(e)}")
+                logging.error(f"Error during parallel simulations: {str(e)}", exc_info=True)
+                results = []
 
-        # Create DataFrame for Results
-        results_df = pd.DataFrame(simulation_results)
-        st.dataframe(results_df)
+        if simulation_results:
+            # Create DataFrame for Results
+            results_df = pd.DataFrame(simulation_results)
+            st.dataframe(results_df)
 
-        # Detailed Analysis per Game
-        for result in simulation_results:
-            with st.expander(f"Details: {result['Game Label']}"):
-                home, away = result['Game Label'].split(' at ')
-                st.metric("Home Team Win Probability", result['Home Win %'])
-                st.metric("Away Team Win Probability", result['Away Win %'])
-                st.metric("Projected Home Score", result['Projected Home Score'])
-                st.metric("Projected Away Score", result['Projected Away Score'])
-                st.metric("Projected Total Score", result['Projected Total Score'])
-                st.metric("Spread", result['Spread'])
-                
-                # Additional Insights
-                insights = []
+            # Detailed Analysis per Game
+            for result in simulation_results:
+                with st.expander(f"Details: {result['Game_Label']}"):
+                    try:
+                        home, away = result['Game_Label'].split(' at ')
+                        st.metric("Home Team Win Probability", result['Home_Win_%'])
+                        st.metric("Away Team Win Probability", result['Away_Win_%'])
+                        st.metric("Projected Home Score", result['Projected_Home_Score'])
+                        st.metric("Projected Away Score", result['Projected_Away_Score'])
+                        st.metric("Projected Total Score", result['Projected_Total_Score'])
+                        st.metric("Spread", result['Spread'])
+                        
+                        # Additional Insights
+                        insights = []
 
-                # Example insights based on spread and scores
-                spread_val = float(result['Spread'].split()[0])
-                if spread_val > 5:
-                    insights.append(f"{home} has a significant advantage over {away}.")
-                elif spread_val < -5:
-                    insights.append(f"{away} has a significant advantage over {home}.")
-                else:
-                    insights.append("The game is expected to be competitive.")
-                
-                # Display insights
-                for insight in insights:
-                    st.write(f"- {insight}")
+                        # Example insights based on spread and scores
+                        spread_val = float(result['Spread'].split()[0])
+                        if spread_val > 5:
+                            insights.append(f"{home} has a significant advantage over {away}.")
+                        elif spread_val < -5:
+                            insights.append(f"{away} has a significant advantage over {home}.")
+                        else:
+                            insights.append("The game is expected to be competitive.")
+                        
+                        # Display insights
+                        for insight in insights:
+                            st.write(f"- {insight}")
+                    except Exception as e:
+                        st.warning(f"Error processing game details: {e}")
+                        logging.warning(f"Error processing game details for {result['Game_Label']}: {e}")
 
 # ===========================
 # 13. Run the App
 # ===========================
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception as e:
+        st.error(f"An unexpected error occurred: {str(e)}")
+        logging.error(f"Unexpected error in main: {str(e)}", exc_info=True)
