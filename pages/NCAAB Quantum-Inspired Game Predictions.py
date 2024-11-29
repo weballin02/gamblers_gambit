@@ -674,6 +674,9 @@ def main():
                 (results_df['Spread_Value'].abs() > large_spread_threshold)
             ]
 
+            # Display the number of Best Bets found
+            st.write(f"Number of Best Bets Found: {len(best_bets_df)}")
+
             if not best_bets_df.empty:
                 # Format the DataFrame for display by appending '%' symbol
                 display_best_bets_df = best_bets_df.copy()
@@ -724,7 +727,7 @@ def main():
                             
                             # Additional Insights
                             insights = []
-            
+        
                             # Example insights based on spread and win probability
                             spread_val = best_bet['Spread_Value']
                             if spread_val > large_spread_threshold:
