@@ -705,6 +705,7 @@ def main():
                 scatter_data['Spread_Value'] = scatter_data['Spread_Value'].astype(float)
                 st.scatter_chart(scatter_data[['Spread_Value', 'Home_Win_%', 'Away_Win_%']])
             else:
+                # Display message indicating no bets qualify
                 st.info("No best bets found based on the current criteria.")
 
             # Detailed Analysis per Best Bet
@@ -723,7 +724,7 @@ def main():
                             
                             # Additional Insights
                             insights = []
-        
+            
                             # Example insights based on spread and win probability
                             spread_val = best_bet['Spread_Value']
                             if spread_val > large_spread_threshold:
