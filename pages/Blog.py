@@ -56,7 +56,6 @@ def list_posts():
     return posts
 
 def list_scheduled_posts():
-    # List scheduled posts based on metadata files
     metadata_files = sorted(POSTS_DIR.glob('*.json'), key=lambda f: f.stat().st_mtime, reverse=True)
     scheduled_posts = []
     for metadata_file in metadata_files:
@@ -83,6 +82,66 @@ def get_post_content(post_name):
         return content
     return "Post content not found."
 
+def process_pdf(file):
+    try:
+        with fitz.open(stream=file.read(), filetype="pdf") as doc:
+            text = ""
+            for page in doc:
+                text += page.get_text()
+        return text
+    except Exception as e:
+        st.error(f"❌ Failed to process PDF: {e}")
+        return None
+
+def process_html(file):
+    try:
+        html_content = file.read().decode("utf-8")
+        markdown = html2text.html2text(html_content)
+        return markdown
+    except Exception as e:
+        st.error(f"❌ Failed to process HTML: {e}")
+        return None
+
+# Display scheduled posts
+def view_scheduled_posts():
+    st.header("📅 Scheduled Articles")
+    scheduled_posts = list_scheduled_posts()
+    if not scheduled_posts:
+        st.info("No articles are scheduled for publication.")
+        return
+
+    for post in scheduled_posts:
+        st.markdown(f"""
+            ### {post['title']}
+            **Scheduled Time:** {post['scheduled_time'].strftime('%Y-%m-%d %H:%M')}
+        """)
+
+# View existing blog posts
+def view_blog_posts():
+    st.header("📖 Explore The Gambit")
+    posts = list_posts()
+    if not posts:
+        st.info("No blog posts available.")
+        return
+
+    # Search Functionality
+    search_query = st.text_input("🔍 Search Posts", "")
+    filtered_posts = [post for post in posts if search_query.lower() in post.lower()] if search_query else posts
+
+    if not filtered_posts:
+        st.warning("No posts match your search.")
+        return
+
+    for post in filtered_posts:
+        title = post.replace('.md', '').replace('_', ' ').title()
+        content = get_post_content(post)
+        content_preview = content[:200] + "..." if len(content) > 200 else content
+
+        st.markdown(f"### {title}")
+        st.text(content_preview)
+        st.markdown("---")
+
+# Create blog posts
 def create_blog_post():
     st.header("📝 Create a New Blog Post")
     post_type = st.radio("Choose Post Creation Method", ["Manual Entry", "Upload PDF/HTML"], horizontal=True)
@@ -144,23 +203,10 @@ def create_blog_post():
 
         st.rerun()
 
-def view_scheduled_posts():
-    st.header("📅 Scheduled Articles")
-    scheduled_posts = list_scheduled_posts()
-    if not scheduled_posts:
-        st.info("No articles are scheduled for publication.")
-        return
-
-    for post in scheduled_posts:
-        st.markdown(f"""
-            ### {post['title']}
-            **Scheduled Time:** {post['scheduled_time'].strftime('%Y-%m-%d %H:%M')}
-        """)
-
 # Main Function
 def main():
     st.sidebar.title("📂 Blog Management")
-    page = st.sidebar.radio("🛠️ Choose an option", ["View Posts", "Create Post", "Delete Post", "View Scheduled Posts"])
+    page = st.sidebar.radio("🛠️ Choose an option", ["View Posts", "Create Post", "View Scheduled Posts"])
 
     if page == "View Posts":
         view_blog_posts()
@@ -168,12 +214,6 @@ def main():
         login()
         if st.session_state.logged_in:
             create_blog_post()
-        else:
-            st.warning("🔒 Please log in to access this feature.")
-    elif page == "Delete Post":
-        login()
-        if st.session_state.logged_in:
-            delete_blog_posts()
         else:
             st.warning("🔒 Please log in to access this feature.")
     elif page == "View Scheduled Posts":
