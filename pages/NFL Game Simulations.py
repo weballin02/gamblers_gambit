@@ -248,76 +248,92 @@ def create_simulation_visualizations(results, home_team, away_team):
     
     return fig
 
-# Sidebar for controls
-with st.sidebar:
-    st.header("Simulation Controls")
-    upcoming_games = get_upcoming_games()
-    
-    if not upcoming_games.empty:
+# Header for simulation controls
+st.title("NFL Simulation Dashboard")
+st.markdown("**Predict outcomes, adjust spreads, and visualize your simulation results.**")
+
+# Section: Simulation Controls
+st.header("Simulation Controls")
+upcoming_games = get_upcoming_games()
+
+if not upcoming_games.empty:
+    # Expander for simulation controls
+    with st.expander("Customize Simulation", expanded=True):
+        # Dropdown for selecting a game
         game_options = [
             f"{row['game_datetime'].date()} - {row['home_team']} vs {row['away_team']}"
             for _, row in upcoming_games.iterrows()
         ]
-        selected_game = st.selectbox("Select Game", game_options)
-        
-        # Extract teams from selection
+        selected_game = st.selectbox("Select Game", game_options, help="Choose a game from the upcoming schedule.")
+
+        # Extract home and away teams
         home_team = selected_game.split(' vs ')[0].split(' - ')[1]
         away_team = selected_game.split(' vs ')[1]
-        
+
+        # Spread adjustment slider
         spread_adjustment = st.slider(
             "Home Team Spread Adjustment",
-            -10.0, 10.0, 0.0,
-            help="Positive values favor home team, negative values favor away team"
+            -20.0, 20.0, 0.0, step=0.5
+            help="Adjust the spread in favor of the home or away team. Positive values favor the home team."
         )
-        
+
+        # Number of simulations dropdown
         num_simulations = st.selectbox(
             "Number of Simulations",
             [1000, 10000, 100000],
-            help="More simulations = more accurate results but slower processing"
+            help="Select the number of Monte Carlo simulations to run. Higher values increase accuracy but take longer."
         )
-        
-        run_simulation = st.button("Run Simulation")
-    else:
-        st.error("No upcoming games found in the schedule.")
-        run_simulation = False
 
-# Main content area
+        # Run simulation button
+        run_simulation = st.button("Run Simulation", help="Start the simulation for the selected game.")
+else:
+    st.error("No upcoming games found in the schedule.")
+    run_simulation = False
+
+# Section: Simulation Results
 if run_simulation:
     with st.spinner("Running simulation..."):
+        # Fetch team statistics
         team_stats = calculate_team_stats()
+
+        # Run Monte Carlo simulation
         results = monte_carlo_simulation(
             home_team, away_team,
             spread_adjustment, num_simulations,
             team_stats
         )
-        
+
         if results:
-            # Display key metrics
+            # Display key win probability metrics
+            st.subheader("Simulation Results")
             col1, col2 = st.columns(2)
             with col1:
-                st.metric(f"{home_team} Win Probability",
-                          f"{results[f'{home_team} Win Percentage']}%")
+                st.metric(f"{home_team} Win Probability", f"{results[f'{home_team} Win Percentage']}%")
             with col2:
-                st.metric(f"{away_team} Win Probability",
-                          f"{results[f'{away_team} Win Percentage']}%")
-            
-            # Display detailed results
-            st.subheader("Detailed Predictions")
-            metrics = {k: round(v, 2) if isinstance(v, (float, int)) else v for k, v in results.items() if k != "Simulation Data"}
-            st.json(metrics)
-            
-            # Display visualizations
+                st.metric(f"{away_team} Win Probability", f"{results[f'{away_team} Win Percentage']}%")
+
+            # Detailed predictions in a collapsible section
+            with st.expander("Detailed Predictions", expanded=False):
+                metrics = {k: round(v, 2) if isinstance(v, (float, int)) else v
+                           for k, v in results.items() if k != "Simulation Data"}
+                st.json(metrics)
+
+            # Visualization
             st.subheader("Visualization")
             fig = create_simulation_visualizations(results, home_team, away_team)
             if fig:
                 st.plotly_chart(fig, use_container_width=True)
-            
-            # Display team statistics
+
+            # Team statistics
             st.subheader("Team Statistics")
             col1, col2 = st.columns(2)
             with col1:
-                st.write(f"{home_team} Recent Stats")
+                st.markdown(f"**{home_team} Recent Stats**")
                 st.write({k: round(v, 2) if isinstance(v, (float, int)) else v for k, v in team_stats[home_team].items()})
             with col2:
-                st.write(f"{away_team} Recent Stats")
+                st.markdown(f"**{away_team} Recent Stats**")
                 st.write({k: round(v, 2) if isinstance(v, (float, int)) else v for k, v in team_stats[away_team].items()})
+else:
+    st.info("Configure the simulation above and click 'Run Simulation' to view results.")
+
+
