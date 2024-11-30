@@ -67,8 +67,7 @@ def list_scheduled_posts():
                 if scheduled_time > datetime.datetime.now():
                     scheduled_posts.append({
                         "title": metadata_file.stem.replace('_', ' ').title(),
-                        "scheduled_time": scheduled_time,
-                        "metadata_file": metadata_file
+                        "scheduled_time": scheduled_time
                     })
         except Exception as e:
             st.error(f"❌ Error reading metadata: {e}")
@@ -102,21 +101,13 @@ def process_html(file):
         st.error(f"❌ Failed to process HTML: {e}")
         return None
 
-def view_scheduled_posts():
-    st.header("📅 Scheduled Articles")
-    scheduled_posts = list_scheduled_posts()
-    if not scheduled_posts:
-        st.info("No articles are scheduled for publication.")
-        return
-
-    for post in scheduled_posts:
-        st.markdown(f"""
-            ### {post['title']}
-            **Scheduled Time:** {post['scheduled_time'].strftime('%Y-%m-%d %H:%M')}
-        """)
-
 def view_blog_posts():
     st.header("📖 Explore The Gambit")
+
+    # Check if a post is selected for detailed view
+    if st.session_state.selected_post:
+        display_full_post(st.session_state.selected_post)
+        return
 
     posts = list_posts()
     if not posts:
@@ -192,6 +183,19 @@ def view_blog_posts():
         st.markdown(f"### {post_title}")
         st.text(content_preview)
         st.markdown("---")
+
+def view_scheduled_posts():
+    st.header("📅 Scheduled Articles")
+    scheduled_posts = list_scheduled_posts()
+    if not scheduled_posts:
+        st.info("No articles are scheduled for publication.")
+        return
+
+    for post in scheduled_posts:
+        st.markdown(f"""
+            ### {post['title']}
+            **Scheduled Time:** {post['scheduled_time'].strftime('%Y-%m-%d %H:%M')}
+        """)
 
 def create_blog_post():
     st.header("📝 Create a New Blog Post")
