@@ -273,7 +273,7 @@ if not upcoming_games.empty:
         # Spread adjustment slider
         spread_adjustment = st.slider(
             "Home Team Spread Adjustment",
-            -20.0, 20.0, 0.0, step=0.5
+            -20.0, 20.0, 0.0, step=0.5,
             help="Adjust the spread in favor of the home or away team. Positive values favor the home team."
         )
 
