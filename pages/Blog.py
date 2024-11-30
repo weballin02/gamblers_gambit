@@ -199,14 +199,7 @@ def create_blog_post():
         title = st.text_input("🖊️ Post Title", placeholder="Enter the title of your post")
         content = st.text_area("📝 Content", height=300, placeholder="Write your post content here...")
         image = st.file_uploader("🖼️ Upload Thumbnail Image", type=["png", "jpg", "jpeg"])
-        
-        # Add date and time inputs for scheduling
-        post_date = st.date_input("📅 Schedule Date", value=datetime.date.today())
-        post_time = st.time_input("⏰ Schedule Time", value=datetime.time(hour=9, minute=0))
-        
-        # Combine date and time into a single datetime object
-        scheduled_time = datetime.datetime.combine(post_date, post_time)
-
+        scheduled_time = st.datetime_input("⏰ Schedule Post Time", datetime.datetime.now())
         submitted = st.form_submit_button("📤 Publish")
 
         if submitted:
@@ -217,20 +210,17 @@ def create_blog_post():
                 image_path = IMAGES_DIR / image_filename
 
                 if filepath.exists():
-                    st.error("❌ A post with this title already exists. Please choose a different title.")
+                    st.error("❌ A post with this title already exists.")
                 else:
-                    # Save the markdown file
                     with open(filepath, 'w', encoding='utf-8') as file:
                         file.write(content)
 
-                    # Save the uploaded image if provided
                     if image:
                         img = Image.open(image)
                         img.save(image_path, format="PNG")
 
-                    # Save metadata with the scheduled time
                     save_metadata(filepath.stem, scheduled_time)
-                    st.success(f"✅ Post scheduled for: **{scheduled_time}**")
+                    st.success(f"✅ Post scheduled: **{title}**")
                     st.rerun()
             else:
                 st.warning("⚠️ Please provide both a title and content for the post.")
