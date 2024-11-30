@@ -471,8 +471,8 @@ def get_mae_color(mae):
     else:
         return "#FF4C4C"  # Red for high MAE
 
-# Display Average MAE for each team
-st.header("Average MAE for Each Team")
+# Display Average MAE for each team with color coding
+st.header("Average MAE per Team")
 for team, mae in team_mae_dict.items():
     mae_color = get_mae_color(mae)
     st.markdown(f"""
@@ -480,23 +480,6 @@ for team, mae in team_mae_dict.items():
         <h4 style="color: {mae_color};">Average MAE for {team_abbrev_mapping[team]}: <strong>{mae:.2f}</strong></h4>
     </div>
     """, unsafe_allow_html=True)
-
-# Compute Team Forecasts
-def compute_team_forecasts(team_models, team_data):
-    team_forecasts = {}
-    forecast_periods = 1  # Predict next game
-    for team_abbrev, model in team_models.items():
-        team_df = team_data[team_data['TEAM_ABBREV'] == team_abbrev]
-        if team_df.empty:
-            continue
-        last_date = team_df.index.max()
-        future_dates = pd.date_range(start=last_date + pd.Timedelta(days=7), periods=forecast_periods, freq='7D')
-        forecast = model.predict(n_periods=forecast_periods)
-        predictions = pd.DataFrame({'Date': future_dates, 'Predicted_PTS': forecast, 'Team': team_abbrev})
-        team_forecasts[team_abbrev] = predictions
-    return pd.concat(team_forecasts.values(), ignore_index=True) if team_forecasts else pd.DataFrame(columns=['Date', 'Predicted_PTS', 'Team'])
-
-team_forecasts = compute_team_forecasts(team_models, team_data)
 
 # Fetch upcoming games based on the current day of the week
 @st.cache_data(ttl=3600)
