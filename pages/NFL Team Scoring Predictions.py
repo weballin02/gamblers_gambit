@@ -21,6 +21,87 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
+# Synesthetic Interface CSS
+st.markdown('''
+    <style>
+        /* Import Fonts */
+        @import url('https://fonts.googleapis.com/css2?family=Raleway:wght@400;700&family=Open+Sans:wght@400;600&display=swap');
+
+        /* Root Variables */
+        :root {
+            --background-color: #2C3E50; /* Charcoal Dark Gray */
+            --primary-text-color: #FFFFFF; /* Crisp White */
+            --heading-text-color: #F5F5F5; /* Light Gray */
+            --accent-color-teal: #32CD32; /* Lime Green */
+            --accent-color-purple: #1E90FF; /* Electric Blue */
+            --highlight-color: #FF4500; /* Fiery Red */
+            --font-heading: 'Raleway', sans-serif;
+            --font-body: 'Open Sans', sans-serif;
+        }
+
+        /* Global Styles */
+        body, html {
+            background: var(--background-color);
+            color: var(--primary-text-color);
+            font-family: var(--font-body);
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+        }
+
+        h1, h2, h3, h4 {
+            font-family: var(--font-heading);
+            color: var(--heading-text-color);
+        }
+
+        /* Data Section */
+        .data-section {
+            padding: 2em 1em;
+            text-align: center;
+        }
+
+        .data-section h2 {
+            font-size: 2.5em;
+            margin-bottom: 0.5em;
+            color: var(--accent-color-teal);
+        }
+
+        .data-section p {
+            font-size: 1.2em;
+            color: var(--primary-text-color);
+            margin-bottom: 2em;
+        }
+
+        /* Summary Section */
+        .summary-section {
+            padding: 2em 1em;
+            text-align: center;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            margin-bottom: 2em;
+        }
+
+        .summary-section h3 {
+            font-size: 2em;
+            margin-bottom: 0.5em;
+            color: var(--accent-color-teal);
+        }
+
+        .summary-section p {
+            font-size: 1.5em;
+            color: var(--primary-text-color);
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 1em 0;
+            background-color: var(--background-color);
+            color: var(--primary-text-color);
+        }
+    </style>
+''', unsafe_allow_html=True)
+
 # Team Abbreviation to Full Name Mapping
 team_abbrev_mapping = {
     'ARI': 'Arizona Cardinals',
