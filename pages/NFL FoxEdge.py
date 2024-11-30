@@ -41,13 +41,13 @@ st.markdown('''
 
         /* Root Variables */
         :root {
-            --background-gradient-start: #2C3E50; /* Charcoal Dark Gray */
-            --background-gradient-end: #34495E; /* Darker Gray */
+            --background-gradient-start: #1A252F; /* Darker Charcoal Gray */
+            --background-gradient-end: #2C3E50; /* Enhanced Dark Gray */
             --primary-text-color: #FFFFFF; /* Crisp White */
-            --heading-text-color: #F5F5F5; /* Light Gray */
-            --accent-color-teal: #32CD32; /* Lime Green */
-            --accent-color-purple: #1E90FF; /* Electric Blue */
-            --highlight-color: #FF4500; /* Fiery Red */
+            --heading-text-color: #F0F0F0; /* Slightly Brighter Light Gray */
+            --accent-color-teal: #2ED573; /* Brighter Lime Green */
+            --accent-color-purple: #A56BFF; /* Keep Electric Blue */
+            --highlight-color: #FF4C4C; /* Brighter Fiery Red */
             --font-heading: 'Raleway', sans-serif;
             --font-body: 'Open Sans', sans-serif;
         }
@@ -82,7 +82,7 @@ st.markdown('''
             left: -50%;
             width: 200%;
             height: 200%;
-            background: radial-gradient(circle at center, rgba(255, 255, 255, 0.1), transparent);
+            background: radial-gradient(circle at center, rgba(255, 255, 255, 0.15), transparent);
             animation: rotate 30s linear infinite;
         }
 
@@ -99,7 +99,7 @@ st.markdown('''
         .hero p {
             font-size: 1.5em;
             margin-bottom: 1em;
-            color: #CCCCCC;
+            color: #D0D0D0; /* Slightly Brighter Gray */
         }
 
         /* Buttons */
@@ -111,7 +111,7 @@ st.markdown('''
             font-size: 1.1em;
             border-radius: 30px;
             cursor: pointer;
-            transition: transform 0.3s ease;
+            transition: transform 0.3s ease, background 0.3s ease;
             text-decoration: none;
             display: inline-block;
             margin-top: 1em;
@@ -119,6 +119,7 @@ st.markdown('''
 
         .button:hover {
             transform: translateY(-5px);
+            background: linear-gradient(45deg, #2ED573, #A56BFF); /* Slightly Brighter on Hover */
         }
 
         /* Data Section */
@@ -134,14 +135,14 @@ st.markdown('''
 
         .data-section p {
             font-size: 1.2em;
-            color: #CCCCCC;
+            color: #D0D0D0; /* Slightly Brighter Gray */
             margin-bottom: 2em;
         }
 
         /* Enhanced Summary Styling */
         .summary-section {
             padding: 2em 1em;
-            background-color: rgba(255, 255, 255, 0.05);
+            background-color: rgba(255, 255, 255, 0.1); /* More opaque background */
             border-radius: 15px;
             margin-bottom: 2em;
         }
@@ -168,7 +169,7 @@ st.markdown('''
         }
 
         .team-card {
-            background-color: rgba(255, 255, 255, 0.1);
+            background-color: rgba(255, 255, 255, 0.15); /* More opaque background */
             border-radius: 15px;
             padding: 1.5em;
             width: calc(33% - 2em);  /* Each card takes up approximately 1/3rd of the row, with gaps */
@@ -186,12 +187,13 @@ st.markdown('''
             font-size: 1.1em;
             border-radius: 30px;
             cursor: pointer;
-            transition: transform 0.3s ease;
+            transition: transform 0.3s ease, background 0.3s ease;
             margin-top: 1em;
         }
 
         .stButton > button:hover {
             transform: translateY(-5px);
+            background: linear-gradient(45deg, #2ED573, #A56BFF); /* Slightly Brighter on Hover */
         }
 
         .stCheckbox > div {
@@ -202,7 +204,7 @@ st.markdown('''
         .footer {
             text-align: center;
             padding: 2em 1em;
-            color: #999999;
+            color: #B0B0B0; /* Slightly Brighter Gray */
             font-size: 0.9em;
         }
 
