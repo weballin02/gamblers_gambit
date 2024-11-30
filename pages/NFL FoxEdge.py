@@ -91,23 +91,12 @@ st.markdown('''
             to { transform: rotate(360deg); }
         }
 
-        .hero h1 {
-            font-size: 3.5em;
-            margin-bottom: 0.2em;
-        }
-
-        .hero p {
-            font-size: 1.5em;
-            margin-bottom: 1em;
-            color: #CCCCCC; /* Light Gray */
-        }
-
         /* Buttons */
         .button {
             background: linear-gradient(45deg, var(--accent-color-teal), var(--accent-color-purple));
             border: none;
             padding: 0.8em 2em;
-            color: #FFFFFF; /* White */
+            color: #FFFFFF;
             font-size: 1.1em;
             border-radius: 30px;
             cursor: pointer;
@@ -134,7 +123,7 @@ st.markdown('''
 
         .data-section p {
             font-size: 1.2em;
-            color: #CCCCCC; /* Light Gray */
+            color: #CCCCCC;
             margin-bottom: 2em;
         }
 
@@ -149,12 +138,12 @@ st.markdown('''
         .summary-section h3 {
             font-size: 2em;
             margin-bottom: 0.5em;
-            color: var(--accent-color-teal); /* Bright Teal */
+            color: var(--accent-color-teal);
         }
 
         .summary-section p {
             font-size: 1.1em;
-            color: #E0E0E0; /* Light Gray */
+            color: #E0E0E0;
             line-height: 1.6;
         }
 
@@ -182,7 +171,7 @@ st.markdown('''
             background: linear-gradient(45deg, var(--accent-color-teal), var(--accent-color-purple));
             border: none;
             padding: 0.8em 2em;
-            color: #FFFFFF; /* White */
+            color: #FFFFFF;
             font-size: 1.1em;
             border-radius: 30px;
             cursor: pointer;
@@ -202,12 +191,12 @@ st.markdown('''
         .footer {
             text-align: center;
             padding: 2em 1em;
-            color: #999999; /* Gray */
+            color: #999999;
             font-size: 0.9em;
         }
 
         .footer a {
-            color: var(--accent-color-teal); /* Bright Teal */
+            color: var(--accent-color-teal);
             text-decoration: none;
         }
 
@@ -326,6 +315,7 @@ def fetch_and_preprocess_data(season_years):
             all_team_data.append(season_data)
         except Exception as e:
             st.warning(f"Error fetching data for season {year}: {e}")
+            failed_teams.append(year)
             continue
     if all_team_data:
         data = pd.concat(all_team_data, ignore_index=True)
@@ -466,6 +456,9 @@ def compute_team_forecasts(team_models, team_data):
     team_forecasts = {}
     forecast_periods = 1  # Predict next game
     for team_abbrev, model in team_models.items():
+        if team_abbrev not in team_data['TEAM_ABBREV'].values:
+            st.warning(f"No data available for team: {team_abbrev}")
+            continue
         team_df = team_data[team_data['TEAM_ABBREV'] == team_abbrev]
         if team_df.empty:
             continue
@@ -517,7 +510,7 @@ def fetch_current_season_stats():
             'max_score': x['PTS'].max(),
             'std_dev': x['PTS'].std(),
             'games_played': x['PTS'].count(),
-            'recent_form': x['PTS'].tail(5).mean() if len(x) >=5 else x['PTS'].mean(),
+            'recent_form': x['PTS'].tail(5).mean() if len(x) >= 5 else x['PTS'].mean(),
             'avg_points_allowed': x['OPP_PTS'].mean()
         })
     ).to_dict(orient='index')
@@ -571,15 +564,12 @@ def predict_game_outcome(home_team, away_team, team_forecasts, current_season_st
 
         # Normalize rating_diff between -1 and 1
         max_rating = max(abs(home_team_rating), abs(away_team_rating))
-        normalized_rating_diff = rating_diff / max_rating if max_rating !=0 else 0
+        normalized_rating_diff = rating_diff / max_rating if max_rating != 0 else 0
 
         # Apply sigmoid function to map to (0,1)
         sigmoid_confidence = expit(normalized_rating_diff * 6)  # Multiplier adjusts the steepness
 
         # Adjust confidence based on model's average MAE
-        # Assuming lower MAE => higher confidence, higher MAE => lower confidence
-        # Here, we inversely scale MAE to a factor between 0.8 and 1.2
-        # Adjust the scaling based on your historical MAE range
         mae_adjustment = 1.2 - (avg_mae / 10)  # Example scaling; adjust as needed
         mae_adjustment = np.clip(mae_adjustment, 0.8, 1.2)  # Clamp between 0.8 and 1.2
 
