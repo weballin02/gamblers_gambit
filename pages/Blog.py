@@ -4,6 +4,7 @@ from pathlib import Path
 from PIL import Image
 import shutil
 import datetime
+import pytz  # Import pytz for timezone handling
 from io import BytesIO
 import base64
 import json  # For saving scheduled metadata
@@ -50,7 +51,7 @@ def login():
 
 # Helper Functions
 def list_posts():
-    now = datetime.datetime.now()
+    now = datetime.datetime.now(pytz.utc)  # Get current time in UTC
     posts = []
 
     for post_path in POSTS_DIR.glob('*.md'):
@@ -58,7 +59,7 @@ def list_posts():
         if metadata_path.exists():
             with open(metadata_path, 'r', encoding='utf-8') as file:
                 metadata = json.load(file)
-                scheduled_time = datetime.datetime.fromisoformat(metadata['scheduled_time'])
+                scheduled_time = datetime.datetime.fromisoformat(metadata['scheduled_time']).astimezone(pytz.utc)
                 if now >= scheduled_time:
                     posts.append(post_path.name)
         else:
@@ -214,6 +215,10 @@ def create_blog_post():
     scheduled_time = st.time_input("⏰ Schedule Time", value=datetime.time(9, 0))
     scheduled_datetime = datetime.datetime.combine(scheduled_date, scheduled_time)
 
+    # Convert to UTC for storage
+    local_tz = pytz.timezone("UTC")  # Change this to the user's local timezone if known
+    scheduled_datetime = local_tz.localize(scheduled_datetime)
+
     if st.button("📤 Publish"):
         if post_type == "Manual Entry" and (not title or not content):
             st.warning("⚠️ Please provide both a title and content for the post.")
@@ -277,13 +282,13 @@ def view_scheduled_posts():
         return
 
     st.header("📅 Scheduled Posts")
-    now = datetime.datetime.now()
+    now = datetime.datetime.now(pytz.utc)  # Get current time in UTC
     scheduled_posts = []
 
     for post_path in POSTS_DIR.glob('*.json'):
         with open(post_path, 'r', encoding='utf-8') as file:
             metadata = json.load(file)
-            scheduled_time = datetime.datetime.fromisoformat(metadata['scheduled_time'])
+            scheduled_time = datetime.datetime.fromisoformat(metadata['scheduled_time']).astimezone(pytz.utc)
             if now < scheduled_time:
                 scheduled_posts.append((post_path.stem, scheduled_time))
 
@@ -292,8 +297,10 @@ def view_scheduled_posts():
         return
 
     for post_title, scheduled_time in scheduled_posts:
+        # Convert scheduled time to local timezone for display
+        local_time = scheduled_time.astimezone(pytz.timezone("UTC"))  # Change this to the user's local timezone if known
         st.markdown(f"**Post Title:** {post_title.replace('_', ' ').title()}")
-        st.markdown(f"**Scheduled for:** {scheduled_time.strftime('%Y-%m-%d %H:%M')}")
+        st.markdown(f"**Scheduled for:** {local_time.strftime('%Y-%m-%d %H:%M')}")
         st.markdown("---")
 
 def main():
