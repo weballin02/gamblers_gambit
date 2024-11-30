@@ -7,15 +7,13 @@ import datetime
 from io import BytesIO
 import base64
 import json
-
-# New imports for handling PDF and HTML
 import fitz  # PyMuPDF
 import html2text
 
 # Define directories
 POSTS_DIR = Path('posts')
 TRASH_DIR = Path('trash')
-IMAGES_DIR = Path('images')  # Directory for images
+IMAGES_DIR = Path('images')
 
 # Ensure directories exist
 for directory in [POSTS_DIR, TRASH_DIR, IMAGES_DIR]:
@@ -58,21 +56,19 @@ def list_posts():
     for post_path in POSTS_DIR.glob('*.md'):
         metadata_path = post_path.with_suffix('.json')
         if metadata_path.exists():
-            # Load metadata to check scheduled time
             with open(metadata_path, 'r', encoding='utf-8') as file:
                 metadata = json.load(file)
                 scheduled_time = datetime.datetime.fromisoformat(metadata['scheduled_time'])
                 if now >= scheduled_time:
                     posts.append(post_path.name)
         else:
-            # If no metadata, assume the post is visible immediately
             posts.append(post_path.name)
-    
+
     return sorted(posts, reverse=True)
 
 def delete_post(post_name):
     post_path = POSTS_DIR / post_name
-    image_path = IMAGES_DIR / f"{post_path.stem}.png"  # Assuming PNG; adjust as needed
+    image_path = IMAGES_DIR / f"{post_path.stem}.png"
     metadata_path = post_path.with_suffix('.json')
     if post_path.exists():
         os.remove(post_path)
@@ -84,32 +80,11 @@ def delete_post(post_name):
     else:
         return False
 
-def move_to_trash(post_name):
-    if not TRASH_DIR.exists():
-        TRASH_DIR.mkdir(parents=True)
-    post_path = POSTS_DIR / post_name
-    trash_post_path = TRASH_DIR / post_name
-    image_path = IMAGES_DIR / f"{post_path.stem}.png"  # Assuming PNG; adjust as needed
-    trash_image_path = TRASH_DIR / f"{post_path.stem}.png"
-    metadata_path = post_path.with_suffix('.json')
-    trash_metadata_path = TRASH_DIR / f"{post_path.stem}.json"
-
-    if post_path.exists():
-        post_path.rename(trash_post_path)
-        if image_path.exists():
-            image_path.rename(trash_image_path)
-        if metadata_path.exists():
-            metadata_path.rename(trash_metadata_path)
-        return True
-    else:
-        return False
-
 def get_post_content(post_name):
     post_file = POSTS_DIR / post_name
     if post_file.exists():
         with open(post_file, 'r', encoding='utf-8') as file:
-            content = file.read()
-        return content
+            return file.read()
     return "Post content not found."
 
 # Function to process PDF files
@@ -148,18 +123,7 @@ def view_blog_posts():
         st.info("No blog posts available.")
         return
 
-    # Search Functionality
-    search_query = st.text_input("🔍 Search Posts", "")
-    if search_query:
-        filtered_posts = [post for post in posts if search_query.lower() in post.lower()]
-    else:
-        filtered_posts = posts
-
-    if not filtered_posts:
-        st.warning("No posts match your search.")
-        return
-
-    for post in filtered_posts:
+    for post in posts:
         post_title = post.replace('.md', '').replace('_', ' ').title()
         content = get_post_content(post)
         pub_date = datetime.datetime.fromtimestamp((POSTS_DIR / post).stat().st_mtime).strftime('%Y-%m-%d %H:%M')
@@ -186,8 +150,21 @@ def display_full_post(post_name):
 def create_blog_post():
     st.header("📝 Create a New Blog Post")
     with st.form(key='create_post_form'):
-        title = st.text_input("🖊️ Post Title", placeholder="Enter the title of your post")
-        content = st.text_area("📝 Content", height=300, placeholder="Write your post content here...")
+        post_type = st.radio("Choose Post Creation Method", ["Manual Entry", "Upload PDF/HTML"], horizontal=True)
+        
+        if post_type == "Manual Entry":
+            title = st.text_input("🖊️ Post Title", placeholder="Enter the title of your post")
+            content = st.text_area("📝 Content", height=300, placeholder="Write your post content here...")
+        elif post_type == "Upload PDF/HTML":
+            uploaded_file = st.file_uploader("📂 Upload PDF or HTML File", type=["pdf", "html"])
+            title = st.text_input("🖊️ Post Title (Optional)", placeholder="Enter the title of your post (optional)")
+            content = None
+            if uploaded_file:
+                if uploaded_file.type == "application/pdf":
+                    content = process_pdf(uploaded_file)
+                elif uploaded_file.type in ["text/html", "application/xhtml+xml"]:
+                    content = process_html(uploaded_file)
+
         image = st.file_uploader("🖼️ Upload Thumbnail Image", type=["png", "jpg", "jpeg"])
         scheduled_date = st.date_input("📅 Schedule Date", value=datetime.date.today())
         scheduled_time = st.time_input("⏰ Schedule Time", value=datetime.time(hour=9, minute=0))
@@ -214,25 +191,8 @@ def create_blog_post():
                         img.save(IMAGES_DIR / image_filename, format="PNG")
                     st.success(f"✅ Post scheduled for {scheduled_datetime}")
                     st.rerun()
-
-def delete_blog_posts():
-    st.header("🗑️ Delete Blog Posts")
-    posts = list_posts()
-    if not posts:
-        st.info("No blog posts available to delete.")
-        return
-
-    confirm_delete = st.checkbox("⚠️ Confirm Deletion")
-    selected_posts = st.multiselect("Select posts to delete", posts)
-
-    if st.button("🗑️ Delete Selected Posts"):
-        if confirm_delete:
-            for post in selected_posts:
-                delete_post(post)
-                st.success(f"✅ Deleted: {post}")
-            st.rerun()
-        else:
-            st.warning("⚠️ Please confirm deletion.")
+            else:
+                st.warning("⚠️ Please provide both a title and content for the post.")
 
 # Main Function
 def main():
