@@ -6,7 +6,7 @@ import shutil
 import datetime
 from io import BytesIO
 import base64
-import json
+import json  # For saving scheduled metadata
 import fitz  # PyMuPDF
 import html2text
 
@@ -77,8 +77,25 @@ def delete_post(post_name):
         if metadata_path.exists():
             os.remove(metadata_path)
         return True
-    else:
-        return False
+    return False
+
+def move_to_trash(post_name):
+    post_path = POSTS_DIR / post_name
+    trash_post_path = TRASH_DIR / post_name
+    image_path = IMAGES_DIR / f"{post_path.stem}.png"
+    trash_image_path = TRASH_DIR / f"{post_path.stem}.png"
+
+    metadata_path = post_path.with_suffix('.json')
+    trash_metadata_path = TRASH_DIR / metadata_path.name
+
+    if post_path.exists():
+        post_path.rename(trash_post_path)
+        if image_path.exists():
+            image_path.rename(trash_image_path)
+        if metadata_path.exists():
+            metadata_path.rename(trash_metadata_path)
+        return True
+    return False
 
 def get_post_content(post_name):
     post_file = POSTS_DIR / post_name
@@ -113,7 +130,6 @@ def process_html(file):
 def view_blog_posts():
     st.header("📖 Explore The Gambit")
 
-    # Check if a post is selected for detailed view
     if st.session_state.selected_post:
         display_full_post(st.session_state.selected_post)
         return
@@ -123,99 +139,41 @@ def view_blog_posts():
         st.info("No blog posts available.")
         return
 
-    # CSS for Post Cards
-    st.markdown("""
-        <style>
-        .post-card {
-            display: flex;
-            background-color: #f9f9f9;
-            border-radius: 10px;
-            padding: 15px;
-            margin-bottom: 20px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            align-items: center;
-        }
-        .thumbnail {
-            width: 150px;
-            height: 100px;
-            object-fit: cover;
-            border-radius: 5px;
-            margin-right: 20px;
-        }
-        .post-details {
-            flex: 1;
-        }
-        .post-title {
-            font-size: 1.5em;
-            color: #333333;
-            margin-bottom: 5px;
-        }
-        .post-meta {
-            font-size: 0.9em;
-            color: #666666;
-            margin-bottom: 10px;
-        }
-        .post-content {
-            font-size: 1em;
-            line-height: 1.6;
-            color: #444444;
-        }
-        .read-more {
-            display: inline-block;
-            margin-top: 10px;
-            font-size: 1em;
-            color: #007BFF;
-            text-decoration: none;
-            cursor: pointer;
-            transition: color 0.3s ease;
-        }
-        .read-more:hover {
-            color: #0056b3;
-        }
-        </style>
-    """, unsafe_allow_html=True)
+    search_query = st.text_input("🔍 Search Posts", "")
+    if search_query:
+        posts = [post for post in posts if search_query.lower() in post.lower()]
 
-    # Display Posts in a Card Layout
+    if not posts:
+        st.warning("No posts match your search.")
+        return
+
     for post in posts:
         post_title = post.replace('.md', '').replace('_', ' ').title()
-        post_file = POSTS_DIR / post
+        post_path = POSTS_DIR / post
 
-        # Read and process post content
-        content = get_post_content(post)
-        content_preview = content[:200] + "..." if len(content) > 200 else content
+        content_preview = get_post_content(post)[:200] + "..."
+        image_path = IMAGES_DIR / f"{post_path.stem}.png"
 
-        # Check for associated image
-        image_file = IMAGES_DIR / f"{post_file.stem}.png"
-        if image_file.exists():
-            img = Image.open(image_file)
-            buf = BytesIO()
-            img.save(buf, format="PNG")
-            img_bytes = buf.getvalue()
-            encoded = base64.b64encode(img_bytes).decode()
-            img_html = f'<img src="data:image/png;base64,{encoded}" class="thumbnail"/>'
-        else:
-            img_html = '<div style="width:150px; height:100px; background-color:#cccccc; border-radius:5px; margin-right:20px;"></div>'
-
-        pub_date = datetime.datetime.fromtimestamp(post_file.stat().st_mtime).strftime('%Y-%m-%d %H:%M')
+        pub_date = datetime.datetime.fromtimestamp(post_path.stat().st_mtime).strftime('%Y-%m-%d %H:%M')
         read_more_key = f"read_more_{post}"
 
-        # Display post in a card
-        with st.container():
-            st.markdown(f"""
-                <div class="post-card">
-                    {img_html}
-                    <div class="post-details">
-                        <div class="post-title">{post_title}</div>
-                        <div class="post-meta">Published on: {pub_date}</div>
-                        <div class="post-content">{content_preview}</div>
-                        <a href="#" class="read-more" id="{read_more_key}">Read More</a>
-                    </div>
+        st.markdown(f"""
+            <div class="post-card">
+                <div>
+                    <img src="data:image/png;base64,{base64.b64encode(open(image_path, "rb").read()).decode()}" width="150" height="100" />
                 </div>
-            """, unsafe_allow_html=True)
+                <div>
+                    <h3>{post_title}</h3>
+                    <p>Published on: {pub_date}</p>
+                    <p>{content_preview}</p>
+                    <button id="{read_more_key}">Read More</button>
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
 
-            if st.button("Read More", key=read_more_key):
-                st.session_state.selected_post = post
-                st.rerun()
+        if st.button("Read More", key=read_more_key):
+            st.session_state.selected_post = post
+            st.rerun()
 
 def display_full_post(post_name):
     st.subheader("🔙 Back to Posts")
@@ -223,10 +181,9 @@ def display_full_post(post_name):
         st.session_state.selected_post = None
         st.rerun()
 
-    post_title = post_name.replace('.md', '').replace('_', ' ').title()
     content = get_post_content(post_name)
     pub_date = datetime.datetime.fromtimestamp((POSTS_DIR / post_name).stat().st_mtime).strftime('%Y-%m-%d %H:%M')
-    st.title(post_title)
+    st.title(post_name.replace('.md', '').replace('_', ' ').title())
     st.markdown(f"**Published on:** {pub_date}")
     st.markdown(content)
 
@@ -234,81 +191,59 @@ def create_blog_post():
     st.header("📝 Create a New Blog Post")
     with st.form(key='create_post_form'):
         post_type = st.radio("Choose Post Creation Method", ["Manual Entry", "Upload PDF/HTML"], horizontal=True)
+        title = st.text_input("🖊️ Post Title", placeholder="Enter the title of your post")
+        content = st.text_area("📝 Content", height=300) if post_type == "Manual Entry" else None
 
-        if post_type == "Manual Entry":
-            title = st.text_input("🖊️ Post Title", placeholder="Enter the title of your post")
-            content = st.text_area("📝 Content", height=300, placeholder="Write your post content here...")
-        elif post_type == "Upload PDF/HTML":
+        if post_type == "Upload PDF/HTML":
             uploaded_file = st.file_uploader("📂 Upload PDF or HTML File", type=["pdf", "html"])
-            title = st.text_input("🖊️ Post Title (Optional)", placeholder="Enter the title of your post (optional)")
-            content = None
             if uploaded_file:
-                if uploaded_file.type == "application/pdf":
-                    content = process_pdf(uploaded_file)
-                elif uploaded_file.type in ["text/html", "application/xhtml+xml"]:
-                    content = process_html(uploaded_file)
+                content = process_pdf(uploaded_file) if uploaded_file.type == "application/pdf" else process_html(uploaded_file)
 
         image = st.file_uploader("🖼️ Upload Thumbnail Image", type=["png", "jpg", "jpeg"])
         scheduled_date = st.date_input("📅 Schedule Date", value=datetime.date.today())
-        scheduled_time = st.time_input("⏰ Schedule Time", value=datetime.time(hour=9, minute=0))
+        scheduled_time = st.time_input("⏰ Schedule Time", value=datetime.time(9, 0))
         scheduled_datetime = datetime.datetime.combine(scheduled_date, scheduled_time)
         submitted = st.form_submit_button("📤 Publish")
 
-        if submitted:
-            if (post_type == "Manual Entry" and title and content) or (post_type == "Upload PDF/HTML" and content):
-                title = title or uploaded_file.name.rsplit('.', 1)[0].replace('_', ' ').title()
-                filename = f"{title.replace(' ', '_').lower()}.md"
-                filepath = POSTS_DIR / filename
-                metadata_path = filepath.with_suffix('.json')
-                image_filename = f"{filepath.stem}.png"
+        if submitted and title and content:
+            filename = f"{title.replace(' ', '_').lower()}.md"
+            filepath = POSTS_DIR / filename
+            metadata_path = filepath.with_suffix('.json')
 
-                if filepath.exists():
-                    st.error("❌ A post with this title already exists. Please choose a different title.")
-                else:
-                    with open(filepath, 'w', encoding='utf-8') as f:
-                        f.write(content)
-                    metadata = {"scheduled_time": scheduled_datetime.isoformat()}
-                    with open(metadata_path, 'w', encoding='utf-8') as f:
-                        json.dump(metadata, f)
-                    if image:
-                        img = Image.open(image)
-                        img.save(IMAGES_DIR / image_filename, format="PNG")
-                    st.success(f"✅ Post scheduled for {scheduled_datetime}")
-                    st.rerun()
-            else:
-                st.warning("⚠️ Please provide all required fields for the post.")
+            with open(filepath, 'w', encoding='utf-8') as f:
+                f.write(content)
+
+            with open(metadata_path, 'w', encoding='utf-8') as f:
+                json.dump({"scheduled_time": scheduled_datetime.isoformat()}, f)
+
+            if image:
+                img = Image.open(image)
+                img.save(IMAGES_DIR / f"{filepath.stem}.png", format="PNG")
+
+            st.success(f"✅ Post scheduled for {scheduled_datetime}")
+            st.rerun()
 
 def delete_blog_posts():
     st.header("🗑️ Delete Blog Posts")
     posts = list_posts()
-    if not posts:
-        st.info("No blog posts available to delete.")
-        return
-
     selected_posts = st.multiselect("Select posts to delete", posts)
-    confirm_delete = st.checkbox("⚠️ I understand that deleting a post is irreversible.")
+    confirm_delete = st.checkbox("⚠️ Confirm Deletion")
 
-    if st.button("🗑️ Delete Selected Posts") and confirm_delete:
+    if st.button("Delete Selected") and confirm_delete:
         for post in selected_posts:
             delete_post(post)
-        st.success("✅ Posts deleted successfully.")
+        st.success("✅ Deleted successfully")
         st.rerun()
 
 def main():
     st.sidebar.title("📂 Blog Management")
     page = st.sidebar.radio("🛠️ Choose an option", ["View Posts", "Create Post", "Delete Post"])
-
     if page == "View Posts":
         view_blog_posts()
     elif page in ["Create Post", "Delete Post"]:
         login()
         if st.session_state.logged_in:
-            if page == "Create Post":
-                create_blog_post()
-            elif page == "Delete Post":
-                delete_blog_posts()
-        else:
-            st.warning("🔒 Please log in.")
+            create_blog_post() if page == "Create Post" else delete_blog_posts()
 
 if __name__ == "__main__":
     main()
