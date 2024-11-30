@@ -123,16 +123,99 @@ def view_blog_posts():
         st.info("No blog posts available.")
         return
 
+    # CSS for Post Cards
+    st.markdown("""
+        <style>
+        .post-card {
+            display: flex;
+            background-color: #f9f9f9;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            align-items: center;
+        }
+        .thumbnail {
+            width: 150px;
+            height: 100px;
+            object-fit: cover;
+            border-radius: 5px;
+            margin-right: 20px;
+        }
+        .post-details {
+            flex: 1;
+        }
+        .post-title {
+            font-size: 1.5em;
+            color: #333333;
+            margin-bottom: 5px;
+        }
+        .post-meta {
+            font-size: 0.9em;
+            color: #666666;
+            margin-bottom: 10px;
+        }
+        .post-content {
+            font-size: 1em;
+            line-height: 1.6;
+            color: #444444;
+        }
+        .read-more {
+            display: inline-block;
+            margin-top: 10px;
+            font-size: 1em;
+            color: #007BFF;
+            text-decoration: none;
+            cursor: pointer;
+            transition: color 0.3s ease;
+        }
+        .read-more:hover {
+            color: #0056b3;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+
+    # Display Posts in a Card Layout
     for post in posts:
         post_title = post.replace('.md', '').replace('_', ' ').title()
+        post_file = POSTS_DIR / post
+
+        # Read and process post content
         content = get_post_content(post)
-        pub_date = datetime.datetime.fromtimestamp((POSTS_DIR / post).stat().st_mtime).strftime('%Y-%m-%d %H:%M')
-        st.markdown(f"### {post_title}")
-        st.write(content[:200] + "...")
-        st.write(f"*Published on: {pub_date}*")
-        if st.button(f"Read More: {post_title}", key=post):
-            st.session_state.selected_post = post
-            st.rerun()
+        content_preview = content[:200] + "..." if len(content) > 200 else content
+
+        # Check for associated image
+        image_file = IMAGES_DIR / f"{post_file.stem}.png"
+        if image_file.exists():
+            img = Image.open(image_file)
+            buf = BytesIO()
+            img.save(buf, format="PNG")
+            img_bytes = buf.getvalue()
+            encoded = base64.b64encode(img_bytes).decode()
+            img_html = f'<img src="data:image/png;base64,{encoded}" class="thumbnail"/>'
+        else:
+            img_html = '<div style="width:150px; height:100px; background-color:#cccccc; border-radius:5px; margin-right:20px;"></div>'
+
+        pub_date = datetime.datetime.fromtimestamp(post_file.stat().st_mtime).strftime('%Y-%m-%d %H:%M')
+        read_more_key = f"read_more_{post}"
+
+        # Display post in a card
+        with st.container():
+            st.markdown(f"""
+                <div class="post-card">
+                    {img_html}
+                    <div class="post-details">
+                        <div class="post-title">{post_title}</div>
+                        <div class="post-meta">Published on: {pub_date}</div>
+                        <div class="post-content">{content_preview}</div>
+                        <a href="#" class="read-more" id="{read_more_key}">Read More</a>
+                    </div>
+                </div>
+            """, unsafe_allow_html=True)
+
+            if st.button("Read More", key=read_more_key):
+                st.session_state.selected_post = post
+                st.rerun()
 
 def display_full_post(post_name):
     st.subheader("🔙 Back to Posts")
@@ -195,7 +278,22 @@ def create_blog_post():
             else:
                 st.warning("⚠️ Please provide all required fields for the post.")
 
-# Main Function
+def delete_blog_posts():
+    st.header("🗑️ Delete Blog Posts")
+    posts = list_posts()
+    if not posts:
+        st.info("No blog posts available to delete.")
+        return
+
+    selected_posts = st.multiselect("Select posts to delete", posts)
+    confirm_delete = st.checkbox("⚠️ I understand that deleting a post is irreversible.")
+
+    if st.button("🗑️ Delete Selected Posts") and confirm_delete:
+        for post in selected_posts:
+            delete_post(post)
+        st.success("✅ Posts deleted successfully.")
+        st.rerun()
+
 def main():
     st.sidebar.title("📂 Blog Management")
     page = st.sidebar.radio("🛠️ Choose an option", ["View Posts", "Create Post", "Delete Post"])
