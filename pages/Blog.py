@@ -1,13 +1,13 @@
 import os
-import json
 import streamlit as st
 from pathlib import Path
 from PIL import Image
 import shutil
 import datetime
-from datetime import datetime as dt
 from io import BytesIO
 import base64
+
+# New imports for handling PDF and HTML
 import fitz  # PyMuPDF
 import html2text
 
@@ -15,10 +15,9 @@ import html2text
 POSTS_DIR = Path('posts')
 TRASH_DIR = Path('trash')
 IMAGES_DIR = Path('images')  # Directory for images
-METADATA_DIR = Path('metadata')  # Directory for metadata
 
 # Ensure directories exist
-for directory in [POSTS_DIR, TRASH_DIR, IMAGES_DIR, METADATA_DIR]:
+for directory in [POSTS_DIR, TRASH_DIR, IMAGES_DIR]:
     if not directory.exists():
         directory.mkdir(parents=True)
 
@@ -51,73 +50,48 @@ def login():
                 st.sidebar.error("❌ Invalid credentials")
 
 # Helper Functions
-def save_metadata(post_name, scheduled_time):
-    """Save metadata for a post, including the scheduled publish time."""
-    metadata_file = METADATA_DIR / f"{post_name}.json"
-    metadata = {"scheduled_time": scheduled_time.isoformat()}
-    with open(metadata_file, 'w', encoding='utf-8') as file:
-        json.dump(metadata, file)
-
-def load_metadata(post_name):
-    """Load metadata for a post, including the scheduled publish time."""
-    metadata_file = METADATA_DIR / f"{post_name}.json"
-    if metadata_file.exists():
-        with open(metadata_file, 'r', encoding='utf-8') as file:
-            return json.load(file)
-    return None
-
 def list_posts():
-    """List posts visible based on their scheduled publish time."""
+    if not POSTS_DIR.exists():
+        POSTS_DIR.mkdir(parents=True)
     posts = sorted([f.name for f in POSTS_DIR.glob('*.md')], reverse=True)
-    visible_posts = []
-    for post in posts:
-        metadata = load_metadata(post.replace('.md', ''))
-        if metadata:
-            scheduled_time = dt.fromisoformat(metadata['scheduled_time'])
-            if dt.now() >= scheduled_time:
-                visible_posts.append(post)
-        else:
-            # If no metadata, consider the post immediately visible
-            visible_posts.append(post)
-    return visible_posts
+    return posts
 
 def delete_post(post_name):
     post_path = POSTS_DIR / post_name
-    image_path = IMAGES_DIR / f"{post_path.stem}.png"
-    metadata_path = METADATA_DIR / f"{post_path.stem}.json"
+    image_path = IMAGES_DIR / f"{post_path.stem}.png"  # Assuming PNG; adjust as needed
     if post_path.exists():
         os.remove(post_path)
         if image_path.exists():
             os.remove(image_path)
-        if metadata_path.exists():
-            os.remove(metadata_path)
         return True
-    return False
+    else:
+        return False
 
 def move_to_trash(post_name):
+    if not TRASH_DIR.exists():
+        TRASH_DIR.mkdir(parents=True)
     post_path = POSTS_DIR / post_name
     trash_post_path = TRASH_DIR / post_name
-    image_path = IMAGES_DIR / f"{post_path.stem}.png"
+    image_path = IMAGES_DIR / f"{post_path.stem}.png"  # Assuming PNG; adjust as needed
     trash_image_path = TRASH_DIR / f"{post_path.stem}.png"
-    metadata_path = METADATA_DIR / f"{post_path.stem}.json"
-    trash_metadata_path = TRASH_DIR / f"{post_path.stem}.json"
 
     if post_path.exists():
         post_path.rename(trash_post_path)
         if image_path.exists():
             image_path.rename(trash_image_path)
-        if metadata_path.exists():
-            metadata_path.rename(trash_metadata_path)
         return True
-    return False
+    else:
+        return False
 
 def get_post_content(post_name):
     post_file = POSTS_DIR / post_name
     if post_file.exists():
         with open(post_file, 'r', encoding='utf-8') as file:
-            return file.read()
+            content = file.read()
+        return content
     return "Post content not found."
 
+# Function to process PDF files
 def process_pdf(file):
     try:
         with fitz.open(stream=file.read(), filetype="pdf") as doc:
@@ -129,17 +103,21 @@ def process_pdf(file):
         st.error(f"❌ Failed to process PDF: {e}")
         return None
 
+# Function to process HTML files
 def process_html(file):
     try:
         html_content = file.read().decode("utf-8")
-        return html2text.html2text(html_content)
+        markdown = html2text.html2text(html_content)
+        return markdown
     except Exception as e:
         st.error(f"❌ Failed to process HTML: {e}")
         return None
 
+# Streamlit Interface Functions
 def view_blog_posts():
     st.header("📖 Explore The Gambit")
 
+    # Check if a post is selected for detailed view
     if st.session_state.selected_post:
         display_full_post(st.session_state.selected_post)
         return
@@ -149,29 +127,134 @@ def view_blog_posts():
         st.info("No blog posts available.")
         return
 
+    # Search Functionality
     search_query = st.text_input("🔍 Search Posts", "")
-    filtered_posts = [post for post in posts if search_query.lower() in post.lower()] if search_query else posts
+    if search_query:
+        filtered_posts = [post for post in posts if search_query.lower() in post.lower()]
+    else:
+        filtered_posts = posts
 
     if not filtered_posts:
         st.warning("No posts match your search.")
         return
 
+    # CSS for Post Cards
+    st.markdown("""
+        <style>
+        .post-card {
+            display: flex;
+            background-color: #f9f9f9;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            align-items: center;
+        }
+        .thumbnail {
+            width: 150px;
+            height: 100px;
+            object-fit: cover;
+            border-radius: 5px;
+            margin-right: 20px;
+        }
+        .post-details {
+            flex: 1;
+        }
+        .post-title {
+            font-size: 1.5em;
+            color: #333333;
+            margin-bottom: 5px;
+        }
+        .post-meta {
+            font-size: 0.9em;
+            color: #666666;
+            margin-bottom: 10px;
+        }
+        .post-content {
+            font-size: 1em;
+            line-height: 1.6;
+            color: #444444;
+        }
+        .read-more {
+            display: inline-block;
+            margin-top: 10px;
+            font-size: 1em;
+            color: #007BFF;
+            text-decoration: none;
+            cursor: pointer;
+            transition: color 0.3s ease;
+        }
+        .read-more:hover {
+            color: #0056b3;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+
+    # Display Posts in a Card Layout
     for post in filtered_posts:
         post_title = post.replace('.md', '').replace('_', ' ').title()
         post_file = POSTS_DIR / post
-        content_preview = get_post_content(post)[:200] + "..."
+
+        # Read and process post content
+        content = get_post_content(post)
+        # Optionally, strip markdown to get plain text for preview
+        import re
+        content_preview = re.sub(r'\[(.*?)\]\(.*?\)', r'\1', content)  # Remove markdown links
+        content_preview = re.sub(r'!\[.*?\]\(.*?\)', '', content_preview)  # Remove images
+        content_preview = re.sub(r'#+', '', content_preview)  # Remove headers
+        content_preview = re.sub(r'\n+', ' ', content_preview)  # Remove newlines
+        content_preview = (content_preview[:200] + "...") if len(content_preview) > 200 else content_preview
+
+        # Check for associated image
+        image_file = IMAGES_DIR / f"{post_file.stem}.png"  # Assuming PNG; adjust as needed
+        if image_file.exists():
+            image_path = image_file
+        else:
+            image_path = None  # Placeholder or default image can be set here
+
+        # Convert image to base64 for embedding
+        if image_path:
+            img = Image.open(image_path)
+            img.thumbnail((150, 100))
+            buf = BytesIO()
+            img.save(buf, format="PNG")
+            img_bytes = buf.getvalue()
+            encoded = base64.b64encode(img_bytes).decode()
+            img_html = f'<img src="data:image/png;base64,{encoded}" class="thumbnail"/>'
+        else:
+            img_html = '<div style="width:150px; height:100px; background-color:#cccccc; border-radius:5px; margin-right:20px;"></div>'
+
+        # Format publication date
         pub_date = datetime.datetime.fromtimestamp(post_file.stat().st_mtime).strftime('%Y-%m-%d %H:%M')
+
+        # Unique key for each "Read More" button
         read_more_key = f"read_more_{post}"
 
+        # Display post in a card with "Read More" button
         with st.container():
             st.markdown(f"""
-                **{post_title}**  
-                *Published on: {pub_date}*  
-                {content_preview}  
-            """)
+                <div class="post-card">
+                    {img_html}
+                    <div class="post-details">
+                        <div class="post-title">{post_title}</div>
+                        <div class="post-meta">Published on: {pub_date}</div>
+                        <div class="post-content">{content_preview}</div>
+                        <a href="#" class="read-more" id="{read_more_key}">Read More</a>
+                    </div>
+                </div>
+            """, unsafe_allow_html=True)
+
+            # Capture the "Read More" click using Streamlit's button
             if st.button("Read More", key=read_more_key):
                 st.session_state.selected_post = post
-                st.rerun()
+                st.rerun()  # Immediately rerun to display the post
+
+    st.markdown("---")
+    st.markdown("""
+        <div style="text-align:center; margin-top:20px;">
+            Want to contribute or learn more? Reach out to us at <a href="mailto:foxedgeai@gmail.com">foxedgeai@gmail.com</a>.
+        </div>
+    """, unsafe_allow_html=True)
 
 def display_full_post(post_name):
     st.subheader("🔙 Back to Posts")
@@ -183,47 +266,115 @@ def display_full_post(post_name):
     post_file = POSTS_DIR / post_name
     content = get_post_content(post_name)
 
+    # Display the post title
     st.title(post_title)
+
+    # Display publication date
     pub_date = datetime.datetime.fromtimestamp(post_file.stat().st_mtime).strftime('%Y-%m-%d %H:%M')
     st.markdown(f"**Published on:** {pub_date}")
 
+    # Display the image if exists
     image_file = IMAGES_DIR / f"{post_file.stem}.png"
     if image_file.exists():
         st.image(str(image_file), use_column_width=True)
 
+    # Display the full content
     st.markdown(content)
 
 def create_blog_post():
     st.header("📝 Create a New Blog Post")
     with st.form(key='create_post_form'):
-        title = st.text_input("🖊️ Post Title", placeholder="Enter the title of your post")
-        content = st.text_area("📝 Content", height=300, placeholder="Write your post content here...")
-        image = st.file_uploader("🖼️ Upload Thumbnail Image", type=["png", "jpg", "jpeg"])
-        scheduled_time = st.datetime_input("⏰ Schedule Post Time", datetime.datetime.now())
+        # Option to create manually or upload a file
+        post_type = st.radio("Choose Post Creation Method", ["Manual Entry", "Upload PDF/HTML"], horizontal=True)
+
+        if post_type == "Manual Entry":
+            title = st.text_input("🖊️ Post Title", placeholder="Enter the title of your post")
+            content = st.text_area("📝 Content", height=300, placeholder="Write your post content here...")
+        elif post_type == "Upload PDF/HTML":
+            uploaded_file = st.file_uploader("📂 Upload PDF or HTML File", type=["pdf", "html"])
+            title = st.text_input("🖊️ Post Title (Optional)", placeholder="Enter the title of your post (optional)")
+            content = None  # Will be populated after processing the file
+
+        image = st.file_uploader("🖼️ Upload Thumbnail Image", type=["png", "jpg", "jpeg"], accept_multiple_files=False)
         submitted = st.form_submit_button("📤 Publish")
 
         if submitted:
-            if title and content:
-                filename = f"{title.replace(' ', '_').lower()}.md"
-                filepath = POSTS_DIR / filename
-                image_filename = f"{filepath.stem}.png"
-                image_path = IMAGES_DIR / image_filename
+            if post_type == "Manual Entry":
+                if title and content:
+                    filename = f"{title.replace(' ', '_').lower()}.md"
+                    filepath = POSTS_DIR / filename
+                    image_filename = f"{filepath.stem}.png"  # Saving all images as PNG for consistency
+                    image_path = IMAGES_DIR / image_filename
 
-                if filepath.exists():
-                    st.error("❌ A post with this title already exists.")
+                    if filepath.exists():
+                        st.error("❌ A post with this title already exists. Please choose a different title.")
+                    else:
+                        # Save the markdown file
+                        with open(filepath, 'w', encoding='utf-8') as file:
+                            file.write(content)
+
+                        # Save the uploaded image if provided
+                        if image:
+                            try:
+                                img = Image.open(image)
+                                img.save(image_path, format="PNG")
+                                st.success(f"✅ Published post with image: **{title}**")
+                            except Exception as e:
+                                st.error(f"❌ Failed to save image: {e}")
+                                # Optionally, you might want to delete the markdown file if image saving fails
+                        else:
+                            st.success(f"✅ Published post: **{title}** (No image uploaded)")
+
+                        st.rerun()
                 else:
-                    with open(filepath, 'w', encoding='utf-8') as file:
-                        file.write(content)
+                    st.warning("⚠️ Please provide both a title and content for the post.")
 
-                    if image:
-                        img = Image.open(image)
-                        img.save(image_path, format="PNG")
+            elif post_type == "Upload PDF/HTML":
+                if uploaded_file:
+                    # Determine file type and process accordingly
+                    if uploaded_file.type == "application/pdf":
+                        extracted_content = process_pdf(uploaded_file)
+                        if not extracted_content:
+                            st.stop()  # Stop if processing failed
+                    elif uploaded_file.type in ["text/html", "application/xhtml+xml"]:
+                        extracted_content = process_html(uploaded_file)
+                        if not extracted_content:
+                            st.stop()  # Stop if processing failed
+                    else:
+                        st.error("❌ Unsupported file type.")
+                        st.stop()
 
-                    save_metadata(filepath.stem, scheduled_time)
-                    st.success(f"✅ Post scheduled: **{title}**")
-                    st.rerun()
-            else:
-                st.warning("⚠️ Please provide both a title and content for the post.")
+                    # If title not provided, derive from file name
+                    if not title:
+                        title = uploaded_file.name.rsplit('.', 1)[0].replace('_', ' ').title()
+
+                    filename = f"{title.replace(' ', '_').lower()}.md"
+                    filepath = POSTS_DIR / filename
+                    image_filename = f"{filepath.stem}.png"  # Saving all images as PNG for consistency
+                    image_path = IMAGES_DIR / image_filename
+
+                    if filepath.exists():
+                        st.error("❌ A post with this title already exists. Please choose a different title.")
+                    else:
+                        # Save the markdown file
+                        with open(filepath, 'w', encoding='utf-8') as file:
+                            file.write(extracted_content)
+
+                        # Save the uploaded image if provided
+                        if image:
+                            try:
+                                img = Image.open(image)
+                                img.save(image_path, format="PNG")
+                                st.success(f"✅ Published post with image: **{title}**")
+                            except Exception as e:
+                                st.error(f"❌ Failed to save image: {e}")
+                                # Optionally, you might want to delete the markdown file if image saving fails
+                        else:
+                            st.success(f"✅ Published post: **{title}** (No image uploaded)")
+
+                        st.rerun()
+                else:
+                    st.warning("⚠️ Please upload a PDF or HTML file to create a post.")
 
 def delete_blog_posts():
     st.header("🗑️ Delete Blog Posts")
@@ -233,21 +384,45 @@ def delete_blog_posts():
         st.info("No blog posts available to delete.")
         return
 
-    confirm_delete = st.checkbox("⚠️ Confirm deletion.")
+    # Confirmation Checkbox
+    confirm_delete = st.checkbox("⚠️ I understand that deleting a post is irreversible.")
+
+    # Display posts with delete options
     selected_posts = st.multiselect("Select posts to delete", posts)
 
-    if st.button("🗑️ Delete Selected Posts"):
-        if confirm_delete:
+    if selected_posts:
+        cols = st.columns([1, 5])
+        with cols[0]:
+            pass  # Spacer
+        with cols[1]:
+            st.markdown("### Selected Posts for Deletion")
             for post in selected_posts:
-                if move_to_trash(post):
-                    st.success(f"✅ Moved to trash: {post.replace('.md', '').title()}")
-            st.rerun()
-        else:
-            st.warning("⚠️ Please confirm deletion.")
+                st.write(f"- {post.replace('.md', '').replace('_', ' ').title()}")
 
+    # Delete Button
+    if st.button("🗑️ Move Selected Posts to Trash"):
+        if confirm_delete:
+            if selected_posts:
+                for post in selected_posts:
+                    success = move_to_trash(post)
+                    if success:
+                        st.success(f"✅ Moved to trash: **{post.replace('.md', '').replace('_', ' ').title()}**")
+                    else:
+                        st.error(f"❌ Failed to move: **{post}**")
+                st.rerun()
+            else:
+                st.warning("⚠️ No posts selected for deletion.")
+        else:
+            st.warning("⚠️ Please confirm deletion by checking the box above.")
+
+# Additional Features
 def display_header():
     st.title("📝 Gambler's Gambit")
+    st.markdown("""
+    Welcome to **Gambler's Gambit**!
+    """)
 
+# Main Function
 def main():
     display_header()
 
@@ -264,7 +439,7 @@ def main():
             elif page == "Delete Post":
                 delete_blog_posts()
         else:
-            st.warning("🔒 Please log in.")
+            st.warning("🔒 Please log in to access this feature.")
 
 if __name__ == "__main__":
     main()
