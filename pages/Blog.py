@@ -256,6 +256,10 @@ def create_blog_post():
         st.rerun()
 
 def delete_blog_posts():
+    if not st.session_state.logged_in:
+        st.warning("⚠️ You must be logged in to delete posts.")
+        return
+
     st.header("🗑️ Delete Blog Posts")
     posts = list_posts()
     selected_posts = st.multiselect("Select posts to delete", posts)
@@ -268,6 +272,10 @@ def delete_blog_posts():
         st.rerun()
 
 def view_scheduled_posts():
+    if not st.session_state.logged_in:
+        st.warning("⚠️ You must be logged in to view scheduled posts.")
+        return
+
     st.header("📅 Scheduled Posts")
     now = datetime.datetime.now()
     scheduled_posts = []
