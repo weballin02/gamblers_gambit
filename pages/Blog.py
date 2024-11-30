@@ -151,7 +151,7 @@ def create_blog_post():
     st.header("📝 Create a New Blog Post")
     with st.form(key='create_post_form'):
         post_type = st.radio("Choose Post Creation Method", ["Manual Entry", "Upload PDF/HTML"], horizontal=True)
-        
+
         if post_type == "Manual Entry":
             title = st.text_input("🖊️ Post Title", placeholder="Enter the title of your post")
             content = st.text_area("📝 Content", height=300, placeholder="Write your post content here...")
@@ -172,7 +172,8 @@ def create_blog_post():
         submitted = st.form_submit_button("📤 Publish")
 
         if submitted:
-            if title and content:
+            if (post_type == "Manual Entry" and title and content) or (post_type == "Upload PDF/HTML" and content):
+                title = title or uploaded_file.name.rsplit('.', 1)[0].replace('_', ' ').title()
                 filename = f"{title.replace(' ', '_').lower()}.md"
                 filepath = POSTS_DIR / filename
                 metadata_path = filepath.with_suffix('.json')
@@ -192,7 +193,7 @@ def create_blog_post():
                     st.success(f"✅ Post scheduled for {scheduled_datetime}")
                     st.rerun()
             else:
-                st.warning("⚠️ Please provide both a title and content for the post.")
+                st.warning("⚠️ Please provide all required fields for the post.")
 
 # Main Function
 def main():
