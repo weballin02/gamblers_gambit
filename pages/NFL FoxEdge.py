@@ -1,4 +1,9 @@
-# Import Libraries
+# nfl_foxedge.py
+
+# ===========================
+# 1. Import Libraries
+# ===========================
+
 import nfl_data_py as nfl
 import pandas as pd
 import numpy as np
@@ -20,34 +25,36 @@ from scipy.special import expit  # Sigmoid function
 
 warnings.filterwarnings('ignore')
 
-# Streamlit App Title and Configuration
+# ===========================
+# 2. Streamlit App Configuration
+# ===========================
+
 st.set_page_config(
-    page_title="🏈 NFL FoxEdge",
+    page_title="FoxEdge NFL Betting Insights",
     page_icon="🏈",
     layout="wide",
     initial_sidebar_state="collapsed",
 )
-st.title("🏈 NFL FoxEdge")
-st.markdown("## Matchup Predictions and Betting Recommendations")
-st.markdown("""
-Welcome to the Enhanced NFL Betting Insights app! Here, you'll find game predictions, betting leans, and in-depth analysis to help you make informed betting decisions. Whether you're a casual bettor or a seasoned professional, our insights are tailored to provide value to all.
-""")
 
-# Synesthetic Interface CSS
-st.markdown('''
+# ===========================
+# 3. App Title and Description
+# ===========================
+
+# Custom CSS Styling with FoxEdge Colors
+st.markdown("""
     <style>
         /* Import Fonts */
         @import url('https://fonts.googleapis.com/css2?family=Raleway:wght@400;700&family=Open+Sans:wght@400;600&display=swap');
 
         /* Root Variables */
         :root {
-            --background-gradient-start: #0F2027;
-            --background-gradient-end: #203A43;
+            --background-gradient-start: #2C3E50;
+            --background-gradient-end: #1E90FF;
             --primary-text-color: #ECECEC;
             --heading-text-color: #F5F5F5;
-            --accent-color-teal: #2CFFAA;
-            --accent-color-purple: #A56BFF;
-            --highlight-color: #FF6B6B;
+            --accent-color-teal: #32CD32;
+            --accent-color-purple: #FF8C00;
+            --highlight-color: #FFFF33;
             --font-heading: 'Raleway', sans-serif;
             --font-body: 'Open Sans', sans-serif;
         }
@@ -94,6 +101,7 @@ st.markdown('''
         .hero h1 {
             font-size: 3.5em;
             margin-bottom: 0.2em;
+            color: var(--heading-text-color);
         }
 
         .hero p {
@@ -103,7 +111,7 @@ st.markdown('''
         }
 
         /* Buttons */
-        .button {
+        .stButton > button {
             background: linear-gradient(45deg, var(--accent-color-teal), var(--accent-color-purple));
             border: none;
             padding: 0.8em 2em;
@@ -117,8 +125,9 @@ st.markdown('''
             margin-top: 1em;
         }
 
-        .button:hover {
+        .stButton > button:hover {
             transform: translateY(-5px);
+            background: linear-gradient(45deg, var(--accent-color-purple), var(--accent-color-teal));
         }
 
         /* Data Section */
@@ -130,6 +139,7 @@ st.markdown('''
         .data-section h2 {
             font-size: 2.5em;
             margin-bottom: 0.5em;
+            color: var(--accent-color-teal);
         }
 
         .data-section p {
@@ -141,7 +151,7 @@ st.markdown('''
         /* Enhanced Summary Styling */
         .summary-section {
             padding: 2em 1em;
-            background-color: rgba(255, 255, 255, 0.05);
+            background-color: rgba(44, 62, 80, 0.8); /* Semi-transparent Charcoal Dark Gray */
             border-radius: 15px;
             margin-bottom: 2em;
         }
@@ -149,7 +159,7 @@ st.markdown('''
         .summary-section h3 {
             font-size: 2em;
             margin-bottom: 0.5em;
-            color: var(--accent-color-teal);
+            color: #32CD32; /* Lime Green */
         }
 
         .summary-section p {
@@ -158,12 +168,12 @@ st.markdown('''
             line-height: 1.6;
         }
 
-              /* Team Trends Styling Update */
+        /* Team Trends Styling */
         .team-trends {
             display: flex;
             flex-wrap: wrap;
             gap: 2em;
-            justify-content: space-around;  /* Aligns cards neatly side-by-side */
+            justify-content: space-around;
             margin-top: 2em;
         }
 
@@ -171,31 +181,15 @@ st.markdown('''
             background-color: rgba(255, 255, 255, 0.1);
             border-radius: 15px;
             padding: 1.5em;
-            width: calc(33% - 2em);  /* Each card takes up approximately 1/3rd of the row, with gaps */
-            min-width: 300px;         /* Ensure cards maintain a minimum width */
-            max-width: 400px;         /* Optionally limit the maximum width */
+            width: calc(33% - 2em);
+            min-width: 300px;
+            max-width: 400px;
             text-align: center;
-        }
-
-        /* Streamlit Elements */
-        .stButton > button {
-            background: linear-gradient(45deg, var(--accent-color-teal), var(--accent-color-purple));
-            border: none;
-            padding: 0.8em 2em;
-            color: #FFFFFF;
-            font-size: 1.1em;
-            border-radius: 30px;
-            cursor: pointer;
             transition: transform 0.3s ease;
-            margin-top: 1em;
         }
 
-        .stButton > button:hover {
+        .team-card:hover {
             transform: translateY(-5px);
-        }
-
-        .stCheckbox > div {
-            padding: 0.5em 0;
         }
 
         /* Footer */
@@ -207,8 +201,14 @@ st.markdown('''
         }
 
         .footer a {
-            color: var(--accent-color-teal);
+            color: #32CD32; /* Lime Green */
             text-decoration: none;
+        }
+
+        /* Highlighted Text */
+        .highlight {
+            color: #FFFF33; /* Neon Yellow */
+            font-weight: bold;
         }
 
         /* Responsive Design */
@@ -231,9 +231,20 @@ st.markdown('''
             }
         }
     </style>
+    """, unsafe_allow_html=True)
+
+# Header Section
+st.markdown('''
+    <div class="hero">
+        <h1>FoxEdge NFL Betting Insights</h1>
+        <p>Matchup Predictions and Betting Recommendations</p>
+    </div>
 ''', unsafe_allow_html=True)
 
-# Team Abbreviation to Full Name Mapping
+# ===========================
+# 4. Team Abbreviation to Full Name Mapping
+# ===========================
+
 team_abbrev_mapping = {
     'ARI': 'Arizona Cardinals',
     'ATL': 'Atlanta Falcons',
@@ -272,11 +283,10 @@ team_abbrev_mapping = {
 # Invert the mapping for reverse lookup
 full_name_to_abbrev = {v: k for k, v in team_abbrev_mapping.items()}
 
-# Get list of team abbreviations
-team_abbreviations = list(team_abbrev_mapping.keys())
-team_name_mapping = team_abbrev_mapping.copy()
+# ===========================
+# 5. Fetch and Preprocess Data
+# ===========================
 
-# Fetch and Preprocess Data
 @st.cache_data
 def fetch_and_preprocess_data(season_years):
     """
@@ -287,22 +297,22 @@ def fetch_and_preprocess_data(season_years):
     for year in season_years:
         try:
             schedule = nfl.import_schedules([year])
-            schedule['gameday'] = pd.to_datetime(schedule['gameday'], errors='coerce')
+            schedule['game_datetime'] = pd.to_datetime(schedule['game_datetime'], errors='coerce', utc=True)
             schedule['Week_Number'] = schedule['week']
 
             # Prepare home and away data
-            home_df = schedule[['gameday', 'home_team', 'home_score', 'away_score', 'Week_Number']].copy()
+            home_df = schedule[['game_datetime', 'home_team', 'home_score', 'away_score', 'Week_Number']].copy()
             home_df.rename(columns={
-                'gameday': 'GAME_DATE',
+                'game_datetime': 'GAME_DATE',
                 'home_team': 'TEAM_ABBREV',
                 'home_score': 'PTS',
                 'away_score': 'OPP_PTS'
             }, inplace=True)
             home_df['Home_Away'] = 'Home'
 
-            away_df = schedule[['gameday', 'away_team', 'away_score', 'home_score', 'Week_Number']].copy()
+            away_df = schedule[['game_datetime', 'away_team', 'away_score', 'home_score', 'Week_Number']].copy()
             away_df.rename(columns={
-                'gameday': 'GAME_DATE',
+                'game_datetime': 'GAME_DATE',
                 'away_team': 'TEAM_ABBREV',
                 'away_score': 'PTS',
                 'home_score': 'OPP_PTS'
@@ -397,9 +407,8 @@ def train_models(team_data):
 
     for team in teams:
         model_path = os.path.join(model_dir, f"{team}_arima_model.pkl")
-        team_df = team_data[team_data['TEAM_ABBREV'] == team]
-        team_points = team_df['PTS']
-        team_points.index = team_df.index  # Ensure index is date for time series
+        team_points = team_data[team_data['TEAM_ABBREV'] == team]['PTS']
+        team_points.index = team_data[team_data['TEAM_ABBREV'] == team].index  # Ensure index is date for time series
 
         if len(team_points) < 10:
             st.warning(f"Not enough data to train model for {team}.")
@@ -478,11 +487,15 @@ def compute_team_forecasts(team_models, team_data):
 
 team_forecasts = compute_team_forecasts(team_models, team_data)
 
+# ===========================
+# 6. Fetch Upcoming Games and Current Season Stats
+# ===========================
+
 # Fetch upcoming games based on the current day of the week
 @st.cache_data(ttl=3600)
 def fetch_upcoming_games():
     schedule = nfl.import_schedules([current_year])
-    schedule['game_datetime'] = pd.to_datetime(schedule['gameday'].astype(str) + ' ' + schedule['gametime'].astype(str), errors='coerce', utc=True)
+    schedule['game_datetime'] = pd.to_datetime(schedule['game_datetime'], errors='coerce', utc=True)
     now = datetime.now(pytz.UTC)
     weekday = now.weekday()
 
@@ -501,10 +514,21 @@ upcoming_games = fetch_upcoming_games()
 # Fetch Current Season Stats
 def fetch_current_season_stats():
     schedule = nfl.import_schedules([current_year])
-    schedule['gameday'] = pd.to_datetime(schedule['gameday'], errors='coerce')
-    home_df = schedule[['gameday', 'home_team', 'home_score', 'away_score']].copy().rename(columns={'gameday': 'GAME_DATE', 'home_team': 'TEAM_ABBREV', 'home_score': 'PTS', 'away_score': 'OPP_PTS'})
+    schedule['game_datetime'] = pd.to_datetime(schedule['game_datetime'], errors='coerce', utc=True)
+    schedule['Week_Number'] = schedule['week']
+    home_df = schedule[['game_datetime', 'home_team', 'home_score', 'away_score']].copy().rename(columns={
+        'game_datetime': 'GAME_DATE',
+        'home_team': 'TEAM_ABBREV',
+        'home_score': 'PTS',
+        'away_score': 'OPP_PTS'
+    })
     home_df['Home_Away'] = 'Home'
-    away_df = schedule[['gameday', 'away_team', 'away_score', 'home_score']].copy().rename(columns={'gameday': 'GAME_DATE', 'away_team': 'TEAM_ABBREV', 'away_score': 'PTS', 'home_score': 'OPP_PTS'})
+    away_df = schedule[['game_datetime', 'away_team', 'away_score', 'home_score']].copy().rename(columns={
+        'game_datetime': 'GAME_DATE',
+        'away_team': 'TEAM_ABBREV',
+        'away_score': 'PTS',
+        'home_score': 'OPP_PTS'
+    })
     away_df['Home_Away'] = 'Away'
     current_season_data = pd.concat([home_df, away_df], ignore_index=True)
     current_season_data.dropna(subset=['PTS'], inplace=True)
@@ -525,7 +549,10 @@ def fetch_current_season_stats():
 
 current_season_stats = fetch_current_season_stats()
 
-# Predict Matchups with Enhanced Features
+# ===========================
+# 7. Predict Matchups with Enhanced Features
+# ===========================
+
 def predict_game_outcome(home_team, away_team, team_forecasts, current_season_stats, team_data, model_mae_dict):
     home_forecast = team_forecasts[team_forecasts['Team'] == home_team]['Predicted_PTS'].mean()
     away_forecast = team_forecasts[team_forecasts['Team'] == away_team]['Predicted_PTS'].mean()
@@ -601,191 +628,217 @@ def predict_game_outcome(home_team, away_team, team_forecasts, current_season_st
     else:
         return "Unavailable", "N/A", "N/A", None, None
 
-# Main logic for predicting upcoming games
-if st.button("Predict Upcoming Games"):
-    if data.empty:
-        st.error("No data available for analysis.")
-    else:
-        results = []
-        if not upcoming_games.empty:
-            for _, game in upcoming_games.iterrows():
-                home_team = game["home_team"]
-                away_team = game["away_team"]
-                game_datetime = game["game_datetime"]
+# ===========================
+# 8. Main Functionality for Predictions
+# ===========================
 
-                result = predict_game_outcome(home_team, away_team, team_forecasts, current_season_stats, team_data, team_mae_dict)
+def main_nfl_foxedge():
+    # Run Simulations for Upcoming Games
+    if st.button("Predict Upcoming Games"):
+        if data.empty:
+            st.error("No data available for analysis.")
+        else:
+            results = []
+            if not upcoming_games.empty:
+                for _, game in upcoming_games.iterrows():
+                    home_team = game["home_team"]
+                    away_team = game["away_team"]
+                    game_datetime = game["game_datetime"]
 
-                winner, score_diff, confidence, home_forecast, away_forecast = result
+                    result = predict_game_outcome(home_team, away_team, team_forecasts, current_season_stats, team_data, team_mae_dict)
 
-                if pd.isna(score_diff) or pd.isna(confidence) or winner == "Unavailable":
-                    st.warning(f"Data unavailable for matchup: {team_name_mapping.get(home_team, home_team)} vs {team_name_mapping.get(away_team, away_team)}")
-                    continue
+                    winner, score_diff, confidence, home_forecast, away_forecast = result
 
-                # Display Matchup Details
-                st.markdown(f"### {team_name_mapping.get(home_team, home_team)} vs {team_name_mapping.get(away_team, away_team)}")
-                st.markdown(f"- **Game Date:** {game_datetime.strftime('%Y-%m-%d %H:%M %Z')}")
-                st.markdown(f"- **Predicted Winner:** **{team_name_mapping.get(winner, 'Unavailable')}**")
-                st.markdown(f"- **Predicted Final Scores:** {team_name_mapping.get(home_team, home_team)} **{home_forecast:.2f}** - {team_name_mapping.get(away_team, away_team)} **{away_forecast:.2f}**")
-                st.markdown(f"- **Score Difference:** **{score_diff:.2f}**")
-                st.markdown(f"- **Confidence Level:** **{confidence:.2f}%**")
+                    if pd.isna(score_diff) or pd.isna(confidence) or winner == "Unavailable":
+                        st.warning(f"Data unavailable for matchup: {team_abbrev_mapping.get(home_team, home_team)} vs {team_abbrev_mapping.get(away_team, away_team)}")
+                        continue
 
-                # Betting Recommendations
-                spread_lean = f"Lean {team_name_mapping.get(winner, winner)} -{int(score_diff)}"
-                total_points = home_forecast + away_forecast
-                total_recommendation = f"Lean Over if the line is < {total_points:.2f}"
-                st.markdown(f"- **Spread Bet:** {spread_lean}")
-                st.markdown(f"- **Total Points Bet:** {total_recommendation}")
-                if confidence > 75:
-                    st.success(f"High Confidence: {confidence:.2f}%")
-                elif confidence > 50:
-                    st.warning(f"Moderate Confidence: {confidence:.2f}%")
-                else:
-                    st.error(f"Low Confidence: {confidence:.2f}%")
+                    # Display Matchup Details
+                    st.markdown(f"### {team_abbrev_mapping.get(home_team, home_team)} vs {team_abbrev_mapping.get(away_team, away_team)}")
+                    st.markdown(f"- **Game Date:** {game_datetime.strftime('%Y-%m-%d %H:%M %Z')}")
+                    st.markdown(f"- **Predicted Winner:** **{team_abbrev_mapping.get(winner, 'Unavailable')}**")
+                    st.markdown(f"- **Predicted Final Scores:** {team_abbrev_mapping.get(home_team, home_team)} **{home_forecast:.2f}** - {team_abbrev_mapping.get(away_team, away_team)} **{away_forecast:.2f}**")
+                    st.markdown(f"- **Score Difference:** **{score_diff:.2f}**")
+                    st.markdown(f"- **Confidence Level:** **{confidence:.2f}%**")
 
-                # Radar Chart
-                categories = ["Average Score", "Max Score", "Consistency", "Recent Form", "Predicted PTS"]
-                home_stats = current_season_stats.get(home_team, {})
-                away_stats = current_season_stats.get(away_team, {})
-                home_stats_values = [
-                    home_stats.get('avg_score', 0),
-                    home_stats.get('max_score', 0),
-                    1 / home_stats.get('std_dev', 1) if home_stats.get('std_dev', 1) != 0 else 1,  # Consistency
-                    home_stats.get('recent_form', 0),
-                    home_forecast
-                ]
-                away_stats_values = [
-                    away_stats.get('avg_score', 0),
-                    away_stats.get('max_score', 0),
-                    1 / away_stats.get('std_dev', 1) if away_stats.get('std_dev', 1) != 0 else 1,  # Consistency
-                    away_stats.get('recent_form', 0),
-                    away_forecast
-                ]
-                fig = go.Figure()
-                fig.add_trace(go.Scatterpolar(r=home_stats_values, theta=categories, fill='toself', name=f"{team_name_mapping.get(home_team, home_team)}"))
-                fig.add_trace(go.Scatterpolar(r=away_stats_values, theta=categories, fill='toself', name=f"{team_name_mapping.get(away_team, away_team)}"))
-                fig.update_layout(
-                    polar=dict(radialaxis=dict(visible=True)),
-                    showlegend=True,
-                    title=f"Team Comparison: {team_name_mapping.get(home_team, home_team)} vs {team_name_mapping.get(away_team, away_team)}"
-                )
-                st.plotly_chart(fig)
+                    # Betting Recommendations
+                    spread_lean = f"Lean {team_abbrev_mapping.get(winner, winner)} -{int(score_diff)}"
+                    total_points = home_forecast + away_forecast
+                    total_recommendation = f"Lean Over if the line is < {total_points:.2f}"
+                    st.markdown(f"- **Spread Bet:** {spread_lean}")
+                    st.markdown(f"- **Total Points Bet:** {total_recommendation}")
+                    if confidence > 75:
+                        st.success(f"High Confidence: {confidence:.2f}%")
+                    elif confidence > 50:
+                        st.warning(f"Moderate Confidence: {confidence:.2f}%")
+                    else:
+                        st.error(f"Low Confidence: {confidence:.2f}%")
 
-                # Append to results
-                results.append({
-                    'Home_Team': home_team,
-                    'Away_Team': away_team,
-                    'Predicted Winner': winner,
-                    'Spread Lean': spread_lean,
-                    'Total Lean': total_recommendation,
-                    'Confidence': confidence
-                })
-
-            # Visualizations
-            if results:
-                # Confidence Heatmap
-                st.header("Confidence Heatmap for Upcoming Matchups")
-                confidence_data = pd.DataFrame(results)
-                heatmap_data = confidence_data.pivot("Home_Team", "Away_Team", "Confidence")
-                plt.figure(figsize=(12, 8))
-                sns.heatmap(heatmap_data, annot=True, cmap="RdYlGn", cbar_kws={'label': 'Confidence Level'}, fmt=".1f")
-                plt.title("Confidence Heatmap for Upcoming Matchups")
-                plt.xlabel("Away Team")
-                plt.ylabel("Home Team")
-                st.pyplot(plt)
-
-                # Betting Summary
-                st.header("📊 Recommended Bets Summary")
-                summary_df = pd.DataFrame(results)
-                st.dataframe(summary_df[['Home_Team', 'Away_Team', 'Predicted Winner', 'Spread Lean', 'Total Lean', 'Confidence']].style.highlight_max(subset=['Confidence'], color='lightgreen'))
-
-                # Confidence Breakdown
-                st.header("Confidence Level Breakdown")
-                confidence_counts = pd.Series([result['Confidence'] for result in results]).value_counts(bins=[0,50,75,100], sort=False)
-                labels = ['Low (0-50%)', 'Moderate (50-75%)', 'High (75-100%)']
-                plt.figure(figsize=(8, 6))
-                plt.pie(confidence_counts, labels=labels, autopct='%1.1f%%', startangle=90, colors=sns.color_palette("pastel"))
-                plt.title("Confidence Level Breakdown")
-                st.pyplot(plt)
-
-                # Best Bets
-                st.header("🔥 Top Betting Opportunities")
-                best_bets = [result for result in results if result['Confidence'] > 80]
-                if best_bets:
-                    for bet in best_bets:
-                        opponent_team = bet['Away_Team'] if bet['Predicted Winner'] == bet['Home_Team'] else bet['Home_Team']
-                        st.markdown(f"**{team_name_mapping.get(bet['Predicted Winner'], bet['Predicted Winner'])}** over **{team_name_mapping.get(opponent_team, opponent_team)}**")
-                        st.markdown(f"- **Spread Bet:** {bet['Spread Lean']}")
-                        st.markdown(f"- **Total Points Bet:** {bet['Total Lean']}")
-                        st.markdown(f"- **Confidence Level:** **{bet['Confidence']:.2f}%**")
-                else:
-                    st.write("No high confidence bets found.")
-
-                # Additional Insights
-                st.header("Detailed Analysis for Professional Bettors")
-                st.write("Here are the in-depth stats and trends for each matchup.")
-                for result in results:
-                    home_team = result['Home_Team']
-                    away_team = result['Away_Team']
+                    # Radar Chart
+                    categories = ["Average Score", "Max Score", "Consistency", "Recent Form", "Predicted PTS"]
                     home_stats = current_season_stats.get(home_team, {})
                     away_stats = current_season_stats.get(away_team, {})
-                    home_team_name = team_name_mapping.get(home_team, home_team)
-                    away_team_name = team_name_mapping.get(away_team, away_team)
-                    st.subheader(f"{home_team_name} vs {away_team_name}")
-                    st.write("**Home Team Stats:**")
-                    st.write(home_stats)
-                    st.write("**Away Team Stats:**")
-                    st.write(away_stats)
-                    # Plot team performance trends
-                    team_data_home = data[data['TEAM_ABBREV'] == home_team]
-                    team_data_away = data[data['TEAM_ABBREV'] == away_team]
-                    st.write(f"**{home_team_name} Performance Trends:**")
-                    plt.figure(figsize=(10, 5))
-                    plt.plot(team_data_home['GAME_DATE'], team_data_home['PTS'], label='Points Scored', marker='o', color='blue')
-                    plt.title(f"{home_team_name} Performance Trends")
-                    plt.xlabel("Date")
-                    plt.ylabel("Points")
-                    plt.xticks(rotation=45)
-                    plt.legend()
+                    home_stats_values = [
+                        home_stats.get('avg_score', 0),
+                        home_stats.get('max_score', 0),
+                        1 / home_stats.get('std_dev', 1) if home_stats.get('std_dev', 1) != 0 else 1,  # Consistency
+                        home_stats.get('recent_form', 0),
+                        home_forecast
+                    ]
+                    away_stats_values = [
+                        away_stats.get('avg_score', 0),
+                        away_stats.get('max_score', 0),
+                        1 / away_stats.get('std_dev', 1) if away_stats.get('std_dev', 1) != 0 else 1,  # Consistency
+                        away_stats.get('recent_form', 0),
+                        away_forecast
+                    ]
+                    fig = go.Figure()
+                    fig.add_trace(go.Scatterpolar(r=home_stats_values, theta=categories, fill='toself', name=f"{team_abbrev_mapping.get(home_team, home_team)}"))
+                    fig.add_trace(go.Scatterpolar(r=away_stats_values, theta=categories, fill='toself', name=f"{team_abbrev_mapping.get(away_team, away_team)}"))
+                    fig.update_layout(
+                        polar=dict(radialaxis=dict(visible=True)),
+                        showlegend=True,
+                        title=f"Team Comparison: {team_abbrev_mapping.get(home_team, home_team)} vs {team_abbrev_mapping.get(away_team, away_team)}",
+                        title_font_size=20
+                    )
+                    st.plotly_chart(fig)
+
+                    # Append to results
+                    results.append({
+                        'Home_Team': home_team,
+                        'Away_Team': away_team,
+                        'Predicted Winner': winner,
+                        'Spread Lean': spread_lean,
+                        'Total Lean': total_recommendation,
+                        'Confidence': confidence
+                    })
+
+                # Visualizations
+                if results:
+                    # Confidence Heatmap
+                    st.header("Confidence Heatmap for Upcoming Matchups")
+                    confidence_data = pd.DataFrame(results)
+                    heatmap_data = confidence_data.pivot("Home_Team", "Away_Team", "Confidence")
+                    plt.figure(figsize=(12, 8))
+                    sns.heatmap(heatmap_data, annot=True, cmap="RdYlGn", cbar_kws={'label': 'Confidence Level'}, fmt=".1f")
+                    plt.title("Confidence Heatmap for Upcoming Matchups")
+                    plt.xlabel("Away Team")
+                    plt.ylabel("Home Team")
                     st.pyplot(plt)
-                    st.write(f"**{away_team_name} Performance Trends:**")
-                    plt.figure(figsize=(10, 5))
-                    plt.plot(team_data_away['GAME_DATE'], team_data_away['PTS'], label='Points Scored', marker='o', color='red')
-                    plt.title(f"{away_team_name} Performance Trends")
-                    plt.xlabel("Date")
-                    plt.ylabel("Points")
-                    plt.xticks(rotation=45)
-                    plt.legend()
+
+                    # Betting Summary
+                    st.header("📊 Recommended Bets Summary")
+                    summary_df = pd.DataFrame(results)
+                    st.dataframe(summary_df[['Home_Team', 'Away_Team', 'Predicted Winner', 'Spread Lean', 'Total Lean', 'Confidence']].style.highlight_max(subset=['Confidence'], color='#FFFF33'))  # Neon Yellow
+
+                    # Confidence Breakdown
+                    st.header("Confidence Level Breakdown")
+                    confidence_counts = pd.Series([result['Confidence'] for result in results]).value_counts(bins=[0,50,75,100], sort=False)
+                    labels = ['Low (0-50%)', 'Moderate (50-75%)', 'High (75-100%)']
+                    plt.figure(figsize=(8, 6))
+                    plt.pie(confidence_counts, labels=labels, autopct='%1.1f%%', startangle=90, colors=['#FF6B6B', '#FFA500', '#32CD32'])  # Fiery Red, Deep Orange, Lime Green
+                    plt.title("Confidence Level Breakdown")
                     st.pyplot(plt)
+
+                    # Best Bets
+                    st.header("🔥 Top Betting Opportunities")
+                    best_bets = [result for result in results if result['Confidence'] > 80]
+                    if best_bets:
+                        for bet in best_bets:
+                            opponent_team = bet['Away_Team'] if bet['Predicted Winner'] == bet['Home_Team'] else bet['Home_Team']
+                            st.markdown(f"**{team_abbrev_mapping.get(bet['Predicted Winner'], bet['Predicted Winner'])}** over **{team_abbrev_mapping.get(opponent_team, opponent_team)}**")
+                            st.markdown(f"- **Spread Bet:** {bet['Spread Lean']}")
+                            st.markdown(f"- **Total Points Bet:** {bet['Total Lean']}")
+                            st.markdown(f"- **Confidence Level:** **{bet['Confidence']:.2f}%**")
+                    else:
+                        st.write("No high confidence bets found.")
+
+                    # Additional Insights
+                    st.header("Detailed Analysis for Professional Bettors")
+                    st.write("Here are the in-depth stats and trends for each matchup.")
+                    for result in results:
+                        home_team = result['Home_Team']
+                        away_team = result['Away_Team']
+                        home_stats = current_season_stats.get(home_team, {})
+                        away_stats = current_season_stats.get(away_team, {})
+                        home_team_name = team_abbrev_mapping.get(home_team, home_team)
+                        away_team_name = team_abbrev_mapping.get(away_team, away_team)
+                        st.subheader(f"{home_team_name} vs {away_team_name}")
+                        st.write("**Home Team Stats:**")
+                        st.write(home_stats)
+                        st.write("**Away Team Stats:**")
+                        st.write(away_stats)
+                        # Plot team performance trends
+                        team_data_home = data[data['TEAM_ABBREV'] == home_team]
+                        team_data_away = data[data['TEAM_ABBREV'] == away_team]
+                        st.write(f"**{home_team_name} Performance Trends:**")
+                        plt.figure(figsize=(10, 5))
+                        plt.plot(team_data_home['GAME_DATE'], team_data_home['PTS'], label='Points Scored', marker='o', color='#32CD32')  # Lime Green
+                        plt.title(f"{home_team_name} Performance Trends", color='#FFFFFF')  # Crisp White
+                        plt.xlabel("Date", color='#FFFFFF')
+                        plt.ylabel("Points", color='#FFFFFF')
+                        plt.xticks(rotation=45)
+                        plt.legend()
+                        plt.grid(True)
+                        plt.gca().set_facecolor('#2C3E50')  # Charcoal Dark Gray
+                        plt.tight_layout()
+                        st.pyplot(plt)
+                        st.write(f"**{away_team_name} Performance Trends:**")
+                        plt.figure(figsize=(10, 5))
+                        plt.plot(team_data_away['GAME_DATE'], team_data_away['PTS'], label='Points Scored', marker='o', color='#FF8C00')  # Deep Orange
+                        plt.title(f"{away_team_name} Performance Trends", color='#FFFFFF')  # Crisp White
+                        plt.xlabel("Date", color='#FFFFFF')
+                        plt.ylabel("Points", color='#FFFFFF')
+                        plt.xticks(rotation=45)
+                        plt.legend()
+                        plt.grid(True)
+                        plt.gca().set_facecolor('#2C3E50')  # Charcoal Dark Gray
+                        plt.tight_layout()
+                        st.pyplot(plt)
 
             else:
                 st.warning("No matchups to display.")
 
-        if failed_teams:
-            st.warning(f"Data could not be fetched for the following teams: {', '.join(failed_teams)}")
+    # ===========================
+    # 9. User Education and Responsible Gambling Reminder
+    # ===========================
 
-    # User Education and Responsible Gambling Reminder
     st.markdown(f"""
     **Understanding the Metrics:**
     - **Predicted Winner:** The team our model predicts will win the game.
     - **Spread Bet:** Our suggested bet against the point spread.
     - **Total Points Bet:** Our recommendation for the over/under total points.
     - **Confidence Level:** How confident we are in our prediction (0-100%).
-    
+
     **Please Gamble Responsibly:**
     - Set limits and stick to them.
     - Don't chase losses.
     - If you need help, visit [Gambling Support](https://www.example.com/gambling-support).
-    
+
     **New to sports betting?**
     - [Understanding Point Spreads](https://www.example.com/point-spreads)
     - [Guide to Over/Under Betting](https://www.example.com/over-under)
     - [Betting Strategies for Beginners](https://www.example.com/betting-strategies)
-    
+
     **Data last updated on:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
     """)
 
-    # Footer
+    # ===========================
+    # 10. Footer Section
+    # ===========================
+
     st.markdown("""
     ---
-    &copy; 2023 **Enhanced NFL Betting Insights**. All rights reserved.
-    """)
+    &copy; 2024 **FoxEdge**. All rights reserved.
+    """, unsafe_allow_html=True)
+
+# ===========================
+# 11. Run the App
+# ===========================
+
+if __name__ == "__main__":
+    try:
+        main_nfl_foxedge()
+    except Exception as e:
+        st.error(f"An unexpected error occurred: {str(e)}")
+        logging.error(f"Unexpected error in main: {str(e)}", exc_info=True)
