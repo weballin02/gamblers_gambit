@@ -108,6 +108,17 @@ def get_post_content(post_name):
             return file.read()
     return "Post content not found."
 
+def display_full_post(post_name):
+    """Display the full content of the selected post."""
+    st.header(post_name.replace('.md', '').replace('_', ' ').title())
+    content = get_post_content(post_name)
+    st.markdown(content)
+    
+    # Back to posts button
+    if st.button("🔙 Back to Posts"):
+        st.session_state.selected_post = None
+        st.experimental_rerun()
+
 # Function to process PDF files
 def process_pdf(file):
     try:
@@ -178,7 +189,7 @@ def view_blog_posts():
 
         if st.button("Read More", key=read_more_key):
             st.session_state.selected_post = post
-            st.rerun()
+            st.experimental_rerun()
 
 def create_blog_post():
     st.header("📝 Create a New Blog Post")
