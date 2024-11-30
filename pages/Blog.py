@@ -1,4 +1,3 @@
-
 import os
 import streamlit as st
 from pathlib import Path
@@ -268,11 +267,34 @@ def delete_blog_posts():
         st.success("✅ Deleted successfully")
         st.rerun()
 
+def view_scheduled_posts():
+    st.header("📅 Scheduled Posts")
+    now = datetime.datetime.now()
+    scheduled_posts = []
+
+    for post_path in POSTS_DIR.glob('*.json'):
+        with open(post_path, 'r', encoding='utf-8') as file:
+            metadata = json.load(file)
+            scheduled_time = datetime.datetime.fromisoformat(metadata['scheduled_time'])
+            if now < scheduled_time:
+                scheduled_posts.append((post_path.stem, scheduled_time))
+
+    if not scheduled_posts:
+        st.info("No scheduled posts available.")
+        return
+
+    for post_title, scheduled_time in scheduled_posts:
+        st.markdown(f"**Post Title:** {post_title.replace('_', ' ').title()}")
+        st.markdown(f"**Scheduled for:** {scheduled_time.strftime('%Y-%m-%d %H:%M')}")
+        st.markdown("---")
+
 def main():
     st.sidebar.title("📂 Blog Management")
-    page = st.sidebar.radio("🛠️ Choose an option", ["View Posts", "Create Post", "Delete Post"])
+    page = st.sidebar.radio("🛠️ Choose an option", ["View Posts", "View Scheduled Posts", "Create Post", "Delete Post"])
     if page == "View Posts":
         view_blog_posts()
+    elif page == "View Scheduled Posts":
+        view_scheduled_posts()  # New option to view scheduled posts
     elif page in ["Create Post", "Delete Post"]:
         login()
         if st.session_state.logged_in:
