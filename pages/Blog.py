@@ -179,18 +179,6 @@ def view_blog_posts():
             st.session_state.selected_post = post
             st.rerun()
 
-def display_full_post(post_name):
-    st.subheader("🔙 Back to Posts")
-    if st.button("← Back"):
-        st.session_state.selected_post = None
-        st.rerun()
-
-    content = get_post_content(post_name)
-    pub_date = datetime.datetime.fromtimestamp((POSTS_DIR / post_name).stat().st_mtime).strftime('%Y-%m-%d %H:%M')
-    st.title(post_name.replace('.md', '').replace('_', ' ').title())
-    st.markdown(f"**Published on:** {pub_date}")
-    st.markdown(content)
-
 def create_blog_post():
     st.header("📝 Create a New Blog Post")
 
@@ -269,21 +257,34 @@ def edit_scheduled_post():
         return
 
     st.header("✏️ Edit Scheduled Post")
-    posts = list_posts()  # Get all posts, including scheduled ones
-    selected_post = st.selectbox("Select a post to edit", posts)  # Only show post names
+    # Get all posts, including scheduled ones
+    all_posts = list_posts()  # This will only include already published posts
+    scheduled_posts = []
+
+    # Collect scheduled posts
+    for post_path in POSTS_DIR.glob('*.json'):
+        with open(post_path, 'r', encoding='utf-8') as file:
+            metadata = json.load(file)
+            scheduled_time = datetime.datetime.fromisoformat(metadata['scheduled_time']).astimezone(pytz.timezone("America/Los_Angeles"))
+            if scheduled_time > datetime.datetime.now(pytz.timezone("America/Los_Angeles")):
+                scheduled_posts.append(post_path.stem)  # Add the post name without extension
+
+    # Combine both lists for selection
+    all_posts.extend(scheduled_posts)
+    selected_post = st.selectbox("Select a post to edit", all_posts)  # Show all posts including scheduled ones
 
     if selected_post:
-        post_path = POSTS_DIR / selected_post
+        post_path = POSTS_DIR / f"{selected_post}.md"
         metadata_path = post_path.with_suffix('.json')
 
         # Load existing content and metadata
-        content = get_post_content(selected_post)
+        content = get_post_content(f"{selected_post}.md")
         with open(metadata_path, 'r', encoding='utf-8') as file:
             metadata = json.load(file)
             scheduled_time = datetime.datetime.fromisoformat(metadata['scheduled_time'])
 
         # Display current values
-        title = st.text_input("🖊️ Post Title", value=selected_post.replace('.md', '').replace('_', ' ').title())
+        title = st.text_input("🖊️ Post Title", value=selected_post.replace('_', ' ').title())
         content = st.text_area("📝 Content", value=content, height=300)
         scheduled_date = st.date_input("📅 Schedule Date", value=scheduled_time.date())
         scheduled_time = st.time_input("⏰ Schedule Time", value=scheduled_time.time())
@@ -302,7 +303,7 @@ def edit_scheduled_post():
             with open(metadata_path, 'w', encoding='utf-8') as file:
                 json.dump({"scheduled_time": scheduled_datetime.isoformat()}, file)
 
-            st.success(f"✅ Updated post: **{selected_post.replace('.md', '').replace('_', ' ').title()}** scheduled for {scheduled_datetime}")
+            st.success(f"✅ Updated post: **{selected_post.replace('_', ' ').title()}** scheduled for {scheduled_datetime}")
             st.rerun()
 
 def delete_blog_posts():
