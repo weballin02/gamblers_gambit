@@ -110,14 +110,10 @@ def get_post_content(post_name):
 
 def display_full_post(post_name):
     """Display the full content of the selected post."""
+    st.button("🔙 Back to Posts", on_click=lambda: st.session_state.update(selected_post=None))
     st.header(post_name.replace('.md', '').replace('_', ' ').title())
     content = get_post_content(post_name)
     st.markdown(content)
-    
-    # Back to posts button
-    if st.button("🔙 Back to Posts"):
-        st.session_state.selected_post = None
-        st.rerun()
 
 # Function to process PDF files
 def process_pdf(file):
