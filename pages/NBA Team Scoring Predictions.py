@@ -1,5 +1,3 @@
-# NBA Team Scoring Predictions
-
 # Import Libraries
 import pandas as pd
 from pmdarima import auto_arima
@@ -16,154 +14,104 @@ import warnings
 warnings.filterwarnings('ignore')
 from nba_api.stats.endpoints import ScoreboardV2
 
-# Streamlit App Configuration
+# Streamlit App Title
 st.set_page_config(
-    page_title="FoxEdge NBA Team Scoring Predictions",
+    page_title="NBA Team Scoring Predictions",
     page_icon="🏀",
     layout="centered",
     initial_sidebar_state="collapsed",
 )
 
-# General Styling and FoxEdge Colors
+# General Styling and High Contrast Toggle
 st.markdown("""
     <style>
         /* Shared CSS for consistent styling */
         html, body, [class*="css"] {
             font-family: 'Open Sans', sans-serif;
-            background: linear-gradient(135deg, #2C3E50 0%, #1E90FF 100%); /* Charcoal Dark Gray to Electric Blue */
-            color: #FFFFFF; /* Crisp White */
+            background: var(--background-color);
+            color: var(--text-color);
+        }
+
+        :root {
+            --background-color: #2C3E50; /* Charcoal Dark Gray */
+            --primary-color: #1E90FF; /* Electric Blue */
+            --secondary-color: #FF8C00; /* Deep Orange */
+            --accent-color: #FF4500; /* Fiery Red */
+            --success-color: #32CD32; /* Lime Green */
+            --alert-color: #FFFF33; /* Neon Yellow */
+            --text-color: #FFFFFF; /* Crisp White */
+            --heading-text-color: #F5F5F5; /* Adjusted for contrast */
         }
 
         .header-title {
             font-family: 'Montserrat', sans-serif;
-            background: linear-gradient(120deg, #FF4500, #FF8C00); /* Fiery Red to Deep Orange */
+            background: linear-gradient(120deg, var(--secondary-color), var(--primary-color));
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             font-size: 3em;
             font-weight: 800;
-            text-align: center;
-            margin-bottom: 0.5em;
         }
 
         .gradient-bar {
             height: 10px;
-            background: linear-gradient(90deg, #32CD32, #FF4500); /* Lime Green to Fiery Red */
+            background: linear-gradient(90deg, var(--success-color), var(--accent-color));
             border-radius: 5px;
-            margin-bottom: 1em;
         }
 
-        /* Button Styling */
         div.stButton > button {
-            background: linear-gradient(90deg, #32CD32, #FF4500); /* Lime Green to Fiery Red */
-            color: #FFFFFF; /* Crisp White */
+            background: linear-gradient(90deg, var(--secondary-color), var(--primary-color));
+            color: var(--text-color);
             border: none;
             padding: 1em 2em;
-            border-radius: 30px;
+            border-radius: 8px;
             font-size: 1.1em;
             font-weight: 700;
             cursor: pointer;
-            transition: transform 0.3s ease, background 0.3s ease;
+            transition: all 0.3s ease;
         }
 
-        /* Button Hover Effect */
         div.stButton > button:hover {
-            transform: translateY(-5px);
-            background: linear-gradient(90deg, #FF4500, #32CD32); /* Fiery Red to Lime Green */
+            background-color: var(--accent-color); /* Fiery Red */
+            transform: scale(1.05);
         }
+    </style>
+""", unsafe_allow_html=True)
 
-        /* Select Box Styling */
-        .css-1aumxhk {
-            background-color: #2C3E50; /* Charcoal Dark Gray */
-            color: #FFFFFF; /* Crisp White */
-            border: 1px solid #1E90FF; /* Electric Blue */
-            border-radius: 5px;
-        }
-
-        /* Select Box Option Styling */
-        .css-1y4p8pa {
-            color: #FFFFFF; /* Crisp White */
-            background-color: #2C3E50; /* Charcoal Dark Gray */
-        }
-
-        /* Summary Section Styling */
-        .summary-section {
-            padding: 2em 1em;
-            background-color: rgba(44, 62, 80, 0.8); /* Semi-transparent Charcoal Dark Gray */
-            border-radius: 15px;
-            margin-top: 2em;
-        }
-
-        .summary-section h3 {
-            font-size: 2em;
-            margin-bottom: 0.5em;
-            color: #32CD32; /* Lime Green */
-        }
-
-        .summary-section p {
-            font-size: 1.1em;
-            color: #E0E0E0;
-            line-height: 1.6;
-        }
-
-        /* Team Selection Styling */
-        .team-selection {
-            margin-top: 2em;
-            text-align: center;
-        }
-
-        /* Chart Styling */
-        .plotly-graph-div {
-            background-color: #2C3E50 !important; /* Charcoal Dark Gray */
-        }
-
-        /* Footer Styling */
-        .footer {
-            text-align: center;
-            padding: 2em 1em;
-            color: #999999;
-            font-size: 0.9em;
-        }
-
-        .footer a {
-            color: #32CD32; /* Lime Green */
-            text-decoration: none;
-        }
-
-        /* Highlighted Text */
-        .highlight {
-            color: #FFFF33; /* Neon Yellow */
-            font-weight: bold;
-        }
-
-        /* Responsive Design */
-        @media (max-width: 768px) {
-            .header-title {
-                font-size: 2em;
+# High Contrast Toggle
+if st.button("Toggle High Contrast Mode"):
+    st.markdown("""
+        <style>
+            body {
+                background: #000;
+                color: #FFF;
             }
 
             .gradient-bar {
-                height: 8px;
+                background: linear-gradient(90deg, #0F0, #F00);
             }
-        }
-    </style>
+
+            div.stButton > button {
+                background: #FFF;
+                color: #000;
+            }
+        </style>
     """, unsafe_allow_html=True)
 
 # Header Section
 st.markdown('''
     <div style="text-align: center; margin-bottom: 1.5em;">
-        <h1 class="header-title">FoxEdge NBA Team Scoring Predictions</h1>
-        <p style="color: #CCCCCC; font-size: 1.2em;">
+        <h1 class="header-title">NBA Team Scoring Predictions</h1>
+        <p style="color: #9CA3AF; font-size: 1.2em;">
             Explore team scoring trends and forecasts for smarter decisions.
         </p>
     </div>
-    <div class="gradient-bar"></div>
 ''', unsafe_allow_html=True)
 
 # Data Visualizations
 st.markdown('''
-    <h2 style="text-align: center; color: #32CD32;">Scoring Predictions</h2>
+    <h2>Scoring Predictions</h2>
     <div class="gradient-bar"></div>
-    <p style="color: #32CD32; font-weight: 700; text-align: center;">Atlanta Hawks Projected Score: 112.5</p>
+    <p style="color: var(--primary-color); font-weight: 700;">Atlanta Hawks Projected Score: 112.5</p>
 ''', unsafe_allow_html=True)
 
 # Functionality
@@ -221,6 +169,7 @@ def apply_team_name_mapping(data):
     data['team'] = data['team'].map(team_name_mapping)
     data.dropna(subset=['team'], inplace=True)
     return data
+
 
 # Aggregate Points by Team and Date
 def aggregate_points_by_team(data):
@@ -307,11 +256,7 @@ def compute_team_forecasts(_team_models, team_data):
 all_forecasts = compute_team_forecasts(team_models, team_data)
 
 # Streamlit App for Team Points Prediction
-st.markdown("""
-    <div style="text-align: center; margin-top: 2em;">
-        <h2 style="color: #32CD32;">Scoring Trends and Predictions</h2>
-    </div>
-    """, unsafe_allow_html=True)
+st.title('NBA Team Points Prediction')
 
 # Dropdown menu for selecting a team
 teams_list = sorted(team_data['TEAM_ABBREV'].unique())
@@ -334,21 +279,19 @@ if team_abbrev:
     forecast_dates = mdates.date2num(team_forecast['Date'])
     historical_dates = mdates.date2num(team_points.index)
 
-    ax.plot(historical_dates, team_points.values, label=f'Historical Points for {team_full_name}', color='#32CD32')  # Lime Green
-    ax.plot(forecast_dates, team_forecast['Predicted_PTS'], label='Predicted Points', color='#FF4500')  # Fiery Red
+    ax.plot(historical_dates, team_points.values, label=f'Historical Points for {team_full_name}', color='blue')
+    ax.plot(forecast_dates, team_forecast['Predicted_PTS'], label='Predicted Points', color='red')
     lower_bound = team_forecast['Predicted_PTS'] - 5
     upper_bound = team_forecast['Predicted_PTS'] + 5
     finite_indices = np.isfinite(forecast_dates) & np.isfinite(lower_bound) & np.isfinite(upper_bound)
-    ax.fill_between(forecast_dates[finite_indices], lower_bound.values[finite_indices], upper_bound.values[finite_indices], color='#FFFF33', alpha=0.2, label='Confidence Interval')  # Neon Yellow
+    ax.fill_between(forecast_dates[finite_indices], lower_bound.values[finite_indices], upper_bound.values[finite_indices], color='gray', alpha=0.2, label='Confidence Interval')
     ax.xaxis_date()
     fig.autofmt_xdate()
-    ax.set_title(f'Points Prediction for {team_full_name}', color='#FFFFFF')  # Crisp White
-    ax.set_xlabel('Date', color='#FFFFFF')
-    ax.set_ylabel('Points', color='#FFFFFF')
+    ax.set_title(f'Points Prediction for {team_full_name}')
+    ax.set_xlabel('Date')
+    ax.set_ylabel('Points')
     ax.legend()
     ax.grid(True)
-    ax.set_facecolor('#2C3E50')  # Charcoal Dark Gray
-    fig.patch.set_facecolor('#2C3E50')  # Charcoal Dark Gray
     st.pyplot(fig)
 
 # New functionality: Fetch upcoming games using nba_api and get predictions
@@ -367,7 +310,7 @@ games = fetch_nba_games()
 
 # Map team IDs to abbreviations
 nba_team_list = nba_teams.get_teams()
-nba_team_dict = {team['id']: team['abbreviation'] for team in nba_team_list}
+nba_team_dict = {int(team['id']): team['abbreviation'] for team in nba_team_list}
 
 # Map team IDs to your dataset's abbreviations
 games['HOME_TEAM_ABBREV'] = games['HOME_TEAM_ID'].map(nba_team_dict)
