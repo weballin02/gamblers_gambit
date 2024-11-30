@@ -41,13 +41,13 @@ st.markdown('''
 
         /* Root Variables */
         :root {
-            --background-gradient-start: #1A252F; /* Darker Charcoal Gray */
-            --background-gradient-end: #2C3E50; /* Enhanced Dark Gray */
-            --primary-text-color: #FFFFFF; /* Crisp White */
-            --heading-text-color: #F0F0F0; /* Slightly Brighter Light Gray */
-            --accent-color-teal: #2ED573; /* Brighter Lime Green */
-            --accent-color-purple: #A56BFF; /* Keep Electric Blue */
-            --highlight-color: #FF4C4C; /* Brighter Fiery Red */
+            --background-gradient-start: #0F2027; /* Dark Teal */
+            --background-gradient-end: #203A43; /* Darker Teal */
+            --primary-text-color: #ECECEC; /* Light Gray */
+            --heading-text-color: #F5F5F5; /* Almost White */
+            --accent-color-teal: #2CFFAA; /* Bright Teal */
+            --accent-color-purple: #A56BFF; /* Light Purple */
+            --highlight-color: #FF6B6B; /* Light Red */
             --font-heading: 'Raleway', sans-serif;
             --font-body: 'Open Sans', sans-serif;
         }
@@ -82,7 +82,7 @@ st.markdown('''
             left: -50%;
             width: 200%;
             height: 200%;
-            background: radial-gradient(circle at center, rgba(255, 255, 255, 0.15), transparent);
+            background: radial-gradient(circle at center, rgba(255, 255, 255, 0.1), transparent);
             animation: rotate 30s linear infinite;
         }
 
@@ -99,7 +99,7 @@ st.markdown('''
         .hero p {
             font-size: 1.5em;
             margin-bottom: 1em;
-            color: #D0D0D0; /* Slightly Brighter Gray */
+            color: #CCCCCC; /* Light Gray */
         }
 
         /* Buttons */
@@ -107,11 +107,11 @@ st.markdown('''
             background: linear-gradient(45deg, var(--accent-color-teal), var(--accent-color-purple));
             border: none;
             padding: 0.8em 2em;
-            color: #FFFFFF;
+            color: #FFFFFF; /* White */
             font-size: 1.1em;
             border-radius: 30px;
             cursor: pointer;
-            transition: transform 0.3s ease, background 0.3s ease;
+            transition: transform 0.3s ease;
             text-decoration: none;
             display: inline-block;
             margin-top: 1em;
@@ -119,7 +119,6 @@ st.markdown('''
 
         .button:hover {
             transform: translateY(-5px);
-            background: linear-gradient(45deg, #2ED573, #A56BFF); /* Slightly Brighter on Hover */
         }
 
         /* Data Section */
@@ -135,14 +134,14 @@ st.markdown('''
 
         .data-section p {
             font-size: 1.2em;
-            color: #D0D0D0; /* Slightly Brighter Gray */
+            color: #CCCCCC; /* Light Gray */
             margin-bottom: 2em;
         }
 
         /* Enhanced Summary Styling */
         .summary-section {
             padding: 2em 1em;
-            background-color: rgba(255, 255, 255, 0.1); /* More opaque background */
+            background-color: rgba(255, 255, 255, 0.05);
             border-radius: 15px;
             margin-bottom: 2em;
         }
@@ -150,12 +149,12 @@ st.markdown('''
         .summary-section h3 {
             font-size: 2em;
             margin-bottom: 0.5em;
-            color: var(--accent-color-teal);
+            color: var(--accent-color-teal); /* Bright Teal */
         }
 
         .summary-section p {
             font-size: 1.1em;
-            color: #E0E0E0;
+            color: #E0E0E0; /* Light Gray */
             line-height: 1.6;
         }
 
@@ -169,7 +168,7 @@ st.markdown('''
         }
 
         .team-card {
-            background-color: rgba(255, 255, 255, 0.15); /* More opaque background */
+            background-color: rgba(255, 255, 255, 0.1);
             border-radius: 15px;
             padding: 1.5em;
             width: calc(33% - 2em);  /* Each card takes up approximately 1/3rd of the row, with gaps */
@@ -183,17 +182,16 @@ st.markdown('''
             background: linear-gradient(45deg, var(--accent-color-teal), var(--accent-color-purple));
             border: none;
             padding: 0.8em 2em;
-            color: #FFFFFF;
+            color: #FFFFFF; /* White */
             font-size: 1.1em;
             border-radius: 30px;
             cursor: pointer;
-            transition: transform 0.3s ease, background 0.3s ease;
+            transition: transform 0.3s ease;
             margin-top: 1em;
         }
 
         .stButton > button:hover {
             transform: translateY(-5px);
-            background: linear-gradient(45deg, #2ED573, #A56BFF); /* Slightly Brighter on Hover */
         }
 
         .stCheckbox > div {
@@ -204,12 +202,12 @@ st.markdown('''
         .footer {
             text-align: center;
             padding: 2em 1em;
-            color: #B0B0B0; /* Slightly Brighter Gray */
+            color: #999999; /* Gray */
             font-size: 0.9em;
         }
 
         .footer a {
-            color: var(--accent-color-teal);
+            color: var(--accent-color-teal); /* Bright Teal */
             text-decoration: none;
         }
 
@@ -435,6 +433,7 @@ def train_models(team_data):
         # Average MAE
         avg_mae = np.mean(errors) if errors else None
         if avg_mae is not None:
+            st.write(f"Average MAE for {team}: {avg_mae:.2f}")
             team_mae[team] = avg_mae
         else:
             st.warning(f"No MAE calculated for {team} due to training errors.")
@@ -462,24 +461,22 @@ def train_models(team_data):
 
 team_models, team_mae_dict = train_models(team_data)
 
-# Function to determine color based on MAE value
-def get_mae_color(mae):
-    if mae < 5:
-        return "#2ED573"  # Green for low MAE
-    elif 5 <= mae < 10:
-        return "#FFEA00"  # Yellow for moderate MAE
-    else:
-        return "#FF4C4C"  # Red for high MAE
+# Compute Team Forecasts
+def compute_team_forecasts(team_models, team_data):
+    team_forecasts = {}
+    forecast_periods = 1  # Predict next game
+    for team_abbrev, model in team_models.items():
+        team_df = team_data[team_data['TEAM_ABBREV'] == team_abbrev]
+        if team_df.empty:
+            continue
+        last_date = team_df.index.max()
+        future_dates = pd.date_range(start=last_date + pd.Timedelta(days=7), periods=forecast_periods, freq='7D')
+        forecast = model.predict(n_periods=forecast_periods)
+        predictions = pd.DataFrame({'Date': future_dates, 'Predicted_PTS': forecast, 'Team': team_abbrev})
+        team_forecasts[team_abbrev] = predictions
+    return pd.concat(team_forecasts.values(), ignore_index=True) if team_forecasts else pd.DataFrame(columns=['Date', 'Predicted_PTS', 'Team'])
 
-# Display Average MAE for each team with color coding
-st.header("Average MAE per Team")
-for team, mae in team_mae_dict.items():
-    mae_color = get_mae_color(mae)
-    st.markdown(f"""
-    <div style="background-color: rgba(255, 255, 255, 0.1); border-radius: 10px; padding: 10px; margin: 10px; text-align: center;">
-        <h4 style="color: {mae_color};">Average MAE for {team_abbrev_mapping[team]}: <strong>{mae:.2f}</strong></h4>
-    </div>
-    """, unsafe_allow_html=True)
+team_forecasts = compute_team_forecasts(team_models, team_data)
 
 # Fetch upcoming games based on the current day of the week
 @st.cache_data(ttl=3600)
@@ -520,7 +517,7 @@ def fetch_current_season_stats():
             'max_score': x['PTS'].max(),
             'std_dev': x['PTS'].std(),
             'games_played': x['PTS'].count(),
-            'recent_form': x['PTS'].tail(5).mean() if len(x) >= 5 else x['PTS'].mean(),
+            'recent_form': x['PTS'].tail(5).mean() if len(x) >=5 else x['PTS'].mean(),
             'avg_points_allowed': x['OPP_PTS'].mean()
         })
     ).to_dict(orient='index')
@@ -574,12 +571,15 @@ def predict_game_outcome(home_team, away_team, team_forecasts, current_season_st
 
         # Normalize rating_diff between -1 and 1
         max_rating = max(abs(home_team_rating), abs(away_team_rating))
-        normalized_rating_diff = rating_diff / max_rating if max_rating != 0 else 0
+        normalized_rating_diff = rating_diff / max_rating if max_rating !=0 else 0
 
         # Apply sigmoid function to map to (0,1)
         sigmoid_confidence = expit(normalized_rating_diff * 6)  # Multiplier adjusts the steepness
 
         # Adjust confidence based on model's average MAE
+        # Assuming lower MAE => higher confidence, higher MAE => lower confidence
+        # Here, we inversely scale MAE to a factor between 0.8 and 1.2
+        # Adjust the scaling based on your historical MAE range
         mae_adjustment = 1.2 - (avg_mae / 10)  # Example scaling; adjust as needed
         mae_adjustment = np.clip(mae_adjustment, 0.8, 1.2)  # Clamp between 0.8 and 1.2
 
@@ -700,7 +700,7 @@ if st.button("Predict Upcoming Games"):
 
                 # Confidence Breakdown
                 st.header("Confidence Level Breakdown")
-                confidence_counts = pd.Series([result['Confidence'] for result in results]).value_counts(bins=[0, 50, 75, 100], sort=False)
+                confidence_counts = pd.Series([result['Confidence'] for result in results]).value_counts(bins=[0,50,75,100], sort=False)
                 labels = ['Low (0-50%)', 'Moderate (50-75%)', 'High (75-100%)']
                 plt.figure(figsize=(8, 6))
                 plt.pie(confidence_counts, labels=labels, autopct='%1.1f%%', startangle=90, colors=sns.color_palette("pastel"))
