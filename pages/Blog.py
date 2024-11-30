@@ -161,16 +161,17 @@ def view_blog_posts():
         pub_date = datetime.datetime.fromtimestamp(post_path.stat().st_mtime).strftime('%Y-%m-%d %H:%M')
         read_more_key = f"read_more_{post}"
 
+        # Card layout for each post
         st.markdown(f"""
-            <div class="post-card">
-                <div>
-                    <img src="data:image/png;base64,{base64.b64encode(open(image_path, "rb").read()).decode()}" width="150" height="100" />
+            <div style="border: 1px solid #ddd; border-radius: 5px; padding: 10px; margin: 10px 0; display: flex; align-items: center;">
+                <div style="flex: 0 0 150px;">
+                    <img src="data:image/png;base64,{base64.b64encode(open(image_path, "rb").read()).decode()}" width="150" height="100" style="border-radius: 5px;" />
                 </div>
-                <div>
-                    <h3>{post_title}</h3>
-                    <p>Published on: {pub_date}</p>
+                <div style="flex: 1; padding-left: 10px;">
+                    <h3 style="margin: 0;">{post_title}</h3>
+                    <p style="color: #888; margin: 5px 0;">Published on: {pub_date}</p>
                     <p>{content_preview}</p>
-                    <button id="{read_more_key}">Read More</button>
+                    <button id="{read_more_key}" style="background-color: #007BFF; color: white; border: none; border-radius: 5px; padding: 5px 10px; cursor: pointer;">Read More</button>
                 </div>
             </div>
         """, unsafe_allow_html=True)
@@ -181,13 +182,11 @@ def view_blog_posts():
 
 def create_blog_post():
     st.header("📝 Create a New Blog Post")
-
-    # Option to create manually or upload a file
-    post_type = st.radio("Choose Post Creation Method", ["Manual Entry", "Upload PDF/HTML"], horizontal=True)
-
+    post_type = st.selectbox("Select Post Type", ["Manual Entry", "Upload PDF/HTML"])
+    
     if post_type == "Manual Entry":
-        title = st.text_input("🖊️ Post Title", placeholder="Enter the title of your post")
-        content = st.text_area("📝 Content", height=300, placeholder="Write your post content here...")
+        title = st.text_input("🖊️ Post Title")
+        content = st.text_area("📝 Content", height=300)
     elif post_type == "Upload PDF/HTML":
         uploaded_file = st.file_uploader("📂 Upload PDF or HTML File", type=["pdf", "html"])
         title = st.text_input("🖊️ Post Title (Optional)", placeholder="Enter the title of your post (optional)")
