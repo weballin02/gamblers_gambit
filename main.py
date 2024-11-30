@@ -10,7 +10,7 @@ import firebase_admin
 from firebase_admin import credentials
 
 # Define icons directory path
-ICONS_DIR = "icons"
+ICONS_DIR = "icons"  # Ensure this is set correctly
 
 # Helper function to get image path
 def get_image_path(icon_name):
@@ -119,16 +119,17 @@ st.markdown('''
         transform: scale(1.05);
     }
     .tool-card {
-        background-color: rgba(245, 245, 245, 0.8); /* Light Gray */
-        border: 1px solid #1E90FF; /* Electric Blue border */
+        background-color: rgba(255, 255, 255, 0.9); /* White background for better contrast */
+        border: 1px solid #32CD32; /* Lime Green border */
         border-radius: 10px;
-        padding: 15px;
+        padding: 20px; /* Increased padding for better spacing */
         margin-bottom: 20px;
         transition: transform 0.2s ease, box-shadow 0.2s ease;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); /* Subtle shadow for depth */
     }
     .tool-card:hover {
         transform: translateY(-5px);
-        box-shadow: 0 4px 10px rgba(50, 205, 50, 0.3); /* Lime Green shadow */
+        box-shadow: 0 8px 20px rgba(50, 205, 50, 0.3); /* Enhanced shadow on hover */
     }
     .footer {
         text-align: center;
@@ -274,7 +275,7 @@ def render_chart():
 def render_tool_cards():
     st.subheader("Explore Our Tools and Features")
     tools = [
-        {"name": "Key Stats Analysis", "description": "Uncover impactful stats driving game outcomes.", "url": "https://foxedge.streamlit.app/Key_Stat_Analysis", "icon": "key_stats_icon.png"},
+        {"name": "Key Stats Analysis", "description": "Uncover impactful stats driving game outcomes.", "url": "https://foxedge.streamlit.app/Key_Stat_Analysis", "icon": "🎱"},
         {"name": "NFL FoxEdge", "description": "Explore NFL betting insights.", "url": "https://foxedge.streamlit.app/NFL_FoxEdge", "icon": "nfl_icon.png"},
         {"name": "NBA FoxEdge", "description": "Get NBA predictive tools.", "url": "https://foxedge.streamlit.app/NBA_FoxEdge", "icon": "nba_icon.png"},
         {"name": "NCAAB Quantum Simulations", "description": "Quantum-inspired NCAA basketball predictions.", "url": "https://foxedge.streamlit.app/NCAAB_Quantum-Inspired_Game_Predictions", "icon": "ncaab_icon.png"},
@@ -287,11 +288,14 @@ def render_tool_cards():
         {"name": "NFL Quantum Simulations", "description": "Quantum-inspired simulations for NFL games.", "url": "https://foxedge.streamlit.app/NFL_Quantum-Inspired_Game_Predictions", "icon": "nfl_quant.png"},
         {"name": "Gambler's Gambit", "description": "Read articles and insights.", "url": "https://foxedge.streamlit.app/Blog", "icon": "blog.png"}
     ]
+    
     for tool in tools:
+        image_path = get_image_path(tool['icon'])
+        print(f"Attempting to load image from: {image_path}")  # Debugging line
         st.markdown(f'''
             <div class="tool-card">
                 <div class="tool-card-icon">
-                    <img src="{get_image_path(tool['icon'])}" alt="{tool['name']}" style="width: 40px; height: 40px;">
+                    <img src="{image_path}" alt="{tool['name']}" style="width: 40px; height: 40px;">
                 </div>
                 <h3>{tool["name"]}</h3>
                 <p>{tool["description"]}</p>
