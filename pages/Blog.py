@@ -102,7 +102,6 @@ def process_html(file):
         st.error(f"❌ Failed to process HTML: {e}")
         return None
 
-# Display scheduled posts
 def view_scheduled_posts():
     st.header("📅 Scheduled Articles")
     scheduled_posts = list_scheduled_posts()
@@ -116,9 +115,9 @@ def view_scheduled_posts():
             **Scheduled Time:** {post['scheduled_time'].strftime('%Y-%m-%d %H:%M')}
         """)
 
-# View existing blog posts
 def view_blog_posts():
     st.header("📖 Explore The Gambit")
+
     posts = list_posts()
     if not posts:
         st.info("No blog posts available.")
@@ -132,78 +131,111 @@ def view_blog_posts():
         st.warning("No posts match your search.")
         return
 
+    # CSS for Post Cards
+    st.markdown("""
+        <style>
+        .post-card {
+            display: flex;
+            background-color: #f9f9f9;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            align-items: center;
+        }
+        .thumbnail {
+            width: 150px;
+            height: 100px;
+            object-fit: cover;
+            border-radius: 5px;
+            margin-right: 20px;
+        }
+        .post-details {
+            flex: 1;
+        }
+        .post-title {
+            font-size: 1.5em;
+            color: #333333;
+            margin-bottom: 5px;
+        }
+        .post-meta {
+            font-size: 0.9em;
+            color: #666666;
+            margin-bottom: 10px;
+        }
+        .post-content {
+            font-size: 1em;
+            line-height: 1.6;
+            color: #444444;
+        }
+        .read-more {
+            display: inline-block;
+            margin-top: 10px;
+            font-size: 1em;
+            color: #007BFF;
+            text-decoration: none;
+            cursor: pointer;
+            transition: color 0.3s ease;
+        }
+        .read-more:hover {
+            color: #0056b3;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+
+    # Display Posts in a Card Layout
     for post in filtered_posts:
-        title = post.replace('.md', '').replace('_', ' ').title()
+        post_title = post.replace('.md', '').replace('_', ' ').title()
         content = get_post_content(post)
         content_preview = content[:200] + "..." if len(content) > 200 else content
 
-        st.markdown(f"### {title}")
+        st.markdown(f"### {post_title}")
         st.text(content_preview)
         st.markdown("---")
 
-# Create blog posts
 def create_blog_post():
     st.header("📝 Create a New Blog Post")
-    post_type = st.radio("Choose Post Creation Method", ["Manual Entry", "Upload PDF/HTML"], horizontal=True)
+    with st.form(key='create_post_form'):
+        post_type = st.radio("Choose Post Creation Method", ["Manual Entry", "Upload PDF/HTML"], horizontal=True)
 
-    if post_type == "Manual Entry":
-        title = st.text_input("🖊️ Post Title", placeholder="Enter the title of your post")
-        content = st.text_area("📝 Content", height=300, placeholder="Write your post content here...")
-    elif post_type == "Upload PDF/HTML":
-        uploaded_file = st.file_uploader("📂 Upload PDF or HTML File", type=["pdf", "html"])
-        title = st.text_input("🖊️ Post Title (Optional)", placeholder="Enter the title of your post (optional)")
-        content = None
-        if uploaded_file:
-            if uploaded_file.type == "application/pdf":
-                content = process_pdf(uploaded_file)
-            elif uploaded_file.type in ["text/html", "application/xhtml+xml"]:
-                content = process_html(uploaded_file)
-            else:
-                st.error("❌ Unsupported file type.")
+        if post_type == "Manual Entry":
+            title = st.text_input("🖊️ Post Title", placeholder="Enter the title of your post")
+            content = st.text_area("📝 Content", height=300, placeholder="Write your post content here...")
+        elif post_type == "Upload PDF/HTML":
+            uploaded_file = st.file_uploader("📂 Upload PDF or HTML File", type=["pdf", "html"])
+            title = st.text_input("🖊️ Post Title (Optional)", placeholder="Enter the title of your post (optional)")
+            content = None
+            if uploaded_file:
+                if uploaded_file.type == "application/pdf":
+                    content = process_pdf(uploaded_file)
+                elif uploaded_file.type in ["text/html", "application/xhtml+xml"]:
+                    content = process_html(uploaded_file)
 
-    image = st.file_uploader("🖼️ Upload Thumbnail Image", type=["png", "jpg", "jpeg"])
-    scheduled_date = st.date_input("📅 Schedule Date", value=datetime.date.today())
-    scheduled_time = st.time_input("⏰ Schedule Time", value=datetime.time(9, 0))
-    scheduled_datetime = datetime.datetime.combine(scheduled_date, scheduled_time)
+        image = st.file_uploader("🖼️ Upload Thumbnail Image", type=["png", "jpg", "jpeg"])
+        scheduled_date = st.date_input("📅 Schedule Date", value=datetime.date.today())
+        scheduled_time = st.time_input("⏰ Schedule Time", value=datetime.time(9, 0))
+        scheduled_datetime = datetime.datetime.combine(scheduled_date, scheduled_time)
 
-    if st.button("📤 Publish"):
-        if post_type == "Manual Entry" and (not title or not content):
-            st.warning("⚠️ Please provide both a title and content for the post.")
-            return
-        elif post_type == "Upload PDF/HTML" and not uploaded_file:
-            st.warning("⚠️ Please upload a PDF or HTML file to create a post.")
-            return
+        submitted = st.form_submit_button("📤 Publish")
+        if submitted:
+            if not title:
+                title = uploaded_file.name.rsplit('.', 1)[0].replace('_', ' ').title()
 
-        if not title:
-            title = uploaded_file.name.rsplit('.', 1)[0].replace('_', ' ').title()
+            filename = f"{title.replace(' ', '_').lower()}.md"
+            filepath = POSTS_DIR / filename
+            metadata_path = filepath.with_suffix('.json')
 
-        filename = f"{title.replace(' ', '_').lower()}.md"
-        filepath = POSTS_DIR / filename
-        metadata_path = filepath.with_suffix('.json')
+            with open(filepath, 'w', encoding='utf-8') as file:
+                file.write(content)
 
-        if filepath.exists():
-            st.error("❌ A post with this title already exists. Please choose a different title.")
-            return
+            with open(metadata_path, 'w', encoding='utf-8') as file:
+                json.dump({"scheduled_time": scheduled_datetime.isoformat()}, file)
 
-        with open(filepath, 'w', encoding='utf-8') as file:
-            file.write(content)
-
-        with open(metadata_path, 'w', encoding='utf-8') as file:
-            json.dump({"scheduled_time": scheduled_datetime.isoformat()}, file)
-
-        if image:
-            try:
+            if image:
                 img = Image.open(image)
                 img.save(IMAGES_DIR / f"{filepath.stem}.png", format="PNG")
-                st.success(f"✅ Published post with image: **{title}** scheduled for {scheduled_datetime}")
-            except Exception as e:
-                st.error(f"❌ Failed to save image: {e}")
-        else:
-            st.success(f"✅ Published post: **{title}** (No image uploaded) scheduled for {scheduled_datetime}")
+            st.success(f"✅ Post created and scheduled for {scheduled_datetime}")
 
-        st.rerun()
-
-# Main Function
 def main():
     st.sidebar.title("📂 Blog Management")
     page = st.sidebar.radio("🛠️ Choose an option", ["View Posts", "Create Post", "View Scheduled Posts"])
