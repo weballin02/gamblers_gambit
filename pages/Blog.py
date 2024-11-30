@@ -477,7 +477,7 @@ def view_blog_posts():
         # Handle Read More button clicks
         if st.button("Read More", key=read_more_key):
             st.session_state.selected_post = post
-            st.experimental_rerun()
+            st.rerun()
 
 def create_blog_post():
     st.header("📝 Create a New Blog Post")
@@ -547,7 +547,7 @@ def create_blog_post():
         else:
             st.markdown(f'<div class="success-message">✅ Published post: **{title}** (No image uploaded) scheduled for {scheduled_datetime}</div>', unsafe_allow_html=True)
 
-        st.experimental_rerun()
+        st.rerun()
 
 def edit_scheduled_post():
     if not st.session_state.logged_in:
@@ -607,7 +607,7 @@ def edit_scheduled_post():
                 json.dump({"scheduled_time": scheduled_datetime.isoformat()}, file)
 
             st.markdown(f'<div class="success-message">✅ Updated post: **{title}** scheduled for {scheduled_datetime}</div>', unsafe_allow_html=True)
-            st.experimental_rerun()
+            st.rerun()
 
 def delete_blog_posts():
     if not st.session_state.logged_in:
@@ -623,7 +623,7 @@ def delete_blog_posts():
         for post in selected_posts:
             delete_post(post)
         st.markdown('<div class="success-message">✅ Deleted successfully</div>', unsafe_allow_html=True)
-        st.experimental_rerun()
+        st.rerun()
 
 def view_scheduled_posts():
     if not st.session_state.logged_in:
