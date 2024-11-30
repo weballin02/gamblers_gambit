@@ -262,6 +262,44 @@ def create_blog_post():
 
         st.rerun()
 
+def edit_scheduled_post():
+    st.header("✏️ Edit Scheduled Post")
+    posts = list_posts()
+    selected_post = st.selectbox("Select a post to edit", posts)
+
+    if selected_post:
+        post_path = POSTS_DIR / selected_post
+        metadata_path = post_path.with_suffix('.json')
+
+        # Load existing content and metadata
+        content = get_post_content(selected_post)
+        with open(metadata_path, 'r', encoding='utf-8') as file:
+            metadata = json.load(file)
+            scheduled_time = datetime.datetime.fromisoformat(metadata['scheduled_time'])
+
+        # Display current values
+        st.text_input("🖊️ Post Title", value=selected_post.replace('.md', '').replace('_', ' ').title())
+        st.text_area("📝 Content", value=content, height=300)
+        scheduled_date = st.date_input("📅 Schedule Date", value=scheduled_time.date())
+        scheduled_time = st.time_input("⏰ Schedule Time", value=scheduled_time.time())
+
+        # Convert to user's local timezone (Pacific Time)
+        local_tz = pytz.timezone("America/Los_Angeles")  # Change this to the user's local timezone
+        scheduled_datetime = datetime.datetime.combine(scheduled_date, scheduled_time)
+        scheduled_datetime = local_tz.localize(scheduled_datetime)
+
+        if st.button("📤 Update Post"):
+            # Save the updated markdown file
+            with open(post_path, 'w', encoding='utf-8') as file:
+                file.write(content)
+
+            # Save updated scheduling metadata
+            with open(metadata_path, 'w', encoding='utf-8') as file:
+                json.dump({"scheduled_time": scheduled_datetime.isoformat()}, file)
+
+            st.success(f"✅ Updated post: **{selected_post.replace('.md', '').replace('_', ' ').title()}** scheduled for {scheduled_datetime}")
+            st.rerun()
+
 def delete_blog_posts():
     if not st.session_state.logged_in:
         st.warning("⚠️ You must be logged in to delete posts.")
@@ -307,11 +345,13 @@ def view_scheduled_posts():
 
 def main():
     st.sidebar.title("📂 Blog Management")
-    page = st.sidebar.radio("🛠️ Choose an option", ["View Posts", "View Scheduled Posts", "Create Post", "Delete Post"])
+    page = st.sidebar.radio("🛠️ Choose an option", ["View Posts", "View Scheduled Posts", "Create Post", "Edit Scheduled Post", "Delete Post"])
     if page == "View Posts":
         view_blog_posts()
     elif page == "View Scheduled Posts":
         view_scheduled_posts()  # New option to view scheduled posts
+    elif page == "Edit Scheduled Post":
+        edit_scheduled_post()  # New option to edit scheduled posts
     elif page in ["Create Post", "Delete Post"]:
         login()
         if st.session_state.logged_in:
