@@ -117,7 +117,7 @@ def display_full_post(post_name):
     # Back to posts button
     if st.button("🔙 Back to Posts"):
         st.session_state.selected_post = None
-        st.experimental_rerun()
+        st.rerun()
 
 # Function to process PDF files
 def process_pdf(file):
@@ -189,7 +189,7 @@ def view_blog_posts():
 
         if st.button("Read More", key=read_more_key):
             st.session_state.selected_post = post
-            st.experimental_rerun()
+            st.rerun()
 
 def create_blog_post():
     st.header("📝 Create a New Blog Post")
