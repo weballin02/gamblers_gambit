@@ -189,39 +189,71 @@ def display_full_post(post_name):
 
 def create_blog_post():
     st.header("📝 Create a New Blog Post")
-    with st.form(key='create_post_form'):
-        post_type = st.radio("Choose Post Creation Method", ["Manual Entry", "Upload PDF/HTML"], horizontal=True)
+
+    # Option to create manually or upload a file
+    post_type = st.radio("Choose Post Creation Method", ["Manual Entry", "Upload PDF/HTML"], horizontal=True)
+
+    if post_type == "Manual Entry":
         title = st.text_input("🖊️ Post Title", placeholder="Enter the title of your post")
-        content = st.text_area("📝 Content", height=300) if post_type == "Manual Entry" else None
+        content = st.text_area("📝 Content", height=300, placeholder="Write your post content here...")
+    elif post_type == "Upload PDF/HTML":
+        uploaded_file = st.file_uploader("📂 Upload PDF or HTML File", type=["pdf", "html"])
+        title = st.text_input("🖊️ Post Title (Optional)", placeholder="Enter the title of your post (optional)")
+        content = None  # Will be populated after processing the file
 
-        if post_type == "Upload PDF/HTML":
-            uploaded_file = st.file_uploader("📂 Upload PDF or HTML File", type=["pdf", "html"])
-            if uploaded_file:
-                content = process_pdf(uploaded_file) if uploaded_file.type == "application/pdf" else process_html(uploaded_file)
+        if uploaded_file:
+            if uploaded_file.type == "application/pdf":
+                content = process_pdf(uploaded_file)
+            elif uploaded_file.type in ["text/html", "application/xhtml+xml"]:
+                content = process_html(uploaded_file)
+            else:
+                st.error("❌ Unsupported file type.")
 
-        image = st.file_uploader("🖼️ Upload Thumbnail Image", type=["png", "jpg", "jpeg"])
-        scheduled_date = st.date_input("📅 Schedule Date", value=datetime.date.today())
-        scheduled_time = st.time_input("⏰ Schedule Time", value=datetime.time(9, 0))
-        scheduled_datetime = datetime.datetime.combine(scheduled_date, scheduled_time)
-        submitted = st.form_submit_button("📤 Publish")
+    image = st.file_uploader("🖼️ Upload Thumbnail Image", type=["png", "jpg", "jpeg"])
+    scheduled_date = st.date_input("📅 Schedule Date", value=datetime.date.today())
+    scheduled_time = st.time_input("⏰ Schedule Time", value=datetime.time(9, 0))
+    scheduled_datetime = datetime.datetime.combine(scheduled_date, scheduled_time)
 
-        if submitted and title and content:
-            filename = f"{title.replace(' ', '_').lower()}.md"
-            filepath = POSTS_DIR / filename
-            metadata_path = filepath.with_suffix('.json')
+    if st.button("📤 Publish"):
+        if post_type == "Manual Entry" and (not title or not content):
+            st.warning("⚠️ Please provide both a title and content for the post.")
+            return
+        elif post_type == "Upload PDF/HTML" and not uploaded_file:
+            st.warning("⚠️ Please upload a PDF or HTML file to create a post.")
+            return
 
-            with open(filepath, 'w', encoding='utf-8') as f:
-                f.write(content)
+        # Set title from file name if not provided
+        if not title and post_type == "Upload PDF/HTML":
+            title = uploaded_file.name.rsplit('.', 1)[0].replace('_', ' ').title()
 
-            with open(metadata_path, 'w', encoding='utf-8') as f:
-                json.dump({"scheduled_time": scheduled_datetime.isoformat()}, f)
+        filename = f"{title.replace(' ', '_').lower()}.md"
+        filepath = POSTS_DIR / filename
+        metadata_path = filepath.with_suffix('.json')
 
-            if image:
+        if filepath.exists():
+            st.error("❌ A post with this title already exists. Please choose a different title.")
+            return
+
+        # Save the markdown file
+        with open(filepath, 'w', encoding='utf-8') as file:
+            file.write(content)
+
+        # Save scheduling metadata
+        with open(metadata_path, 'w', encoding='utf-8') as file:
+            json.dump({"scheduled_time": scheduled_datetime.isoformat()}, file)
+
+        # Save the uploaded image if provided
+        if image:
+            try:
                 img = Image.open(image)
                 img.save(IMAGES_DIR / f"{filepath.stem}.png", format="PNG")
+                st.success(f"✅ Published post with image: **{title}** scheduled for {scheduled_datetime}")
+            except Exception as e:
+                st.error(f"❌ Failed to save image: {e}")
+        else:
+            st.success(f"✅ Published post: **{title}** (No image uploaded) scheduled for {scheduled_datetime}")
 
-            st.success(f"✅ Post scheduled for {scheduled_datetime}")
-            st.rerun()
+        st.rerun()
 
 def delete_blog_posts():
     st.header("🗑️ Delete Blog Posts")
