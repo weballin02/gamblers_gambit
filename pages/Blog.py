@@ -62,11 +62,13 @@ def list_posts():
             with open(metadata_path, 'r', encoding='utf-8') as file:
                 metadata = json.load(file)
                 scheduled_time = datetime.datetime.fromisoformat(metadata['scheduled_time']).astimezone(local_tz)
-                posts.append((post_path.name, scheduled_time))  # Store both name and scheduled time
+                # Only include posts that are already published
+                if now >= scheduled_time:
+                    posts.append(post_path.name)
         else:
-            posts.append((post_path.name, None))  # No scheduled time for posted posts
+            posts.append(post_path.name)  # Include already published posts
 
-    return sorted(posts, key=lambda x: x[1] if x[1] else datetime.datetime.min, reverse=True)
+    return sorted(posts, reverse=True)
 
 def delete_post(post_name):
     post_path = POSTS_DIR / post_name
@@ -143,13 +145,13 @@ def view_blog_posts():
 
     search_query = st.text_input("🔍 Search Posts", "")
     if search_query:
-        posts = [post for post in posts if search_query.lower() in post[0].lower()]
+        posts = [post for post in posts if search_query.lower() in post.lower()]
 
     if not posts:
         st.warning("No posts match your search.")
         return
 
-    for post, scheduled_time in posts:
+    for post in posts:
         post_title = post.replace('.md', '').replace('_', ' ').title()
         post_path = POSTS_DIR / post
 
@@ -268,7 +270,7 @@ def edit_scheduled_post():
 
     st.header("✏️ Edit Scheduled Post")
     posts = list_posts()  # Get all posts, including scheduled ones
-    selected_post = st.selectbox("Select a post to edit", [post[0] for post in posts])  # Only show post names
+    selected_post = st.selectbox("Select a post to edit", posts)  # Only show post names
 
     if selected_post:
         post_path = POSTS_DIR / selected_post
@@ -310,7 +312,7 @@ def delete_blog_posts():
 
     st.header("🗑️ Delete Blog Posts")
     posts = list_posts()
-    selected_posts = st.multiselect("Select posts to delete", [post[0] for post in posts])  # Only show post names
+    selected_posts = st.multiselect("Select posts to delete", posts)  # Only show post names
     confirm_delete = st.checkbox("⚠️ Confirm Deletion")
 
     if st.button("Delete Selected") and confirm_delete:
