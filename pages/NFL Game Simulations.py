@@ -1,3 +1,9 @@
+# nfl_game_sims.py
+
+# ===========================
+# 1. Import Libraries
+# ===========================
+
 import streamlit as st
 import nfl_data_py as nfl
 import pandas as pd
@@ -13,7 +19,10 @@ import pytz
 # Initialize the database for user and model management
 initialize_database()
 
-# Set page configuration
+# ===========================
+# 2. Streamlit App Configuration
+# ===========================
+
 st.set_page_config(
     page_title="FoxEdge - NFL Game Simulations",
     page_icon="🏈",
@@ -21,7 +30,10 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-# Synesthetic Interface CSS
+# ===========================
+# 3. Custom CSS Styling with FoxEdge Colors
+# ===========================
+
 st.markdown('''
     <style>
         /* Import Fonts */
@@ -29,13 +41,13 @@ st.markdown('''
 
         /* Root Variables */
         :root {
-            --background-gradient-start: #0F2027;
-            --background-gradient-end: #203A43;
-            --primary-text-color: #ECECEC;
-            --heading-text-color: #F5F5F5;
-            --accent-color-teal: #2CFFAA;
-            --accent-color-purple: #A56BFF;
-            --highlight-color: #FF6B6B;
+            --background-gradient-start: #2C3E50; /* Charcoal Dark Gray */
+            --background-gradient-end: #1E90FF;   /* Electric Blue */
+            --primary-text-color: #FFFFFF;         /* Crisp White */
+            --heading-text-color: #F5F5F5;         /* Light Gray */
+            --accent-color-teal: #32CD32;          /* Lime Green */
+            --accent-color-purple: #FF8C00;        /* Deep Orange */
+            --highlight-color: #FFFF33;            /* Neon Yellow */
             --font-heading: 'Raleway', sans-serif;
             --font-body: 'Open Sans', sans-serif;
         }
@@ -82,12 +94,15 @@ st.markdown('''
         .hero h1 {
             font-size: 3.5em;
             margin-bottom: 0.2em;
+            background: linear-gradient(120deg, var(--accent-color-teal), var(--accent-color-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
         }
 
         .hero p {
             font-size: 1.5em;
             margin-bottom: 1em;
-            color: #CCCCCC;
+            color: #CCCCCC; /* Light Gray */
         }
 
         /* Buttons */
@@ -95,11 +110,11 @@ st.markdown('''
             background: linear-gradient(45deg, var(--accent-color-teal), var(--accent-color-purple));
             border: none;
             padding: 0.8em 2em;
-            color: #FFFFFF;
+            color: #FFFFFF; /* Crisp White */
             font-size: 1.1em;
             border-radius: 30px;
             cursor: pointer;
-            transition: transform 0.3s ease;
+            transition: transform 0.3s ease, background 0.3s ease;
             text-decoration: none;
             display: inline-block;
             margin-top: 1em;
@@ -107,6 +122,7 @@ st.markdown('''
 
         .button:hover {
             transform: translateY(-5px);
+            background: linear-gradient(45deg, var(--accent-color-purple), var(--accent-color-teal));
         }
 
         /* Data Section */
@@ -118,18 +134,19 @@ st.markdown('''
         .data-section h2 {
             font-size: 2.5em;
             margin-bottom: 0.5em;
+            color: var(--accent-color-teal); /* Lime Green */
         }
 
         .data-section p {
             font-size: 1.2em;
-            color: #CCCCCC;
+            color: #CCCCCC; /* Light Gray */
             margin-bottom: 2em;
         }
 
         /* Simulation Controls */
         .controls-section {
             padding: 2em 1em;
-            background-color: rgba(255, 255, 255, 0.05);
+            background-color: rgba(44, 62, 80, 0.8); /* Semi-transparent Charcoal Dark Gray */
             border-radius: 15px;
             margin-bottom: 2em;
         }
@@ -137,7 +154,7 @@ st.markdown('''
         .controls-section h3 {
             font-size: 2em;
             margin-bottom: 0.5em;
-            color: var(--accent-color-teal);
+            color: var(--accent-color-teal); /* Lime Green */
         }
 
         .controls-section label {
@@ -156,7 +173,7 @@ st.markdown('''
         .results-section h3 {
             font-size: 2em;
             margin-bottom: 0.5em;
-            color: var(--accent-color-purple);
+            color: var(--accent-color-purple); /* Deep Orange */
         }
 
         .metric-container {
@@ -173,12 +190,17 @@ st.markdown('''
             margin: 0.5em;
             flex: 1 1 200px;
             text-align: center;
+            transition: transform 0.3s ease;
+        }
+
+        .metric:hover {
+            transform: translateY(-5px);
         }
 
         .metric h4 {
             font-size: 1.2em;
             margin-bottom: 0.3em;
-            color: var(--highlight-color);
+            color: var(--highlight-color); /* Neon Yellow */
         }
 
         .metric p {
@@ -192,21 +214,22 @@ st.markdown('''
             background: linear-gradient(45deg, var(--accent-color-teal), var(--accent-color-purple));
             border: none;
             padding: 0.8em 2em;
-            color: #FFFFFF;
+            color: #FFFFFF; /* Crisp White */
             font-size: 1.1em;
             border-radius: 30px;
             cursor: pointer;
-            transition: transform 0.3s ease;
+            transition: transform 0.3s ease, background 0.3s ease;
             margin-top: 1em;
         }
 
         .stButton > button:hover {
             transform: translateY(-5px);
+            background: linear-gradient(45deg, var(--accent-color-purple), var(--accent-color-teal));
         }
 
         /* Sidebar */
         .sidebar .sidebar-content {
-            background-color: rgba(255, 255, 255, 0.05);
+            background-color: rgba(44, 62, 80, 0.8); /* Semi-transparent Charcoal Dark Gray */
             padding: 2em 1em;
             border-radius: 15px;
         }
@@ -220,7 +243,7 @@ st.markdown('''
         }
 
         .footer a {
-            color: var(--accent-color-teal);
+            color: var(--accent-color-teal); /* Lime Green */
             text-decoration: none;
         }
 
@@ -244,11 +267,12 @@ st.markdown('''
             }
         }
     </style>
-''', unsafe_allow_html=True)
+    ''', unsafe_allow_html=True)
 
-# Main Content
+# ===========================
+# 4. Hero Section
+# ===========================
 
-# Hero Section
 st.markdown('''
     <div class="hero">
         <h1>FoxEdge</h1>
@@ -256,16 +280,20 @@ st.markdown('''
     </div>
 ''', unsafe_allow_html=True)
 
-# Functionality
+# ===========================
+# 5. Data Visualizations and Insights Section
+# ===========================
 
-# Data Visualizations and Insights Section
 st.markdown('''
     <div class="data-section">
         <h2>Run Thousands of Simulations for Smarter Betting Strategies</h2>
     </div>
 ''', unsafe_allow_html=True)
 
-# Function to calculate team stats
+# ===========================
+# 6. Team Statistics Calculation
+# ===========================
+
 def calculate_team_stats():
     current_year = datetime.now().year
     games = nfl.import_schedules([current_year])
@@ -290,7 +318,10 @@ def calculate_team_stats():
 
     return team_stats
 
-# Updated function to get upcoming games based on current day
+# ===========================
+# 7. Upcoming Games Retrieval
+# ===========================
+
 def get_upcoming_games():
     current_year = datetime.now().year
     schedule = nfl.import_schedules([current_year])
@@ -319,7 +350,10 @@ def get_upcoming_games():
 
     return upcoming_games[['game_datetime', 'home_team', 'away_team']]
 
-# Monte Carlo simulation function
+# ===========================
+# 8. Monte Carlo Simulation Function
+# ===========================
+
 def monte_carlo_simulation(home_team, away_team, spread_adjustment, num_simulations, team_stats):
     home_score_avg = team_stats[home_team]['avg_score']
     home_score_std = team_stats[home_team]['std_dev']
@@ -346,7 +380,7 @@ def monte_carlo_simulation(home_team, away_team, spread_adjustment, num_simulati
 
     avg_home_score = np.mean(total_home_scores)
     avg_away_score = np.mean(total_away_scores)
-    avg_total_score = avg_home_score + avg_away_score
+    avg_total_score = np.mean(home_scores + away_scores) if 'home_scores' in locals() else 0
 
     return {
         f"{home_team} Win Percentage": round(home_wins / num_simulations * 100, 2),
@@ -361,7 +395,10 @@ def monte_carlo_simulation(home_team, away_team, spread_adjustment, num_simulati
         }
     }
 
-# Function to create visualizations of the simulation results
+# ===========================
+# 9. Visualization Function
+# ===========================
+
 def create_simulation_visualizations(results, home_team, away_team):
     home_scores = results["Simulation Data"]["home_scores"]
     away_scores = results["Simulation Data"]["away_scores"]
@@ -374,18 +411,18 @@ def create_simulation_visualizations(results, home_team, away_team):
     
     # Score distribution
     fig.add_trace(
-        go.Histogram(x=home_scores, name=f"{home_team} Scores", opacity=0.75),
+        go.Histogram(x=home_scores, name=f"{home_team} Scores", opacity=0.75, marker_color="#32CD32"),  # Lime Green
         row=1, col=1
     )
     fig.add_trace(
-        go.Histogram(x=away_scores, name=f"{away_team} Scores", opacity=0.75),
+        go.Histogram(x=away_scores, name=f"{away_team} Scores", opacity=0.75, marker_color="#FF8C00"),  # Deep Orange
         row=1, col=1
     )
     
     # Score differential distribution
     score_diff = np.array(home_scores) - np.array(away_scores)
     fig.add_trace(
-        go.Histogram(x=score_diff, name="Score Differential", opacity=0.75),
+        go.Histogram(x=score_diff, name="Score Differential", opacity=0.75, marker_color="#FFFF33"),  # Neon Yellow
         row=2, col=1
     )
     
@@ -397,11 +434,87 @@ def create_simulation_visualizations(results, home_team, away_team):
     
     return fig
 
+# ===========================
+# 10. Display Functions
+# ===========================
+
+def display_results(results, home_team, away_team):
+    if results:
+        st.markdown('''
+            <div class="results-section">
+                <h3>Simulation Results</h3>
+                <div class="metric-container">
+        ''', unsafe_allow_html=True)
+
+        st.markdown(f'''
+            <div class="metric">
+                <h4>{home_team} Win Probability</h4>
+                <p>{results[f'{home_team} Win Percentage']}%</p>
+            </div>
+        ''', unsafe_allow_html=True)
+
+        st.markdown(f'''
+            <div class="metric">
+                <h4>{away_team} Win Probability</h4>
+                <p>{results[f'{away_team} Win Percentage']}%</p>
+            </div>
+        ''', unsafe_allow_html=True)
+
+        st.markdown(f'''
+            <div class="metric">
+                <h4>Average Total Score</h4>
+                <p>{results["Average Total Score"]}</p>
+            </div>
+        ''', unsafe_allow_html=True)
+
+        st.markdown(f'''
+            <div class="metric">
+                <h4>Score Differential</h4>
+                <p>{results[f'Score Differential ({home_team} - {away_team})']}</p>
+            </div>
+        ''', unsafe_allow_html=True)
+
+        st.markdown('''
+                </div>
+            </div>
+        ''', unsafe_allow_html=True)
+
+# ===========================
+# 11. Summary Table Function
+# ===========================
+
+def create_summary_table(all_results):
+    summary_data = []
+    for game in all_results:
+        summary_data.append({
+            "Home Team": game['home_team'],
+            "Away Team": game['away_team'],
+            "Home Win %": game['results'][f"{game['home_team']} Win Percentage"],
+            "Away Win %": game['results'][f"{game['away_team']} Win Percentage"],
+            "Avg Total Score": game['results']["Average Total Score"],
+            "Score Differential": game['results'][f"Score Differential ({game['home_team']} - {game['away_team']})"]
+        })
+    summary_df = pd.DataFrame(summary_data)
+    st.markdown('''
+        <div class="data-section">
+            <h2>Summary of All Predictions</h2>
+        </div>
+    ''', unsafe_allow_html=True)
+    st.dataframe(summary_df.style.set_properties(**{
+        'background-color': 'rgba(255, 255, 255, 0.05)',
+        'color': 'var(--primary-text-color)',
+        'border-color': 'rgba(255, 255, 255, 0.1)'
+    }))
+
+# ===========================
+# 12. Main Functionality
+# ===========================
+
 # Sidebar for controls
 st.markdown('''
     <div class="controls-section">
         <h3>Simulation Controls</h3>
-''', unsafe_allow_html=True)
+    ''', unsafe_allow_html=True)
 
 upcoming_games = get_upcoming_games()
 
@@ -418,7 +531,7 @@ if not upcoming_games.empty:
     
     spread_adjustment = st.slider(
         "Home Team Spread Adjustment",
-        -10.0, 10.0, 0.0,
+        -10.0, 10.0, 0.0, step=0.5,
         help="Positive values favor home team, negative values favor away team"
     )
     
@@ -429,9 +542,7 @@ if not upcoming_games.empty:
     )
     
     run_simulation = st.button("Run Simulation")
-else:
-    st.error("No upcoming games found in the schedule.")
-    run_simulation = False
+    predict_all = st.button("Predict All Upcoming Games")
 
 st.markdown('</div>', unsafe_allow_html=True)
 
@@ -509,9 +620,40 @@ if run_simulation:
                 st.write(f"**{away_team} Recent Stats**")
                 st.write({k: round(v, 2) if isinstance(v, (float, int)) else v for k, v in team_stats[away_team].items()})
 
-# Footer
+if predict_all:
+    all_results = []
+    with st.spinner("Running simulations for all games..."):
+        for _, row in upcoming_games.iterrows():
+            home_team = row['home_team']
+            away_team = row['away_team']
+            game_results = monte_carlo_simulation(
+                home_team, away_team, spread_adjustment, num_simulations,
+                team_stats
+            )
+            all_results.append({
+                'home_team': home_team,
+                'away_team': away_team,
+                'results': game_results
+            })
+    
+    # Display summary table
+    create_summary_table(all_results)
+
+    # Display individual game results
+    for game in all_results:
+        st.markdown(f'''
+            <div class="results-section">
+                <h3>{game['home_team']} vs {game['away_team']}</h3>
+        ''', unsafe_allow_html=True)
+        display_results(game['results'], game['home_team'], game['away_team'])
+        st.markdown('</div>', unsafe_allow_html=True)
+
+# ===========================
+# 13. Footer Section
+# ===========================
+
 st.markdown('''
     <div class="footer">
-        &copy; 2023 <a href="#">FoxEdge</a>. All rights reserved.
+        &copy; 2024 <a href="#">FoxEdge</a>. All rights reserved.
     </div>
 ''', unsafe_allow_html=True)
