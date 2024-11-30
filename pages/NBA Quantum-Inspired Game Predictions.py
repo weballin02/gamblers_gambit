@@ -4,110 +4,99 @@ import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
 from sklearn.cluster import KMeans
-import warnings
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 from nba_api.stats.endpoints import LeagueGameLog, ScoreboardV2
 from nba_api.stats.static import teams as nba_teams
+import warnings
 
 # Suppress warnings for cleaner output
 warnings.filterwarnings('ignore')
 
-# Streamlit App Title and Configuration
 st.set_page_config(
-    page_title="NBA Quantum-Inspired Simulations",
+    page_title="NBA Quantum Predictions",
     page_icon="🔮",
-    layout="wide",
+    layout="centered",
     initial_sidebar_state="collapsed",
 )
 
-# Custom CSS Styling
 st.markdown("""
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@600;800&family=Open+Sans:wght@400;600&display=swap');
+    <style>
+        /* Shared CSS for consistent styling */
+        html, body, [class*="css"] {
+            font-family: 'Open Sans', sans-serif;
+            background: var(--background-color);
+            color: var(--text-color);
+        }
 
-/* General Styling */
-html, body, [class*="css"] {
-    font-family: 'Open Sans', sans-serif;
-    background: linear-gradient(135deg, #1a1c2c 0%, #0f111a 100%);
-    color: #E5E7EB;
-}
+        :root {
+            --background-color: #2C3E50; /* Charcoal Dark Gray */
+            --primary-color: #1E90FF; /* Electric Blue */
+            --secondary-color: #FF8C00; /* Deep Orange */
+            --accent-color: #FF4500; /* Fiery Red */
+            --success-color: #32CD32; /* Lime Green */
+            --alert-color: #FFFF33; /* Neon Yellow */
+            --text-color: #FFFFFF; /* Crisp White */
+            --heading-text-color: #F5F5F5; /* Adjusted for contrast */
+        }
 
-/* Header Section */
-.header-container {
-    text-align: center;
-    margin-bottom: 1.5em;
-}
+        .header-title {
+            font-family: 'Montserrat', sans-serif;
+            background: linear-gradient(120deg, var(--secondary-color), var(--primary-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-size: 3em;
+            font-weight: 800;
+        }
 
-.header-title {
-    font-family: 'Montserrat', sans-serif;
-    background: linear-gradient(120deg, #FFA500, #FF6B00);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    font-size: 3em;
-    font-weight: 800;
-}
+        .gradient-bar {
+            height: 10px;
+            background: linear-gradient(90deg, var(--success-color), var(--accent-color));
+            border-radius: 5px;
+        }
 
-.header-subtitle {
-    color: #9CA3AF;
-    font-size: 1.2em;
-}
+        div.stButton > button {
+            background: linear-gradient(90deg, var(--secondary-color), var(--primary-color));
+            color: var(--text-color);
+            border: none;
+            padding: 1em 2em;
+            border-radius: 8px;
+            font-size: 1.1em;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
 
-/* Trust Indicators */
-.trust-badges {
-    display: flex;
-    justify-content: center;
-    gap: 2em;
-    margin-top: 1em;
-}
-
-.trust-badge {
-    text-align: center;
-    font-size: 1.1em;
-    color: #FFA500;
-    display: flex;
-    align-items: center;
-    gap: 0.5em;
-}
-
-/* Button Styling */
-div.stButton > button {
-    background: linear-gradient(90deg, #FF6B00, #FFA500);
-    color: white;
-    border: none;
-    padding: 1em 2em;
-    border-radius: 8px;
-    font-size: 1.1em;
-    font-weight: 700;
-    cursor: pointer;
-    transition: all 0.3s ease;
-}
-
-div.stButton > button:hover {
-    transform: scale(1.05);
-}
-</style>
+        div.stButton > button:hover {
+            background-color: var(--accent-color); /* Fiery Red */
+            transform: scale(1.05);
+        }
+    </style>
 """, unsafe_allow_html=True)
 
 # Header Section
 st.markdown('''
-<div class="header-container">
-    <h1 class="header-title">NBA Quantum Predictions</h1>
-    <p class="header-subtitle">Leverage quantum-inspired simulations for smarter decisions.</p>
-</div>
+    <div style="text-align: center; margin-bottom: 1.5em;">
+        <h1 class="header-title">NBA Quantum Predictions</h1>
+        <p style="color: #9CA3AF; font-size: 1.2em;">
+            Leverage quantum-inspired simulations for smarter decisions.
+        </p>
+    </div>
 ''', unsafe_allow_html=True)
 
 # Trust Indicators
 st.markdown('''
-<div class="trust-badges">
-    <div class="trust-badge"><span>🔮</span> Quantum Algorithms</div>
-    <div class="trust-badge"><span>📈</span> Predictive Analytics</div>
-    <div class="trust-badge"><span>🎯</span> Proven Results</div>
-</div>
+    <div class="trust-badges">
+        <div class="trust-badge"><span style="color: var(--primary-color);">🔮</span> Quantum Algorithms</div>
+        <div class="trust-badge"><span style="color: var(--primary-color);">📊</span> Predictive Analytics</div>
+        <div class="trust-badge"><span style="color: var(--primary-color);">🎯</span> Proven Results</div>
+    </div>
 ''', unsafe_allow_html=True)
 
-# Informational Text
+# Add functionality from the original script here (e.g., simulations, results)
 st.write("Select a game to view quantum-inspired predictions.")
 
-# Team Name Mapping Function
+# Team Name Mapping - Corrected and Cleaned
 def find_team_full_name(abbrev):
     team_name_mapping = {
         'ATL': 'Atlanta Hawks', 'BOS': 'Boston Celtics', 'BKN': 'Brooklyn Nets',
@@ -127,9 +116,8 @@ def find_team_full_name(abbrev):
 nba_team_list = nba_teams.get_teams()
 abbrev_to_full = {team['abbreviation']: team['full_name'] for team in nba_team_list}
 id_to_abbrev = {team['id']: team['abbreviation'] for team in nba_team_list}
-full_to_abbrev = {team['full_name']: team['abbreviation'] for team in nba_team_list}
 
-# Load NBA Game Logs with Caching
+# Cache the data loading to improve performance
 @st.cache_data(ttl=3600)  # Cache for 1 hour
 def load_nba_game_logs(season=['2023-24', '2022-23']):
     try:
@@ -143,7 +131,6 @@ def load_nba_game_logs(season=['2023-24', '2022-23']):
         st.error(f"Error loading NBA game logs: {str(e)}")
         return None
 
-# Calculate Team Stats
 def calculate_team_stats(game_logs):
     if game_logs is None:
         return {}
@@ -151,76 +138,36 @@ def calculate_team_stats(game_logs):
     team_stats = {}
     past_games = game_logs.dropna(subset=['PTS'])
     
-    # Initialize all teams with empty stats
-    for team_abbrev in abbrev_to_full.keys():
-        team_stats[team_abbrev] = {
-            'scores': [],
-            'dates': [],
-            'avg_score': 0.0,
-            'std_dev': 0.0,
-            'min_score': 0.0,
-            'max_score': 0.0,
-            'cluster_avg_scores': [0.0],
-            'recent_form': 0.0,
-            'games_played': 0
-        }
-    
-    # Populate scores and dates
     for index, row in past_games.iterrows():
         team_abbrev = row['TEAM_ABBREVIATION']
+        team_full = find_team_full_name(team_abbrev)
         pts = row['PTS']
         game_date = pd.to_datetime(row['GAME_DATE']).date()
         
-        if team_abbrev in team_stats:
-            team_stats[team_abbrev]['scores'].append(pts)
-            team_stats[team_abbrev]['dates'].append(game_date)
-        else:
-            # In case there's a team abbreviation not in the mapping
-            team_stats[team_abbrev] = {
-                'scores': [pts],
-                'dates': [game_date],
-                'avg_score': 0.0,
-                'std_dev': 0.0,
-                'min_score': 0.0,
-                'max_score': 0.0,
-                'cluster_avg_scores': [0.0],
-                'recent_form': 0.0,
-                'games_played': 0
-            }
+        if team_abbrev not in team_stats:
+            team_stats[team_abbrev] = {'scores': [], 'dates': []}
+        team_stats[team_abbrev]['scores'].append(pts)
+        team_stats[team_abbrev]['dates'].append(game_date)
     
-    # Calculate statistics
     for team, stats in team_stats.items():
-        scores = np.array(stats['scores'])
-        if len(scores) == 0:
-            # Team has no games; assign default values
-            team_stats[team]['avg_score'] = 0.0
-            team_stats[team]['std_dev'] = 0.0
-            team_stats[team]['min_score'] = 0.0
-            team_stats[team]['max_score'] = 0.0
-            team_stats[team]['cluster_avg_scores'] = [0.0]
-            team_stats[team]['recent_form'] = 0.0
-            team_stats[team]['games_played'] = 0
-            continue
-        
+        scores = np.array(stats['scores']).reshape(-1, 1)
         if len(scores) < 3:
-            # Assign stats without clustering
-            avg_score = np.mean(scores)
-            team_stats[team]['avg_score'] = round(avg_score, 2)
-            team_stats[team]['std_dev'] = round(np.std(scores), 2)
-            team_stats[team]['min_score'] = round(np.min(scores), 2)
-            team_stats[team]['max_score'] = round(np.max(scores), 2)
-            team_stats[team]['cluster_avg_scores'] = [round(avg_score, 2)]
-            team_stats[team]['recent_form'] = round(avg_score, 2)
+            team_stats[team]['avg_score'] = np.mean(scores)
+            team_stats[team]['std_dev'] = np.std(scores)
+            team_stats[team]['min_score'] = np.min(scores)
+            team_stats[team]['max_score'] = np.max(scores)
+            team_stats[team]['cluster_avg_scores'] = [team_stats[team]['avg_score']]
+            team_stats[team]['recent_form'] = team_stats[team]['avg_score']
             team_stats[team]['games_played'] = len(scores)
             continue
         
         try:
             n_clusters = min(3, len(scores))
             kmeans = KMeans(n_clusters=n_clusters, random_state=42)
-            clusters = kmeans.fit_predict(scores.reshape(-1, 1))
+            clusters = kmeans.fit_predict(scores)
             avg_scores_by_cluster = kmeans.cluster_centers_.flatten()
             
-            recent_scores = scores[-5:]
+            recent_scores = scores.flatten()[-5:]
             recent_form = np.mean(recent_scores) if len(recent_scores) > 0 else np.mean(scores)
             
             team_stats[team]['avg_score'] = round(np.mean(scores), 2)
@@ -231,23 +178,11 @@ def calculate_team_stats(game_logs):
             team_stats[team]['recent_form'] = round(recent_form, 2)
             team_stats[team]['games_played'] = len(scores)
         except Exception as e:
-            st.warning(f"Error calculating stats for {team}: {str(e)}. Assigning average score as cluster_avg_scores.")
-            avg_score = np.mean(scores)
-            team_stats[team]['avg_score'] = round(avg_score, 2)
-            team_stats[team]['std_dev'] = round(np.std(scores), 2)
-            team_stats[team]['min_score'] = round(np.min(scores), 2)
-            team_stats[team]['max_score'] = round(np.max(scores), 2)
-            team_stats[team]['cluster_avg_scores'] = [round(avg_score, 2)]
-            team_stats[team]['recent_form'] = round(avg_score, 2)
-            team_stats[team]['games_played'] = len(scores)
-    
-    # Debugging: Display team_stats for inspection
-    # Uncomment the following line to see team_stats in the Streamlit app
-    # st.json(team_stats)
+            st.warning(f"Error calculating stats for {team}: {str(e)}")
+            continue
     
     return team_stats
 
-# Fetch Upcoming Games
 def get_upcoming_games():
     today = datetime.now().date()
     next_day = today + timedelta(days=1)
@@ -268,8 +203,8 @@ def get_upcoming_games():
             away_team_id = row['VISITOR_TEAM_ID']
             home_team_abbrev = id_to_abbrev.get(home_team_id, 'UNK')
             away_team_abbrev = id_to_abbrev.get(away_team_id, 'UNK')
-            home_team_full = abbrev_to_full.get(home_team_abbrev, home_team_abbrev)
-            away_team_full = abbrev_to_full.get(away_team_abbrev, away_team_abbrev)
+            home_team_full = find_team_full_name(home_team_abbrev)
+            away_team_full = find_team_full_name(away_team_abbrev)
             
             game_list.append({
                 'Game ID': game_id,
@@ -285,7 +220,6 @@ def get_upcoming_games():
         st.error(f"Error fetching upcoming games: {str(e)}")
         return pd.DataFrame()
 
-# Quantum Monte Carlo Simulation Function
 def quantum_monte_carlo_simulation(home_team_abbrev, away_team_abbrev, home_team_full, away_team_full, spread_adjustment, num_simulations, team_stats):
     if home_team_abbrev not in team_stats or away_team_abbrev not in team_stats:
         st.error("Team stats not available for selected teams")
@@ -294,43 +228,22 @@ def quantum_monte_carlo_simulation(home_team_abbrev, away_team_abbrev, home_team
     home_stats = team_stats[home_team_abbrev]
     away_stats = team_stats[away_team_abbrev]
     
-    # Debugging: Check if 'cluster_avg_scores' exists
-    if 'cluster_avg_scores' not in home_stats:
-        st.error(f"'cluster_avg_scores' missing for home team: {home_team_full} ({home_team_abbrev})")
-        return None
-    if 'cluster_avg_scores' not in away_stats:
-        st.error(f"'cluster_avg_scores' missing for away team: {away_team_full} ({away_team_abbrev})")
-        return None
-    
     home_cluster_scores = np.array(home_stats['cluster_avg_scores'])
     away_cluster_scores = np.array(away_stats['cluster_avg_scores'])
     
-    # Check if cluster_avg_scores are not empty
-    if home_cluster_scores.size == 0:
-        st.error(f"'cluster_avg_scores' is empty for home team: {home_team_full} ({home_team_abbrev})")
-        return None
-    if away_cluster_scores.size == 0:
-        st.error(f"'cluster_avg_scores' is empty for away team: {away_team_full} ({away_team_abbrev})")
-        return None
-    
-    # Handle cases where avg_score is 0 to prevent NaN
-    home_score_avg = np.random.choice(home_cluster_scores, num_simulations) + spread_adjustment if home_stats['avg_score'] > 0 else spread_adjustment
-    away_score_avg = np.random.choice(away_cluster_scores, num_simulations) if away_stats['avg_score'] > 0 else 0.0
+    home_score_avg = np.random.choice(home_cluster_scores, num_simulations) + spread_adjustment
+    away_score_avg = np.random.choice(away_cluster_scores, num_simulations)
     
     home_form_factor = (home_stats['recent_form'] / home_stats['avg_score']) if home_stats['avg_score'] != 0 else 1
     away_form_factor = (away_stats['recent_form'] / away_stats['avg_score']) if away_stats['avg_score'] != 0 else 1
     
-    # Prevent std_dev from being zero to avoid identical scores
-    home_std_dev = home_stats['std_dev'] if home_stats['std_dev'] > 0 else 1.0
-    away_std_dev = away_stats['std_dev'] if away_stats['std_dev'] > 0 else 1.0
-    
     home_scores = np.maximum(
         home_stats['min_score'],
-        np.random.normal(home_score_avg * home_form_factor, home_std_dev, num_simulations)
+        np.random.normal(home_score_avg * home_form_factor, home_stats['std_dev'], num_simulations)
     )
     away_scores = np.maximum(
         away_stats['min_score'],
-        np.random.normal(away_score_avg * away_form_factor, away_std_dev, num_simulations)
+        np.random.normal(away_score_avg * away_form_factor, away_stats['std_dev'], num_simulations)
     )
     
     score_diff = home_scores - away_scores
@@ -347,73 +260,18 @@ def quantum_monte_carlo_simulation(home_team_abbrev, away_team_abbrev, home_team
     
     return results
 
-# Display Results with Deltas
-def display_results(results, home_team_full, away_team_full, team_stats):
+def display_results(results, home_team_full, away_team_full):
     if results:
-        # Retrieve abbreviations using the reverse mapping
-        home_team_abbrev = full_to_abbrev.get(home_team_full)
-        away_team_abbrev = full_to_abbrev.get(away_team_full)
-        
-        if not home_team_abbrev or not away_team_abbrev:
-            st.error("Invalid team name provided.")
-            return
-        
-        # Access team statistics using abbreviations
-        home_recent_avg = team_stats[home_team_abbrev]['recent_form']
-        away_recent_avg = team_stats[away_team_abbrev]['recent_form']
-        
-        home_stats = team_stats[home_team_abbrev]
-        away_stats = team_stats[away_team_abbrev]
-        
         col1, col2 = st.columns(2)
         with col1:
-            # Calculate deltas for home team
-            expected_home_win = (home_stats['recent_form'] / home_stats['avg_score'] * 100) if home_stats['avg_score'] != 0 else 0
-            home_win_delta = results[f'{home_team_full} Win Percentage'] - expected_home_win
-            home_score_delta = results[f'Average {home_team_full} Score'] - home_recent_avg
-            
-            st.metric(
-                label=f"{home_team_full} Win Probability",
-                value=f"{results[f'{home_team_full} Win Percentage']}%",
-                delta=f"{home_win_delta:.2f}%",
-                delta_color="normal"
-            )
-            st.metric(
-                label="Projected Home Score",
-                value=f"{results[f'Average {home_team_full} Score']:.2f}",
-                delta=f"{home_score_delta:.2f}",
-                delta_color="normal"
-            )
-            st.metric(
-                label="Projected Total Score",
-                value=f"{results['Average Total Score']:.2f}"
-            )
-            st.write(f"- **Score Differential:** {results[f'Score Differential ({home_team_full} - {away_team_full})']:.2f}")
-        
+            st.metric(f"{home_team_full} Win Probability", f"{results[f'{home_team_full} Win Percentage']:.2f}%")
         with col2:
-            # Calculate deltas for away team
-            expected_away_win = (away_stats['recent_form'] / away_stats['avg_score'] * 100) if away_stats['avg_score'] != 0 else 0
-            away_win_delta = results[f'{away_team_full} Win Percentage'] - expected_away_win
-            away_score_delta = results[f'Average {away_team_full} Score'] - away_recent_avg
-            
-            st.metric(
-                label=f"{away_team_full} Win Probability",
-                value=f"{results[f'{away_team_full} Win Percentage']}%",
-                delta=f"{away_win_delta:.2f}%",
-                delta_color="normal"
-            )
-            st.metric(
-                label="Projected Away Score",
-                value=f"{results[f'Average {away_team_full} Score']:.2f}",
-                delta=f"{away_score_delta:.2f}",
-                delta_color="normal"
-            )
+            st.metric(f"{away_team_full} Win Probability", f"{results[f'{away_team_full} Win Percentage']:.2f}%")
         
         st.subheader("Detailed Predictions")
         metrics = {k: round(v, 2) if isinstance(v, (float, int)) else v for k, v in results.items()}
         st.json(metrics)
 
-# Create Summary Table for All Predictions
 def create_summary_table(all_results):
     summary_data = []
     for game in all_results:
@@ -435,35 +293,34 @@ if 'nba_team_stats' not in st.session_state:
     game_logs = load_nba_game_logs(season=current_season)
     st.session_state.nba_team_stats = calculate_team_stats(game_logs)
 
-# Main Area for Controls
-st.header("Simulation Controls")
-upcoming_games = get_upcoming_games()
-
-if not upcoming_games.empty:
-    game_options = [
-        f"{row['Game Label']} on {row['Game ID']}"
-        for _, row in upcoming_games.iterrows()
-    ]
-    selected_game = st.selectbox("Select Game", game_options)
+# Sidebar for controls
+with st.sidebar:
+    st.header("Simulation Controls")
+    upcoming_games = get_upcoming_games()
     
-    # Extract Game ID to fetch the corresponding row
-    selected_game_id = selected_game.split(' on ')[1]
-    selected_game_row = upcoming_games[upcoming_games['Game ID'] == selected_game_id].iloc[0]
-    home_team = selected_game_row['Home Team Full']
-    away_team = selected_game_row['Away Team Full']
-    
-    spread_adjustment = st.slider(
-        "Home Team Spread Adjustment",
-        -30.0, 30.0, 0.0, step=0.5
-    )
-    
-    num_simulations = st.selectbox(
-        "Number of Simulations",
-        [1000, 10000, 100000, 1000000]
-    )
-    
-    run_simulation = st.button("Run Simulation")
-    predict_all = st.button("Predict All Upcoming Games")
+    if not upcoming_games.empty:
+        game_options = [
+            f"{row['Game Label']} on {row['Game ID']}"
+            for _, row in upcoming_games.iterrows()
+        ]
+        selected_game = st.selectbox("Select Game", game_options)
+        
+        selected_game_row = upcoming_games[upcoming_games['Game ID'] == selected_game.split(' on ')[1]].iloc[0]
+        home_team = selected_game_row['Home Team Full']
+        away_team = selected_game_row['Away Team Full']
+        
+        spread_adjustment = st.slider(
+            "Home Team Spread Adjustment",
+            -10.0, 10.0, 0.0, step=0.5
+        )
+        
+        num_simulations = st.selectbox(
+            "Number of Simulations",
+            [1000, 10000, 100000]
+        )
+        
+        run_simulation = st.button("Run Simulation")
+        predict_all = st.button("Predict All Upcoming Games")
 
 # Button to refresh data, update models, and predict
 if st.button("Refresh Data & Predict"):
@@ -471,44 +328,42 @@ if st.button("Refresh Data & Predict"):
         current_season = "2024-25"
         game_logs = load_nba_game_logs(season=current_season)
         st.session_state.nba_team_stats = calculate_team_stats(game_logs)
-    st.success("Data refreshed and models updated.")
+        st.success("Data refreshed and models updated.")
 
-# Run Simulation Buttons
-if 'nba_team_stats' in st.session_state:
-    if run_simulation and not upcoming_games.empty:
-        with st.spinner("Running simulation..."):
-            results = quantum_monte_carlo_simulation(
-                selected_game_row['Home Team Abbrev'],
-                selected_game_row['Away Team Abbrev'],
-                home_team, away_team,
+if run_simulation:
+    with st.spinner("Running simulation..."):
+        results = quantum_monte_carlo_simulation(
+            selected_game_row['Home Team Abbrev'],
+            selected_game_row['Away Team Abbrev'],
+            home_team, away_team,
+            spread_adjustment, num_simulations,
+            st.session_state.nba_team_stats
+        )
+        display_results(results, home_team, away_team)
+
+if predict_all:
+    all_results = []
+    with st.spinner("Running simulations for all games..."):
+        for _, row in upcoming_games.iterrows():
+            home_team_abbrev = row['Home Team Abbrev']
+            away_team_abbrev = row['Away Team Abbrev']
+            home_team_full = row['Home Team Full']
+            away_team_full = row['Away Team Full']
+            game_results = quantum_monte_carlo_simulation(
+                home_team_abbrev, away_team_abbrev,
+                home_team_full, away_team_full,
                 spread_adjustment, num_simulations,
                 st.session_state.nba_team_stats
             )
-            if results:
-                display_results(results, home_team, away_team, st.session_state.nba_team_stats)
+            all_results.append({
+                'home_team_full': home_team_full,
+                'away_team_full': away_team_full,
+                'results': game_results
+            })
     
-    if predict_all and not upcoming_games.empty:
-        all_results = []
-        with st.spinner("Running simulations for all games..."):
-            for _, row in upcoming_games.iterrows():
-                game_results = quantum_monte_carlo_simulation(
-                    row['Home Team Abbrev'],
-                    row['Away Team Abbrev'],
-                    row['Home Team Full'],
-                    row['Away Team Full'],
-                    spread_adjustment, num_simulations,
-                    st.session_state.nba_team_stats
-                )
-                if game_results:
-                    all_results.append({
-                        'home_team_full': row['Home Team Full'],
-                        'away_team_full': row['Away Team Full'],
-                        'results': game_results
-                    })
-        
-        if all_results:
-            create_summary_table(all_results)
-            
-            for game in all_results:
-                with st.expander(f"{game['home_team_full']} vs {game['away_team_full']}"):
-                    display_results(game['results'], game['home_team_full'], game['away_team_full'], st.session_state.nba_team_stats)
+    create_summary_table(all_results)
+
+    for game in all_results:
+        with st.expander(f"{game['home_team_full']} vs {game['away_team_full']}"):
+            display_results(game['results'], game['home_team_full'], game['away_team_full'])
+
