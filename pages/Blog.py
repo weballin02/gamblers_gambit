@@ -277,6 +277,11 @@ def edit_scheduled_post():
         post_path = POSTS_DIR / f"{selected_post}.md"
         metadata_path = post_path.with_suffix('.json')
 
+        # Check if the post exists
+        if not post_path.exists() or not metadata_path.exists():
+            st.error("❌ The selected post or its metadata does not exist.")
+            return
+
         # Load existing content and metadata
         content = get_post_content(f"{selected_post}.md")
         with open(metadata_path, 'r', encoding='utf-8') as file:
