@@ -27,7 +27,7 @@ warnings.filterwarnings('ignore')
 # ===========================
 
 st.set_page_config(
-    page_title="NCAAB Basketball Quantum-Inspired Simulator",
+    page_title="FoxEdge NCAAB Quantum-Inspired Simulator",
     page_icon="🏀",
     layout="wide"
 )
@@ -36,8 +36,153 @@ st.set_page_config(
 # 3. App Title and Description
 # ===========================
 
-st.title("NCAAB Basketball Quantum-Inspired Simulator")
-# Removed the Features section as per user request
+# Custom CSS Styling with FoxEdge Colors
+st.markdown("""
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@600;800&family=Open+Sans:wght@400;600&display=swap');
+    
+    /* Global Styles */
+    html, body, [class*="css"] {
+        font-family: 'Open Sans', sans-serif;
+        background: linear-gradient(135deg, #2C3E50 0%, #1E90FF 100%); /* Charcoal Dark Gray to Electric Blue */
+        color: #FFFFFF; /* Crisp White */
+    }
+    
+    /* Header Section */
+    .header-container {
+        text-align: center;
+        margin-bottom: 1.5em;
+    }
+    
+    .header-title {
+        font-family: 'Montserrat', sans-serif;
+        background: linear-gradient(120deg, #FF4500, #FF8C00); /* Fiery Red to Deep Orange */
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        font-size: 3em;
+        font-weight: 800;
+    }
+    
+    .header-subtitle {
+        color: #CCCCCC; /* Light Gray */
+        font-size: 1.2em;
+    }
+    
+    /* Buttons */
+    .stButton > button {
+        background: linear-gradient(90deg, #32CD32, #FF4500); /* Lime Green to Fiery Red */
+        color: #FFFFFF; /* Crisp White */
+        border: none;
+        padding: 1em 2em;
+        border-radius: 30px;
+        font-size: 1.1em;
+        font-weight: 700;
+        cursor: pointer;
+        transition: transform 0.3s ease, background 0.3s ease;
+    }
+    
+    /* Button Hover Effect */
+    .stButton > button:hover {
+        transform: translateY(-5px);
+        background: linear-gradient(90deg, #FF4500, #32CD32); /* Fiery Red to Lime Green */
+    }
+    
+    /* Select Box Styling */
+    .css-1aumxhk {
+        background-color: #2C3E50; /* Charcoal Dark Gray */
+        color: #FFFFFF; /* Crisp White */
+        border: 1px solid #1E90FF; /* Electric Blue */
+        border-radius: 5px;
+    }
+    
+    /* Select Box Option Styling */
+    .css-1y4p8pa {
+        color: #FFFFFF; /* Crisp White */
+        background-color: #2C3E50; /* Charcoal Dark Gray */
+    }
+    
+    /* Summary Section Styling */
+    .summary-section {
+        padding: 2em 1em;
+        background-color: rgba(44, 62, 80, 0.8); /* Semi-transparent Charcoal Dark Gray */
+        border-radius: 15px;
+        margin-top: 2em;
+    }
+    
+    .summary-section h3 {
+        font-size: 2em;
+        margin-bottom: 0.5em;
+        color: #32CD32; /* Lime Green */
+    }
+    
+    .summary-section p {
+        font-size: 1.1em;
+        color: #E0E0E0;
+        line-height: 1.6;
+    }
+    
+    /* Game Details Styling */
+    .game-details {
+        padding: 2em 1em;
+        background-color: rgba(255, 255, 255, 0.05);
+        border-radius: 15px;
+        margin-top: 2em;
+    }
+    
+    .game-details h3 {
+        font-size: 1.8em;
+        margin-bottom: 0.5em;
+        color: #32CD32; /* Lime Green */
+    }
+    
+    .game-details p {
+        font-size: 1em;
+        color: #E0E0E0;
+        line-height: 1.6;
+    }
+    
+    /* Footer Styling */
+    .footer {
+        text-align: center;
+        padding: 2em 1em;
+        color: #999999;
+        font-size: 0.9em;
+    }
+    
+    .footer a {
+        color: #32CD32; /* Lime Green */
+        text-decoration: none;
+    }
+    
+    /* Highlighted Text */
+    .highlight {
+        color: #FFFF33; /* Neon Yellow */
+        font-weight: bold;
+    }
+    
+    /* Responsive Design */
+    @media (max-width: 768px) {
+        .header-title {
+            font-size: 2em;
+        }
+        
+        .header-subtitle {
+            font-size: 1em;
+        }
+        
+        .summary-section, .game-details {
+            padding: 1em 0.5em;
+        }
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+st.markdown('''
+    <div class="header-container">
+        <h1 class="header-title">FoxEdge NCAAB Quantum-Inspired Simulator</h1>
+        <p class="header-subtitle">Leverage quantum-inspired simulations for smarter betting decisions.</p>
+    </div>
+''', unsafe_allow_html=True)
 
 # ===========================
 # 4. Team Name Mapping
@@ -691,7 +836,7 @@ def main():
                     display_best_bets_df['Spread'] = display_best_bets_df['Spread'].astype(str)
                     
                     st.markdown("### Top Recommended Bets")
-                    st.dataframe(display_best_bets_df[['Game_Label', 'Home_Win_%', 'Away_Win_%', 'Spread']])
+                    st.dataframe(display_best_bets_df[['Game_Label', 'Home_Win_%', 'Away_Win_%', 'Spread']].style.highlight_max(axis=0, color='#FFFF33'))  # Neon Yellow
                     
                     # Download Best Bets as CSV
                     csv = best_bets_df.to_csv(index=False).encode('utf-8')
@@ -729,3 +874,13 @@ if __name__ == "__main__":
     except Exception as e:
         st.error(f"An unexpected error occurred: {str(e)}")
         logging.error(f"Unexpected error in main: {str(e)}", exc_info=True)
+
+# ===========================
+# 14. Footer Section
+# ===========================
+
+st.markdown("""
+    <div class="footer">
+        &copy; 2024 <a href="#">FoxEdge</a>. All rights reserved.
+    </div>
+""", unsafe_allow_html=True)
