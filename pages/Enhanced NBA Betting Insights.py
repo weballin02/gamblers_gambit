@@ -11,42 +11,45 @@ import os
 
 warnings.filterwarnings('ignore')
 
-# Streamlit App Title
+# Streamlit App Title and Configuration
 st.set_page_config(
-    page_title="NBA Betting Insights",
+    page_title="FoxEdge NBA Betting Insights",
     page_icon="🏀",
     layout="centered",
     initial_sidebar_state="collapsed",
 )
 
-
-# General Styling and High Contrast Toggle
+# General Styling and Applied FoxEdge Colors
 st.markdown("""
     <style>
+        /* Overall Page Styling */
         html, body, [class*="css"] {
             font-family: 'Open Sans', sans-serif;
-            background: linear-gradient(135deg, #1a1c2c 0%, #0f111a 100%);
-            color: #E5E7EB;
+            background: #2C3E50; /* Charcoal Dark Gray */
+            color: #FFFFFF; /* Crisp White */
         }
 
+        /* Header Title Styling */
         .header-title {
             font-family: 'Montserrat', sans-serif;
-            background: linear-gradient(120deg, #FFA500, #FF6B00);
+            background: linear-gradient(120deg, #FF4500, #FF8C00); /* Fiery Red to Deep Orange */
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             font-size: 3em;
             font-weight: 800;
         }
 
+        /* Gradient Bar Styling */
         .gradient-bar {
             height: 10px;
-            background: linear-gradient(90deg, #22C55E, #EF4444);
+            background: linear-gradient(90deg, #32CD32, #FF4500); /* Lime Green to Fiery Red */
             border-radius: 5px;
         }
 
+        /* Button Styling */
         div.stButton > button {
-            background: linear-gradient(90deg, #FF6B00, #FFA500);
-            color: white;
+            background: linear-gradient(90deg, #FF4500, #FF8C00); /* Fiery Red to Deep Orange */
+            color: #FFFFFF; /* Crisp White */
             border: none;
             padding: 1em 2em;
             border-radius: 8px;
@@ -56,17 +59,46 @@ st.markdown("""
             transition: all 0.3s ease;
         }
 
+        /* Button Hover Effect */
         div.stButton > button:hover {
             transform: scale(1.05);
+            background: linear-gradient(90deg, #FF8C00, #FF4500); /* Deep Orange to Fiery Red */
         }
+
+        /* Select Box Styling */
+        .css-1aumxhk {
+            background-color: #2C3E50; /* Charcoal Dark Gray */
+            color: #FFFFFF; /* Crisp White */
+            border: 1px solid #1E90FF; /* Electric Blue */
+            border-radius: 5px;
+        }
+
+        /* Select Box Option Styling */
+        .css-1y4p8pa {
+            color: #FFFFFF; /* Crisp White */
+            background-color: #2C3E50; /* Charcoal Dark Gray */
+        }
+
+        /* Table Styling */
+        .css-1aumxhk, .css-1v3fvcr, .css-12oz5g7 {
+            background-color: #2C3E50; /* Charcoal Dark Gray */
+            color: #FFFFFF; /* Crisp White */
+        }
+
+        /* Footer Styling */
+        .css-1d391kg {
+            background-color: #2C3E50; /* Charcoal Dark Gray */
+            color: #FFFFFF; /* Crisp White */
+        }
+
     </style>
 """, unsafe_allow_html=True)
 
 # Header Section
 st.markdown('''
     <div style="text-align: center; margin-bottom: 1.5em;">
-        <h1 class="header-title">NBA Betting Insights</h1>
-        <p style="color: #9CA3AF; font-size: 1.2em;">
+        <h1 class="header-title">FoxEdge NBA Betting Insights</h1>
+        <p style="color: #CCCCCC; font-size: 1.2em;">
             Analyze NBA team performance with detailed insights for smarter betting decisions.
         </p>
     </div>
@@ -170,14 +202,23 @@ def plot_team_comparison(home_stats, away_stats, team_name_mapping, home_team, a
     width = 0.35
 
     fig, ax = plt.subplots()
-    ax.bar(x - width / 2, home_values, width, label=team_name_mapping[home_team])
-    ax.bar(x + width / 2, away_values, width, label=team_name_mapping[away_team])
+    bars1 = ax.bar(x - width / 2, home_values, width, label=team_name_mapping[home_team], color="#1E90FF")  # Electric Blue
+    bars2 = ax.bar(x + width / 2, away_values, width, label=team_name_mapping[away_team], color="#FF4500")  # Fiery Red
 
-    ax.set_ylabel('Values')
-    ax.set_title('Team Comparison')
+    # Add labels, title, and legend
+    ax.set_ylabel('Values', color="#FFFFFF")  # Crisp White
+    ax.set_title('Team Comparison', color="#FFFFFF")  # Crisp White
     ax.set_xticks(x)
-    ax.set_xticklabels(labels)
+    ax.set_xticklabels(labels, color="#FFFFFF")  # Crisp White
     ax.legend()
+
+    # Set background color
+    ax.set_facecolor('#2C3E50')  # Charcoal Dark Gray
+    fig.patch.set_facecolor('#2C3E50')  # Charcoal Dark Gray
+
+    # Adjust tick parameters
+    ax.tick_params(axis='y', colors='#FFFFFF')  # Crisp White
+    ax.tick_params(axis='x', colors='#FFFFFF')  # Crisp White
 
     st.pyplot(fig)
 
@@ -319,4 +360,3 @@ if not upcoming_games.empty:
                 st.write("**Spread Insight:** A close game suggests caution for spread betting.")
                 
             st.write(f"**Moneyline Suggestion:** **{team_name_mapping[likely_advantage]}** may be favorable based on rating and consistency.")
-
