@@ -1,5 +1,3 @@
-# NBA FoxEdge
-
 # Import Libraries
 import pandas as pd
 import numpy as np
@@ -17,9 +15,9 @@ import seaborn as sns
 
 warnings.filterwarnings('ignore')
 
-# Streamlit App Configuration
+# Streamlit App Title
 st.set_page_config(
-    page_title="FoxEdge NBA Insights",
+    page_title="NBA FoxEdge",
     page_icon="🏀",
     layout="wide",
     initial_sidebar_state="collapsed",
@@ -39,187 +37,6 @@ def calculate_roi(bet_amount, odds):
         return bet_amount * (odds / 100)
     else:
         return bet_amount * (100 / abs(odds))
-
-# General Styling and Applied FoxEdge Colors
-st.markdown("""
-    <style>
-        /* Overall Page Styling */
-        html, body, [class*="css"] {
-            font-family: 'Open Sans', sans-serif;
-            background: #2C3E50; /* Charcoal Dark Gray */
-            color: #FFFFFF; /* Crisp White */
-        }
-
-        /* Header Styling */
-        .header-title {
-            font-family: 'Montserrat', sans-serif;
-            background: linear-gradient(120deg, #FF4500, #FF8C00); /* Fiery Red to Deep Orange */
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            font-size: 3em;
-            font-weight: 800;
-            text-align: center;
-            margin-bottom: 0.5em;
-        }
-
-        /* Subheader Styling */
-        .subheader-text {
-            color: #CCCCCC;
-            font-size: 1.5em;
-            text-align: center;
-            margin-bottom: 1.5em;
-        }
-
-        /* Button Styling */
-        .button {
-            background: linear-gradient(45deg, #32CD32, #FF4500); /* Lime Green to Fiery Red */
-            border: none;
-            padding: 0.8em 2em;
-            color: #FFFFFF; /* Crisp White */
-            font-size: 1.1em;
-            border-radius: 30px;
-            cursor: pointer;
-            transition: transform 0.3s ease, background 0.3s ease;
-            text-decoration: none;
-            display: inline-block;
-            margin-top: 1em;
-        }
-
-        /* Button Hover Effect */
-        .button:hover {
-            transform: translateY(-5px);
-            background: linear-gradient(45deg, #FF4500, #32CD32); /* Fiery Red to Lime Green */
-        }
-
-        /* Data Section Styling */
-        .data-section {
-            padding: 2em 1em;
-            text-align: center;
-            background-color: rgba(44, 62, 80, 0.8); /* Semi-transparent Charcoal Dark Gray */
-            border-radius: 15px;
-            margin: 2em 0;
-        }
-
-        .data-section h2 {
-            font-size: 2.5em;
-            margin-bottom: 0.5em;
-        }
-
-        .data-section p {
-            font-size: 1.2em;
-            color: #CCCCCC;
-            margin-bottom: 2em;
-        }
-
-        /* Summary Section Styling */
-        .summary-section {
-            padding: 2em 1em;
-            background-color: rgba(255, 255, 255, 0.05);
-            border-radius: 15px;
-            margin-bottom: 2em;
-        }
-
-        .summary-section h3 {
-            font-size: 2em;
-            margin-bottom: 0.5em;
-            color: #32CD32; /* Lime Green */
-        }
-
-        .summary-section p {
-            font-size: 1.1em;
-            color: #E0E0E0;
-            line-height: 1.6;
-        }
-
-        /* Team Comparison Card Styling */
-        .team-comparison {
-            display: flex;
-            justify-content: center;
-            gap: 2rem;
-            margin: 2rem auto;
-            max-width: 1200px;
-        }
-
-        .team-card {
-            flex: 1;
-            background-color: rgba(255, 255, 255, 0.1);
-            border-radius: 15px;
-            padding: 1.5rem;
-            max-width: 500px;
-            backdrop-filter: blur(10px);
-            transition: transform 0.3s ease;
-        }
-
-        .team-card:hover {
-            transform: translateY(-5px);
-        }
-
-        .stats-grid {
-            display: grid;
-            gap: 1rem;
-            margin: 1rem 0;
-        }
-
-        .stat-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0.5rem;
-            background-color: rgba(255, 255, 255, 0.05);
-            border-radius: 8px;
-        }
-
-        /* Plotly Chart Styling */
-        .plotly-graph-div {
-            background-color: #2C3E50 !important; /* Charcoal Dark Gray */
-        }
-
-        /* Footer Styling */
-        .footer {
-            text-align: center;
-            padding: 2em 1em;
-            color: #999999;
-            font-size: 0.9em;
-        }
-
-        .footer a {
-            color: #32CD32; /* Lime Green */
-            text-decoration: none;
-        }
-
-        /* Highlighted Text */
-        .highlight {
-            color: #FFFF33; /* Neon Yellow */
-            font-weight: bold;
-        }
-
-        /* Responsive Design */
-        @media (max-width: 768px) {
-            .header-title {
-                font-size: 2em;
-            }
-
-            .subheader-text {
-                font-size: 1em;
-            }
-
-            .team-comparison {
-                flex-direction: column;
-                align-items: center;
-            }
-
-            .team-card {
-                width: 90%;
-            }
-        }
-    </style>
-""", unsafe_allow_html=True)
-
-# Title of the page
-st.markdown('<div class="header-title">FoxEdge NBA Insights</div>', unsafe_allow_html=True)
-st.markdown('<div class="subheader-text">Predict game outcomes and uncover key trends to inform your betting strategies.</div>', unsafe_allow_html=True)
-
-# Utility: ROI Calculator (Already Defined Above)
 
 # Fetch and Preprocess Data
 @st.cache_data
@@ -298,14 +115,13 @@ def fetch_todays_games():
     scoreboard = ScoreboardV2(game_date=today)
     games = scoreboard.get_data_frames()[0]
     id_to_abbrev = {team['id']: team['abbreviation'] for team in nba_team_list}
-
     if 'HOME_TEAM_ID' in games.columns and 'VISITOR_TEAM_ID' in games.columns:
-        games['HOME_TEAM_ABBREV'] = games['HOME_TEAM_ID'].map(id_to_abbrev)
-        games['VISITOR_TEAM_ABBREV'] = games['VISITOR_TEAM_ID'].map(id_to_abbrev)
-        return games[['HOME_TEAM_ABBREV', 'VISITOR_TEAM_ABBREV']]
+        games['HOME_TEAM_ABBREVIATION'] = games['HOME_TEAM_ID'].map(id_to_abbrev)
+        games['VISITOR_TEAM_ABBREVIATION'] = games['VISITOR_TEAM_ID'].map(id_to_abbrev)
+        return games[['HOME_TEAM_ABBREVIATION', 'VISITOR_TEAM_ABBREVIATION']]
     else:
         st.error("Expected columns 'HOME_TEAM_ID' and 'VISITOR_TEAM_ID' not found in games data.")
-        return pd.DataFrame(columns=['HOME_TEAM_ABBREV', 'VISITOR_TEAM_ABBREV'])
+        return pd.DataFrame(columns=['HOME_TEAM_ABBREVIATION', 'VISITOR_TEAM_ABBREVIATION'])
 
 # Predict Matchups
 def predict_game_outcome_with_arima(home_team, away_team, team_forecasts, current_season_stats):
@@ -350,29 +166,25 @@ def display_matchup_details(home_team, away_team, result, team_name_mapping, tea
     home_forecast = team_forecasts[team_forecasts["Team"] == home_team]["Predicted_PTS"].mean()
     away_forecast = team_forecasts[team_forecasts["Team"] == away_team]["Predicted_PTS"].mean()
 
-    st.markdown(f"""
-        <div class="summary-section">
-            <h3>{team_name_mapping[home_team]} vs {team_name_mapping[away_team]}</h3>
-            <p><strong>Predicted Winner:</strong> {team_name_mapping.get(winner, 'Unavailable')}</p>
-            <p><strong>Predicted Final Scores:</strong> {team_name_mapping[home_team]} {home_forecast:.2f} - {team_name_mapping[away_team]} {away_forecast:.2f}</p>
-            <p><strong>Score Difference:</strong> {score_diff:.2f}</p>
-            <p><strong>Confidence:</strong> {confidence:.2f}%</p>
-        </div>
-    """, unsafe_allow_html=True)
+    st.write(f"## {team_name_mapping[home_team]} vs {team_name_mapping[away_team]}")
+    st.write(f"- **Predicted Winner:** {team_name_mapping.get(winner, 'Unavailable')}")
+    st.write(f"- **Predicted Final Scores:** {team_name_mapping[home_team]} {home_forecast:.2f} - {team_name_mapping[away_team]} {away_forecast:.2f}")
+    st.write(f"- **Score Difference:** {score_diff:.2f}")
+    st.write(f"- **Confidence:** {confidence:.2f}%")
 
     # Betting Insights Section
-    st.markdown('### Betting Insights')
-    
+    st.write("### Betting Insights")
+
     # Spread Lean
     spread_lean = f"Lean {team_name_mapping[winner]} -{int(score_diff)}" if score_diff > 0 else f"Lean {team_name_mapping[away_team]} +{int(abs(score_diff))}"
-    st.markdown(f"#### Spread Lean: **{spread_lean}**")
+    st.write(f"#### Spread Lean: {spread_lean}")
 
     # Total Lean
     total_points = home_forecast + away_forecast
     total_recommendation = f"Lean Over if the line is < {total_points - 5:.2f}"
-    st.markdown(f"#### Total Lean: **{total_recommendation}**")
+    st.write(f"#### Total Lean: {total_recommendation}")
 
-    # Radar Chart using Plotly
+    # Radar Chart
     categories = ["Average Score", "Max Score", "Consistency", "Recent Form", "Predicted PTS"]
     home_stats = [home_rating, home_forecast, 1, 1, home_forecast]
     away_stats = [away_rating, away_forecast, 1, 1, away_forecast]
@@ -382,23 +194,9 @@ def display_matchup_details(home_team, away_team, result, team_name_mapping, tea
     fig.update_layout(
         polar=dict(radialaxis=dict(visible=True)),
         showlegend=True,
-        title="Team Comparison Radar Chart",
-        template="plotly_dark"  # Matches the dark theme
+        title="Team Comparison Radar Chart"
     )
     st.plotly_chart(fig)
-    
-    # ROI Suggestion
-    st.markdown(f"""
-        <div class="summary-section">
-            <h3>Betting Recommendations</h3>
-            <p>Based on the analysis, consider the following betting strategies:</p>
-            <ul>
-                <li><strong>Spread Bet:</strong> {spread_lean}</li>
-                <li><strong>Total Bet:</strong> {total_recommendation}</li>
-            </ul>
-            <p class="highlight">Ensure to consider the <strong>confidence level</strong> and perform your own research before placing bets.</p>
-        </div>
-    """, unsafe_allow_html=True)
 
 # Function to create a confidence heatmap
 def plot_confidence_heatmap(results):
@@ -406,91 +204,81 @@ def plot_confidence_heatmap(results):
     heatmap_data = confidence_data.pivot("Home_Team", "Away_Team", "Confidence")
     plt.figure(figsize=(12, 8))
     sns.heatmap(heatmap_data, annot=True, cmap="YlGnBu", cbar_kws={'label': 'Confidence Level'}, fmt=".1f")
-    plt.title("Confidence Heatmap for Today's Matchups", fontsize=16, color="#FFFFFF")
-    plt.xlabel("Away Team", fontsize=12, color="#FFFFFF")
-    plt.ylabel("Home Team", fontsize=12, color="#FFFFFF")
-    plt.xticks(rotation=45, color="#FFFFFF")
-    plt.yticks(rotation=0, color="#FFFFFF")
-    plt.gca().patch.set_facecolor('#2C3E50')  # Charcoal Dark Gray
+    plt.title("Confidence Heatmap for Today's Matchups", fontsize=16)
+    plt.xlabel("Away Team", fontsize=12)
+    plt.ylabel("Home Team", fontsize=12)
     st.pyplot(plt)
 
 # Function to create a summary table for recommended bets
 def display_betting_summary(results):
     summary_df = pd.DataFrame(results)
     st.write("### Recommended Bets Summary")
-    st.dataframe(summary_df[['Predicted Winner', 'Spread Lean', 'Total Lean', 'Confidence']].style.highlight_max(axis=0, color='#FFFF33'))  # Neon Yellow
+    st.dataframe(summary_df[['Predicted Winner', 'Spread Lean', 'Total Lean', 'Confidence']].style.highlight_max(axis=0, color='lightgreen'))
 
 # Function to create a confidence-level breakdown pie chart
 def plot_confidence_breakdown(results):
     confidence_counts = pd.Series([result['Confidence'] for result in results]).value_counts()
     plt.figure(figsize=(8, 6))
     plt.pie(confidence_counts, labels=confidence_counts.index, autopct='%1.1f%%', startangle=90, colors=sns.color_palette("pastel"))
-    plt.title("Confidence Level Breakdown", fontsize=16, color="#FFFFFF")
-    plt.gca().patch.set_facecolor('#2C3E50')  # Charcoal Dark Gray
+    plt.title("Confidence Level Breakdown", fontsize=16)
     st.pyplot(plt)
 
 # Function to visualize predicted spreads and totals
 def plot_spread_total_overlays(results):
     spreads = [result['Spread Lean'] for result in results]
     totals = [result['Total Lean'] for result in results]
-    teams = [f"{result['Home_Team']} vs {result['Away_Team']}" for result in results]
+    teams = [result['Home_Team'] for result in results]
     
-    x = np.arange(len(teams))
-    width = 0.35
+    plt.figure(figsize=(12, 6))
+    x = range(len(teams))
+    plt.bar(x, spreads, width=0.4, label='Predicted Spread', alpha=0.6, color='blue', align='center')
+    plt.bar([p + 0.4 for p in x], totals, width=0.4, label='Predicted Total', alpha=0.6, color='orange', align='center')
+    plt.xticks([p + 0.2 for p in x], teams)
+    plt.title("Predicted Spreads and Totals", fontsize=16)
+    plt.xlabel("Teams", fontsize=12)
+    plt.ylabel("Predicted Values", fontsize=12)
+    plt.legend()
+    st.pyplot(plt)
 
-    fig, ax = plt.subplots(figsize=(12, 6))
-    bars1 = ax.bar(x - width/2, spreads, width, label='Predicted Spread', alpha=0.7, color='#1E90FF')  # Electric Blue
-    bars2 = ax.bar(x + width/2, totals, width, label='Predicted Total', alpha=0.7, color='#FF4500')  # Fiery Red
-
-    # Add labels, title, and custom x-axis tick labels
-    ax.set_ylabel('Predicted Values')
-    ax.set_title('Predicted Spreads and Totals')
-    ax.set_xticks(x)
-    ax.set_xticklabels(teams, rotation=45, ha='right')
-    ax.legend()
-
-    # Set background color
-    ax.set_facecolor('#2C3E50')  # Charcoal Dark Gray
-    fig.patch.set_facecolor('#2C3E50')  # Charcoal Dark Gray
-
-    # Adjust tick parameters
-    ax.tick_params(axis='x', colors='#FFFFFF')  # Crisp White
-    ax.tick_params(axis='y', colors='#FFFFFF')  # Crisp White
-    ax.yaxis.label.set_color('#FFFFFF')
-    ax.xaxis.label.set_color('#FFFFFF')
-
-    st.pyplot(fig)
+# Function to create radar charts for matchup comparison
+def plot_matchup_radar(home_stats, away_stats, home_team, away_team):
+    categories = ["Average Score", "Max Score", "Consistency", "Recent Form", "Predicted PTS"]
+    home_values = [home_stats['avg_score'], home_stats['max_score'], home_stats['std_dev'], home_stats['recent_form'], home_stats['Predicted_PTS']]
+    away_values = [away_stats['avg_score'], away_stats['max_score'], away_stats['std_dev'], away_stats['recent_form'], away_stats['Predicted_PTS']]
+    
+    fig = go.Figure()
+    fig.add_trace(go.Scatterpolar(r=home_values, theta=categories, fill='toself', name=home_team))
+    fig.add_trace(go.Scatterpolar(r=away_values, theta=categories, fill='toself', name=away_team))
+    fig.update_layout(title="Matchup Radar Comparison", polar=dict(radialaxis=dict(visible=True)), showlegend=True)
+    st.plotly_chart(fig)
 
 # Function to highlight best bets
 def highlight_best_bets(results):
     best_bets = [result for result in results if result['Confidence'] > 75]  # Example threshold
     st.write("### Best Bets")
     for bet in best_bets:
-        st.markdown(f"<p class='highlight'><strong>{team_name_mapping.get(bet['Predicted Winner'], bet['Predicted Winner'])}</strong> - Spread Lean: {bet['Spread Lean']}, Total Lean: {bet['Total Lean']}</p>", unsafe_allow_html=True)
+        st.write(f"**{bet['Predicted Winner']}** - Spread Lean: {bet['Spread Lean']}, Total Lean: {bet['Total Lean']}")
 
 # Function to display key matchup insights
 def display_key_insights(home_team_name, away_team_name, home_stats, away_stats, recent_performance):
     st.write(f"### Key Insights for {home_team_name} vs {away_team_name}")
-    st.write(f"- **Recent Performance (Last 5 Games):** {recent_performance}")
+    st.write(f"- Recent Performance (Last 5 Games): {recent_performance}")
     st.write(f"- **Home Team Average Points:** {home_stats.get('avg_score', 'N/A'):.2f}")
     st.write(f"- **Away Team Average Points:** {away_stats.get('avg_score', 'N/A'):.2f}")
 
 # Function to plot team performance trends
 def plot_team_performance_trends(team_data, team_abbrev):
     plt.figure(figsize=(10, 5))
-    plt.plot(team_data['GAME_DATE'], team_data['PTS'], label='Points Scored', marker='o', color='#32CD32')  # Lime Green
-    plt.title(f"{team_abbrev} Performance Trends Over Last 5 Games", fontsize=16, color="#FFFFFF")
-    plt.xlabel("Date", fontsize=12, color="#FFFFFF")
-    plt.ylabel("Points", fontsize=12, color="#FFFFFF")
-    plt.xticks(rotation=45, color="#FFFFFF")
-    plt.yticks(color="#FFFFFF")
+    plt.plot(team_data['GAME_DATE'], team_data['PTS'], label='Points Scored', marker='o', color='purple')
+    plt.title(f"{team_abbrev} Performance Trends Over Last 5 Games", fontsize=16)
+    plt.xlabel("Date", fontsize=12)
+    plt.ylabel("Points", fontsize=12)
+    plt.xticks(rotation=45)
     plt.legend()
-    plt.gca().patch.set_facecolor('#2C3E50')  # Charcoal Dark Gray
     st.pyplot(plt)
 
 # Streamlit Interface
-st.markdown('<div class="header-title">FoxEdge NBA Betting Insights with Spread and Total Leans</div>', unsafe_allow_html=True)
-st.markdown('<div class="subheader-text">Predict game outcomes and uncover key trends to inform your betting strategies.</div>', unsafe_allow_html=True)
+st.title("NBA FoxEdge Betting Insights with Spread and Total Leans")
 
 # Add this function before the button logic
 @st.cache_data
@@ -515,7 +303,7 @@ def fetch_current_season_stats(season):
                 'avg_score': x['PTS'].mean(),
                 'max_score': x['PTS'].max(),
                 'std_dev': x['PTS'].std(),
-                'recent_form': recent_games[recent_games['TEAM_ABBREV'] == x.name]['PTS'].mean()
+                'recent_form': recent_games[recent_games['TEAM_ABBREVIATION'] == x.name]['PTS'].mean()
             })
         ).to_dict(orient='index')
 
@@ -541,8 +329,8 @@ if st.button("Predict Today's Games"):
         results = []
         if not todays_games.empty:
             for _, game in todays_games.iterrows():
-                home_team = game["HOME_TEAM_ABBREV"]
-                away_team = game["VISITOR_TEAM_ABBREV"]
+                home_team = game["HOME_TEAM_ABBREVIATION"]
+                away_team = game["VISITOR_TEAM_ABBREVIATION"]
                 result = predict_game_outcome_with_arima(home_team, away_team, team_forecasts, current_season_stats)
 
                 home_forecast = team_forecasts[team_forecasts['Team'] == home_team]['Predicted_PTS'].mean()
@@ -584,9 +372,48 @@ if st.button("Predict Today's Games"):
         if failed_teams:
             st.warning(f"Data could not be fetched for the following teams: {', '.join(failed_teams)}")
 
-# Footer
-st.markdown("""
-    <div class="footer">
-        &copy; 2024 <a href="#">FoxEdge</a>. All rights reserved.
-    </div>
-""", unsafe_allow_html=True)
+# CSS for Color Palette
+st.markdown('''
+    <style>
+        /* Root Variables */
+        :root {
+            --background-gradient-start: #1A1A1A; /* Dark Gray */
+            --background-gradient-end: #2C2C2C; /* Slightly Lighter Gray */
+            --primary-text-color: #FFFFFF; /* Crisp White */
+            --heading-text-color: #FFD700; /* Gold */
+            --accent-color-teal: #00BFFF; /* Deep Sky Blue */
+            --accent-color-purple: #8A2BE2; /* Blue Violet */
+            --highlight-color: #FF4500; /* Orange Red */
+            --font-heading: 'Raleway', sans-serif;
+            --font-body: 'Open Sans', sans-serif;
+        }
+
+        /* Global Styles */
+        body, html {
+            background: linear-gradient(135deg, var(--background-gradient-start), var(--background-gradient-end));
+            color: var(--primary-text-color);
+            font-family: var(--font-body);
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+        }
+
+        h1, h2, h3 {
+            font-family: var(--font-heading);
+            color: var(--heading-text-color);
+        }
+
+        /* Button Styles */
+        .stButton > button {
+            background-color: var(--accent-color-teal);
+            color: var(--primary-text-color);
+            border-radius: 5px;
+            padding: 10px;
+            font-size: 16px;
+        }
+
+        .stButton > button:hover {
+            background-color: var(--highlight-color);
+        }
+    </style>
+''', unsafe_allow_html=True)
