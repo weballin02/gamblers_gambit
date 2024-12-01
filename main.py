@@ -113,20 +113,21 @@ st.markdown(f'''
     }}
     /* Tool Card Styles */
     .tool-card {{
-        background-color: {secondary_bg};
-        border: 1px solid {highlight_color};
+        background-color: #000000;  /* Set background to black */
+        border: 1px solid {highlight_color};  /* Keep the border color */
         border-radius: 10px;
         padding: 20px;
         margin-bottom: 20px;
         transition: transform 0.2s ease, box-shadow 0.2s ease;
-        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-    }}
-    .tool-card:hover {{
-        transform: translateY(-5px);
-        box-shadow: 0 8px 20px rgba(50, 205, 50, 0.3);
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);  /* Darker shadow for better visibility */
+        color: #FFFFFF;  /* Set text color to white */
     }}
     .tool-card h3 {{
         margin-top: 0.5em;
+        color: #FFFFFF;  /* Ensure heading is white */
+    }}
+    .tool-card p {{
+        color: #FFFFFF;  /* Ensure paragraph text is white */
     }}
     .footer {{
         text-align: center;
