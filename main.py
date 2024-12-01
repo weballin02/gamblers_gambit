@@ -86,39 +86,55 @@ else:
 # CSS for Branding, Hero Section, and Tool Cards
 st.markdown('''
     <style>
+    footer {{visibility: hidden;}}
     /* Hero Section */
-    .hero {
-        background: linear-gradient(135deg, #1E90FF, #FF4500); /* Electric Blue to Fiery Red */
+    .hero {{
+        background: linear-gradient(135deg, {accent_color}, {highlight_color});
         padding: 3em;
-        border-radius: 15px;
+        border-radius: 20px;
         text-align: center;
         color: #FFFFFF;
         margin-bottom: 2em;
-    }
-    .hero h1 {
+        position: relative;
+        overflow: hidden;
+    }}
+    .hero::before {{
+        content: '';
+        background-image: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.1), transparent);
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        animation: rotation 30s infinite linear;
+    }}
+    @keyframes rotation {{
+        from {{transform: rotate(0deg);}}
+        to {{transform: rotate(360deg);}}
+    }}
+    .hero h1 {{
         font-size: 3.5em;
         margin: 0;
-        font-family: 'Montserrat', sans-serif;
-    }
-    .hero p {
+        font-weight: bold;
+        letter-spacing: -1px;
+    }}
+    .hero p {{
         font-size: 1.5em;
         margin-top: 0.5em;
-        font-family: 'Open Sans', sans-serif;
-    }
-    .cta-button {
-        background-color: #FF4500; /* Fiery Red */
-        color: #FFFFFF;
+    }}
+    .cta-button {{
+        background-color: {highlight_color};
+        color: {primary_text};
         padding: 10px 25px;
         border-radius: 50px;
         text-decoration: none;
         font-size: 1.2em;
-        box-shadow: 0px 4px 10px rgba(0,0,0,0.2);
+        margin-top: 1em;
+        display: inline-block;
         transition: background-color 0.3s, transform 0.2s;
-    }
-    .cta-button:hover {
-        background-color: #FF8C00; /* Deep Orange */
-        transform: scale(1.05);
-    }
+    }}
+    .cta-button:hover {{
+        background-color: #018786;
         transform: translateY(-5px);
     }}
     /* Tool Card Styles */
