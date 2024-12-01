@@ -1,6 +1,3 @@
-# Toggle this flag to show or hide the login functionality
-SHOW_LOGIN = False
-
 # Import Statements
 import streamlit as st
 import pandas as pd
@@ -8,7 +5,6 @@ import plotly.graph_objects as go
 import os
 import firebase_admin
 from firebase_admin import credentials
-import datetime
 
 # Define icons directory path
 ICONS_DIR = "icons"  # Ensure this is set correctly
@@ -20,7 +16,7 @@ def get_image_path(icon_name):
 # Set page configuration with theming
 st.set_page_config(
     page_title="FoxEdge - Predictive Analytics",
-    page_icon=get_image_path("logo.png"),  # Replace "fox_icon.png" with the actual file name
+    page_icon=get_image_path("logo.png"),  # Replace with your actual logo file
     layout="wide",
     initial_sidebar_state="collapsed",
 )
@@ -37,52 +33,21 @@ def toggle_dark_mode():
     st.session_state.dark_mode = not st.session_state.dark_mode
 
 # Dark Mode Toggle Button
-st.button("🌗 Toggle Dark Mode", on_click=toggle_dark_mode)
+st.sidebar.button("🌗 Toggle Dark Mode", on_click=toggle_dark_mode)
 
 # Apply Theme Based on Dark Mode
 if st.session_state.dark_mode:
-    st.markdown("""
-        <style>
-        body {
-            background-color: #2C3E50; /* Charcoal Dark Gray */
-            color: #FFFFFF; /* Crisp White */
-        }
-        .cta-button {
-            background-color: #FF4500; /* Fiery Red */
-            color: #FFFFFF;
-        }
-        .footer a {
-            color: #1E90FF; /* Electric Blue */
-        }
-        .tool-card {
-            background-color: rgba(44, 62, 80, 0.8); /* Charcoal Dark Gray */
-            border: 1px solid #32CD32; /* Lime Green border */
-            color: #FFFFFF;
-        }
-        </style>
-    """, unsafe_allow_html=True)
+    primary_bg = "#121212"
+    primary_text = "#FFFFFF"
+    secondary_bg = "#1E1E1E"
+    accent_color = "#BB86FC"
+    highlight_color = "#03DAC6"
 else:
-    st.markdown("""
-        <style>
-        body {
-            background-color: #FFFFFF; /* Crisp White */
-            color: #333333; /* Dark text */
-        }
-        .cta-button {
-            background-color: #FF4500; /* Fiery Red */
-            color: #FFFFFF;
-        }
-        .footer a {
-            color: #1E90FF; /* Electric Blue */
-        }
-        .tool-card {
-            background-color: rgba(245, 245, 245, 0.8); /* Light Gray */
-            border: 1px solid #32CD32; /* Lime Green border */
-            color: #333333;
-        }
-        </style>
-    """, unsafe_allow_html=True)
-
+    primary_bg = "#FFFFFF"
+    primary_text = "#000000"
+    secondary_bg = "#F5F5F5"
+    accent_color = "#6200EE"
+    highlight_color = "#03DAC6"
 
 # Custom CSS for Novel Design
 st.markdown(f'''
@@ -238,8 +203,8 @@ def render_chart():
         y=ats_cover,
         mode='lines+markers',
         name='ATS Cover %',
-        line=dict(color='#1E90FF', width=3),  # Electric Blue
-        marker=dict(size=8, color='#1E90FF'),
+        line=dict(color=accent_color, width=3),
+        marker=dict(size=8, color=accent_color),
         hovertemplate='%{y:.1f}% ATS Cover<extra></extra>'
     ))
 
@@ -248,7 +213,7 @@ def render_chart():
         x=categories + categories[::-1],
         y=ats_upper + ats_lower[::-1],
         fill='toself',
-        fillcolor='rgba(50, 205, 50, 0.2)',  # Lime Green transparency
+        fillcolor='rgba(50, 205, 50, 0.2)',
         line=dict(color='rgba(255,255,255,0)'),
         name='ATS Confidence Range',
         hoverinfo='skip'
@@ -260,8 +225,8 @@ def render_chart():
         y=over_under,
         mode='lines+markers',
         name='Over/Under %',
-        line=dict(color='#FF4500', width=3),  # Fiery Red
-        marker=dict(size=8, color='#FF4500'),
+        line=dict(color=highlight_color, width=3),
+        marker=dict(size=8, color=highlight_color),
         hovertemplate='%{y:.1f}% Over/Under<extra></extra>'
     ))
 
@@ -270,23 +235,23 @@ def render_chart():
         x=categories + categories[::-1],
         y=ou_upper + ou_lower[::-1],
         fill='toself',
-        fillcolor='rgba(255, 140, 0, 0.2)',  # Deep Orange transparency
+        fillcolor='rgba(255, 140, 0, 0.2)',
         line=dict(color='rgba(255,255,255,0)'),
         name='Over/Under Confidence Range',
         hoverinfo='skip'
     ))
 
     fig.update_layout(
-        template='plotly_dark',  # Dark theme for the chart
+        template='plotly_white',
         xaxis=dict(
             title='Line Movement Category',
-            titlefont=dict(size=14, color='#FFFFFF'),  # White axis title
-            tickfont=dict(color='#FFFFFF')  # White tick labels
+            titlefont=dict(size=14, color=primary_text),
+            tickfont=dict(color=primary_text)
         ),
         yaxis=dict(
             title='Percentage (%)',
-            titlefont=dict(size=14, color='#FFFFFF'),  # White axis title
-            tickfont=dict(color='#FFFFFF')  # White tick labels
+            titlefont=dict(size=14, color=primary_text),
+            tickfont=dict(color=primary_text)
         ),
         legend=dict(
             orientation="h",
@@ -294,12 +259,12 @@ def render_chart():
             y=1.02,
             xanchor="center",
             x=0.5,
-            font=dict(size=12, color='#FFFFFF')  # White legend text
+            font=dict(size=12, color=primary_text)
         ),
         margin=dict(l=20, r=20, t=20, b=20),
         hovermode='x unified',
-        plot_bgcolor='#000000',  # Black plot background
-        paper_bgcolor='#000000',  # Black chart background
+        plot_bgcolor=secondary_bg,
+        paper_bgcolor=secondary_bg,
     )
     st.plotly_chart(fig, use_container_width=True)
 
@@ -341,6 +306,6 @@ render_tool_cards()
 # Footer
 st.markdown(f'''
     <div class="footer">
-        &copy; {datetime.datetime.now().year} FoxEdge. All rights reserved.
+        &copy; {datetime.now().year} FoxEdge. All rights reserved.
     </div>
 ''', unsafe_allow_html=True)
