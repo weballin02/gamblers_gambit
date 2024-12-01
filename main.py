@@ -36,7 +36,7 @@ def toggle_dark_mode():
     st.session_state.dark_mode = not st.session_state.dark_mode
 
 # Dark Mode Toggle Button
-st.sidebar.button("Toggle Dark Mode", on_click=toggle_dark_mode)
+st.button("🌗 Toggle Dark Mode", on_click=toggle_dark_mode)
 
 # Apply Theme Based on Dark Mode
 if st.session_state.dark_mode:
@@ -118,29 +118,35 @@ st.markdown('''
         background-color: #FF8C00; /* Deep Orange */
         transform: scale(1.05);
     }
-    .tool-card {
-        background-color: rgba(255, 255, 255, 0.9); /* White background for better contrast */
-        border: 1px solid #32CD32; /* Lime Green border */
+        transform: translateY(-5px);
+    }}
+    /* Tool Card Styles */
+    .tool-card {{
+        background-color: {secondary_bg};
+        border: 1px solid {highlight_color};
         border-radius: 10px;
-        padding: 20px; /* Increased padding for better spacing */
+        padding: 20px;
         margin-bottom: 20px;
         transition: transform 0.2s ease, box-shadow 0.2s ease;
-        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); /* Subtle shadow for depth */
-    }
-    .tool-card:hover {
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    }}
+    .tool-card:hover {{
         transform: translateY(-5px);
-        box-shadow: 0 8px 20px rgba(50, 205, 50, 0.3); /* Enhanced shadow on hover */
-    }
-    .footer {
+        box-shadow: 0 8px 20px rgba(50, 205, 50, 0.3);
+    }}
+    .tool-card h3 {{
+        margin-top: 0.5em;
+    }}
+    .footer {{
         text-align: center;
         margin-top: 3em;
         font-size: 0.9em;
         color: #999999;
-    }
-    .footer a {
-        color: #1E90FF; /* Electric Blue */
+    }}
+    .footer a {{
+        color: {accent_color};
         text-decoration: none;
-    }
+    }}
     </style>
 ''', unsafe_allow_html=True)
 
@@ -276,32 +282,30 @@ def render_tool_cards():
     st.subheader("Explore Our Tools and Features")
     tools = [
         {"name": "Key Stats Analysis", "description": "Uncover impactful stats driving game outcomes.", "url": "https://foxedge.streamlit.app/Key_Stat_Analysis", "icon": "🎱"},
-        {"name": "NFL FoxEdge", "description": "Explore NFL betting insights.", "url": "https://foxedge.streamlit.app/NFL_FoxEdge", "icon": "nfl_icon.png"},
-        {"name": "NBA FoxEdge", "description": "Get NBA predictive tools.", "url": "https://foxedge.streamlit.app/NBA_FoxEdge", "icon": "nba_icon.png"},
-        {"name": "NCAAB Quantum Simulations", "description": "Quantum-inspired NCAA basketball predictions.", "url": "https://foxedge.streamlit.app/NCAAB_Quantum-Inspired_Game_Predictions", "icon": "ncaab_icon.png"},
-        {"name": "NFL Betting Insights", "description": "Advanced NFL trends.", "url": "https://foxedge.streamlit.app/Enhanced_NFL_Betting_Insights", "icon": "nfl_insights_icon.png"},
-        {"name": "NFL Game Simulations", "description": "Simulate NFL games for insights.", "url": "https://foxedge.streamlit.app/NFL_Game_Simulations", "icon": "nfl_gmae_sim.png"},
-        {"name": "NFL Team Scoring Predictions", "description": "Predict NFL team scoring outcomes.", "url": "https://foxedge.streamlit.app/NFL_Team_Scoring_Predictions", "icon": "nfl_score.png"},
-        {"name": "NBA Betting Insights", "description": "Explore NBA betting trends.", "url": "https://foxedge.streamlit.app/Enhanced_NBA_Betting_Insights", "icon": "nba_insight.png"},
-        {"name": "NBA Team Scoring Predictions", "description": "Predict NBA team scoring outcomes.", "url": "https://foxedge.streamlit.app/NBA_Team_Scoring_Predictions", "icon": "nba_icon.png"},
-        {"name": "NBA Quantum Simulations", "description": "Quantum-inspired simulations for NBA games.", "url": "https://foxedge.streamlit.app/NBA_Quantum-Inspired_Game_Predictions", "icon": "nba_quant.png"},
-        {"name": "NFL Quantum Simulations", "description": "Quantum-inspired simulations for NFL games.", "url": "https://foxedge.streamlit.app/NFL_Quantum-Inspired_Game_Predictions", "icon": "nfl_quant.png"},
-        {"name": "Gambler's Gambit", "description": "Read articles and insights.", "url": "https://foxedge.streamlit.app/Blog", "icon": "blog.png"}
+        {"name": "NFL FoxEdge", "description": "Explore NFL betting insights.", "url": "https://foxedge.streamlit.app/NFL_FoxEdge", "icon": "🏈"},
+        {"name": "NBA FoxEdge", "description": "Get NBA predictive tools.", "url": "https://foxedge.streamlit.app/NBA_FoxEdge", "icon": "🏀"},
+        {"name": "NCAAB Quantum Simulations", "description": "Quantum-inspired NCAA basketball predictions.", "url": "https://foxedge.streamlit.app/NCAAB_Quantum-Inspired_Game_Predictions", "icon": "🎓"},
+        {"name": "NFL Betting Insights", "description": "Advanced NFL trends.", "url": "https://foxedge.streamlit.app/Enhanced_NFL_Betting_Insights", "icon": "📊"},
+        {"name": "NFL Game Simulations", "description": "Simulate NFL games for insights.", "url": "https://foxedge.streamlit.app/NFL_Game_Simulations", "icon": "🎮"},
+        {"name": "NFL Team Scoring Predictions", "description": "Predict NFL team scoring outcomes.", "url": "https://foxedge.streamlit.app/NFL_Team_Scoring_Predictions", "icon": "📈"},
+        {"name": "NBA Betting Insights", "description": "Explore NBA betting trends.", "url": "https://foxedge.streamlit.app/Enhanced_NBA_Betting_Insights", "icon": "📊"},
+        {"name": "NBA Team Scoring Predictions", "description": "Predict NBA team scoring outcomes.", "url": "https://foxedge.streamlit.app/NBA_Team_Scoring_Predictions", "icon": "📈"},
+        {"name": "NBA Quantum Simulations", "description": "Quantum-inspired simulations for NBA games.", "url": "https://foxedge.streamlit.app/NBA_Quantum-Inspired_Game_Predictions", "icon": "🔮"},
+        {"name": "NFL Quantum Simulations", "description": "Quantum-inspired simulations for NFL games.", "url": "https://foxedge.streamlit.app/NFL_Quantum-Inspired_Game_Predictions", "icon": "🔮"},
+        {"name": "Gambler's Gambit", "description": "Read articles and insights.", "url": "https://foxedge.streamlit.app/Blog", "icon": "📝"}
     ]
     
-    for tool in tools:
-        image_path = get_image_path(tool['icon'])
-        print(f"Attempting to load image from: {image_path}")  # Debugging line
-        st.markdown(f'''
-            <div class="tool-card">
-                <div class="tool-card-icon">
-                    <img src="{image_path}" alt="{tool['name']}" style="width: 40px; height: 40px;">
+    cols = st.columns(3)
+    for idx, tool in enumerate(tools):
+        with cols[idx % 3]:
+            st.markdown(f'''
+                <div class="tool-card">
+                    <div style="font-size: 2em;">{tool["icon"]}</div>
+                    <h3>{tool["name"]}</h3>
+                    <p>{tool["description"]}</p>
+                    <a href="{tool["url"]}" target="_blank" class="cta-button">Explore</a>
                 </div>
-                <h3>{tool["name"]}</h3>
-                <p>{tool["description"]}</p>
-                <a href="{tool["url"]}" target="_blank" class="cta-button">Explore</a>
-            </div>
-        ''', unsafe_allow_html=True)
+            ''', unsafe_allow_html=True)
 
 # Render Sections
 render_hero_section()
@@ -309,8 +313,8 @@ render_chart()
 render_tool_cards()
 
 # Footer
-st.markdown('''
+st.markdown(f'''
     <div class="footer">
-        &copy; 2024 FoxEdge. All rights reserved.
+        &copy; {datetime.now().year} FoxEdge. All rights reserved.
     </div>
 ''', unsafe_allow_html=True)
