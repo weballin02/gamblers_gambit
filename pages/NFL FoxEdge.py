@@ -20,207 +20,184 @@ from scipy.special import expit  # Sigmoid function
 
 warnings.filterwarnings('ignore')
 
-# Streamlit App Title and Configuration
+# Streamlit App Configuration
 st.set_page_config(
     page_title="🏈 NFL FoxEdge",
     page_icon="🏈",
     layout="wide",
     initial_sidebar_state="collapsed",
 )
-st.title("🏈 NFL FoxEdge")
-st.markdown("## Matchup Predictions and Betting Recommendations")
-st.markdown("""
-Welcome to the Enhanced NFL Betting Insights app! Here, you'll find game predictions, betting leans, and in-depth analysis to help you make informed betting decisions. Whether you're a casual bettor or a seasoned professional, our insights are tailored to provide value to all.
-""")
 
-# Synesthetic Interface CSS
-st.markdown('''
+# Initialize Session State for Theme
+if 'dark_mode' not in st.session_state:
+    st.session_state.dark_mode = False
+
+# Function to Toggle Theme
+def toggle_theme():
+    st.session_state.dark_mode = not st.session_state.dark_mode
+
+# Theme Toggle Button
+st.sidebar.button("🌗 Toggle Theme", on_click=toggle_theme)
+
+# Apply Theme Based on Dark Mode
+if st.session_state.dark_mode:
+    primary_bg = "#121212"
+    secondary_bg = "#1E1E1E"
+    primary_text = "#FFFFFF"
+    secondary_text = "#B0B0B0"
+    accent_color = "#BB86FC"  # Purple
+    highlight_color = "#03DAC6"  # Teal
+    chart_color = "#BB86FC"
+    chart_template = "plotly_dark"
+else:
+    primary_bg = "#FFFFFF"
+    secondary_bg = "#F0F0F0"
+    primary_text = "#000000"
+    secondary_text = "#4F4F4F"
+    accent_color = "#6200EE"
+    highlight_color = "#03DAC6"
+    chart_color = "#6200EE"
+    chart_template = "plotly_white"
+
+# Custom CSS Styling
+st.markdown(f'''
     <style>
-        /* Import Fonts */
-        @import url('https://fonts.googleapis.com/css2?family=Raleway:wght@400;700&family=Open+Sans:wght@400;600&display=swap');
-
-        /* Root Variables */
-        :root {
-            --background-gradient-start: #0F2027; /* Dark Teal */
-            --background-gradient-end: #203A43; /* Darker Teal */
-            --primary-text-color: #ECECEC; /* Light Gray */
-            --heading-text-color: #F5F5F5; /* Almost White */
-            --accent-color-teal: #2CFFAA; /* Bright Teal */
-            --accent-color-purple: #A56BFF; /* Light Purple */
-            --highlight-color: #FF6B6B; /* Light Red */
-            --font-heading: 'Raleway', sans-serif;
-            --font-body: 'Open Sans', sans-serif;
-        }
-
         /* Global Styles */
-        body, html {
-            background: linear-gradient(135deg, var(--background-gradient-start), var(--background-gradient-end));
-            color: var(--primary-text-color);
-            font-family: var(--font-body);
-            margin: 0;
-            padding: 0;
-            overflow-x: hidden;
-        }
+        body, html {{
+            background-color: {primary_bg};
+            color: {primary_text};
+            font-family: 'Open Sans', sans-serif;
+        }}
 
-        h1, h2, h3 {
-            font-family: var(--font-heading);
-            color: var(--heading-text-color);
-        }
+        /* Hide Streamlit Branding */
+        #MainMenu {{visibility: hidden;}}
+        footer {{visibility: hidden;}}
 
-        /* Hero Section */
-        .hero {
-            position: relative;
+        /* Header */
+        .header-title {{
+            font-family: 'Raleway', sans-serif;
+            font-size: 3em;
+            font-weight: 800;
             text-align: center;
-            padding: 4em 1em;
-            overflow: hidden;
-        }
+            margin-bottom: 0.5em;
+            background: linear-gradient(90deg, {highlight_color}, {accent_color});
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }}
 
-        .hero::before {
-            content: '';
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: radial-gradient(circle at center, rgba(255, 255, 255, 0.1), transparent);
-            animation: rotate 30s linear infinite;
-        }
-
-        @keyframes rotate {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-        }
+        .header-description {{
+            text-align: center;
+            color: {secondary_text};
+            font-size: 1.2em;
+            margin-bottom: 2em;
+        }}
 
         /* Buttons */
-        .button {
-            background: linear-gradient(45deg, var(--accent-color-teal), var(--accent-color-purple));
+        .stButton > button {{
+            background: linear-gradient(90deg, {highlight_color}, {accent_color});
+            color: {primary_text};
             border: none;
             padding: 0.8em 2em;
-            color: #FFFFFF;
-            font-size: 1.1em;
             border-radius: 30px;
+            font-size: 1em;
+            font-weight: 700;
             cursor: pointer;
-            transition: transform 0.3s ease;
-            text-decoration: none;
-            display: inline-block;
-            margin-top: 1em;
-        }
+            transition: transform 0.3s ease, background 0.3s ease;
+        }}
 
-        .button:hover {
+        .stButton > button:hover {{
             transform: translateY(-5px);
-        }
+            background: linear-gradient(90deg, {accent_color}, {highlight_color});
+        }}
 
         /* Data Section */
-        .data-section {
+        .data-section {{
             padding: 2em 1em;
-            text-align: center;
-        }
-
-        .data-section h2 {
-            font-size: 2.5em;
-            margin-bottom: 0.5em;
-        }
-
-        .data-section p {
-            font-size: 1.2em;
-            color: #CCCCCC;
-            margin-bottom: 2em;
-        }
-
-        /* Enhanced Summary Styling */
-        .summary-section {
-            padding: 2em 1em;
-            background-color: rgba(255, 255, 255, 0.05);
+            background-color: {secondary_bg};
             border-radius: 15px;
             margin-bottom: 2em;
-        }
+        }}
 
-        .summary-section h3 {
-            font-size: 2em;
+        .data-section h2 {{
+            font-size: 2.5em;
             margin-bottom: 0.5em;
-            color: var(--accent-color-teal);
-        }
+            color: {accent_color};
+        }}
 
-        .summary-section p {
-            font-size: 1.1em;
-            color: #E0E0E0;
-            line-height: 1.6;
-        }
+        .data-section p {{
+            font-size: 1.2em;
+            color: {secondary_text};
+            margin-bottom: 2em;
+        }}
 
-        /* Team Trends Styling Update */
-        .team-trends {
+        /* Team Trends Styling */
+        .team-trends {{
             display: flex;
             flex-wrap: wrap;
             gap: 2em;
-            justify-content: space-around;  /* Aligns cards neatly side-by-side */
+            justify-content: space-around;
             margin-top: 2em;
-        }
+        }}
 
-        .team-card {
-            background-color: rgba(255, 255, 255, 0.1);
+        .team-card {{
+            background-color: {secondary_bg};
             border-radius: 15px;
             padding: 1.5em;
-            width: calc(33% - 2em);  /* Each card takes up approximately 1/3rd of the row, with gaps */
-            min-width: 300px;         /* Ensure cards maintain a minimum width */
-            max-width: 400px;         /* Optionally limit the maximum width */
+            width: calc(33% - 2em);
+            min-width: 300px;
+            max-width: 400px;
             text-align: center;
-        }
-
-        /* Streamlit Elements */
-        .stButton > button {
-            background: linear-gradient(45deg, var(--accent-color-teal), var(--accent-color-purple));
-            border: none;
-            padding: 0.8em 2em;
-            color: #FFFFFF;
-            font-size: 1.1em;
-            border-radius: 30px;
-            cursor: pointer;
             transition: transform 0.3s ease;
-            margin-top: 1em;
-        }
+        }}
 
-        .stButton > button:hover {
+        .team-card:hover {{
             transform: translateY(-5px);
-        }
-
-        .stCheckbox > div {
-            padding: 0.5em 0;
-        }
+        }}
 
         /* Footer */
-        .footer {
+        .footer {{
             text-align: center;
-            padding: 2em 1em;
-            color: #999999;
+            padding: 2em 0;
+            color: {secondary_text};
             font-size: 0.9em;
-        }
+        }}
 
-        .footer a {
-            color: var(--accent-color-teal);
+        .footer a {{
+            color: {accent_color};
             text-decoration: none;
-        }
+        }}
 
         /* Responsive Design */
-        @media (max-width: 768px) {
-            .hero h1 {
-                font-size: 2.5em;
-            }
+        @media (max-width: 768px) {{
+            .header-title {{
+                font-size: 2em;
+            }}
 
-            .hero p {
-                font-size: 1.2em;
-            }
+            .header-description {{
+                font-size: 1em;
+            }}
 
-            .team-trends {
+            .team-trends {{
                 flex-direction: column;
                 align-items: center;
-            }
+            }}
 
-            .team-card {
+            .team-card {{
                 width: 90%;
-            }
-        }
+            }}
+        }}
     </style>
 ''', unsafe_allow_html=True)
+
+# Header Section
+st.markdown(f'''
+    <h1 class="header-title">NFL FoxEdge</h1>
+    <p class="header-description">Matchup Predictions and Betting Recommendations</p>
+''', unsafe_allow_html=True)
+
+st.markdown("""
+Welcome to the **NFL FoxEdge** app! Here, you'll find game predictions, betting leans, and in-depth analysis to help you make informed betting decisions. Whether you're a casual bettor or a seasoned professional, our insights are tailored to provide value to all.
+""")
 
 # Team Abbreviation to Full Name Mapping
 team_abbrev_mapping = {
@@ -612,7 +589,7 @@ if st.button("Predict Upcoming Games"):
                     continue
 
                 # Display Matchup Details
-                st.markdown(f"### {team_name_mapping.get(home_team, home_team)} vs {team_name_mapping.get(away_team, away_team)}")
+                st.markdown(f"<h2 style='color:{accent_color};'>{team_name_mapping.get(home_team, home_team)} vs {team_name_mapping.get(away_team, away_team)}</h2>", unsafe_allow_html=True)
                 st.markdown(f"- **Game Date:** {game_datetime.strftime('%Y-%m-%d %H:%M %Z')}")
                 st.markdown(f"- **Predicted Winner:** **{team_name_mapping.get(winner, 'Unavailable')}**")
                 st.markdown(f"- **Predicted Final Scores:** {team_name_mapping.get(home_team, home_team)} **{home_forecast:.2f}** - {team_name_mapping.get(away_team, away_team)} **{away_forecast:.2f}**")
@@ -656,7 +633,8 @@ if st.button("Predict Upcoming Games"):
                 fig.update_layout(
                     polar=dict(radialaxis=dict(visible=True)),
                     showlegend=True,
-                    title=f"Team Comparison: {team_name_mapping.get(home_team, home_team)} vs {team_name_mapping.get(away_team, away_team)}"
+                    title=f"Team Comparison: {team_name_mapping.get(home_team, home_team)} vs {team_name_mapping.get(away_team, away_team)}",
+                    template=chart_template
                 )
                 st.plotly_chart(fig)
 
@@ -775,7 +753,8 @@ if st.button("Predict Upcoming Games"):
     """)
 
     # Footer
-    st.markdown("""
-    ---
-    &copy; 2023 **Enhanced NFL Betting Insights**. All rights reserved.
-    """)
+    st.markdown(f'''
+        <div class="footer">
+            &copy; {datetime.now().year} **NFL FoxEdge**. All rights reserved.
+        </div>
+    ''', unsafe_allow_html=True)
