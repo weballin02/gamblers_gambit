@@ -200,20 +200,20 @@ st.markdown('''
             color: #FFFFFF; /* Crisp White */
         }
 
-        .read-more-button {
-            background: #1E90FF; /* Electric Blue */
-            color: #FFFFFF; /* Crisp White */
+        .read-more-button {{
+            background: {accent_color_purple};
+            color: {primary_text};
             border: none;
             border-radius: 5px;
             padding: 5px 10px;
             cursor: pointer;
             transition: background 0.3s ease;
-            font-family: var(--font-montserrat);
-        }
+            font-family: 'Montserrat', sans-serif;
+        }}
 
-        .read-more-button:hover {
-            background: #32CD32; /* Lime Green */
-        }
+        .read-more-button:hover {{
+            background: {accent_color_teal};
+        }}
 
         /* Summary and Prediction Results Sections */
         .summary-section, .results-section {
