@@ -316,6 +316,6 @@ render_tool_cards()
 # Footer
 st.markdown(f'''
     <div class="footer">
-        &copy; {datetime.now().year} FoxEdge. All rights reserved.
+        &copy; {datetime.datetime.now().year} FoxEdge. All rights reserved.
     </div>
 ''', unsafe_allow_html=True)
