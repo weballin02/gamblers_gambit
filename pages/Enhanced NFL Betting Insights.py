@@ -121,6 +121,24 @@ st.markdown('''
             margin-bottom: 2em;
         }
 
+        /* Card Styles */
+        .prediction-card, .summary-card, .team-card {
+            background-color: #1E1E1E; /* Dark background for cards */
+            border-radius: 10px;
+            padding: 20px;
+            margin: 10px 0;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        .team-trends {
+            display: flex;
+            justify-content: space-around;
+            flex-wrap: wrap;
+        }
+        .team-card {
+            flex: 0 0 45%; /* Each card takes up 45% of the width */
+            margin-bottom: 20px;
+        }
+
         /* Footer */
         .footer {
             text-align: center;
@@ -353,6 +371,7 @@ def enhanced_summary(home_team, away_team, home_stats, away_stats, home_team_rat
     st.markdown('''
         <div class="summary-section">
             <h3>Enhanced Betting Insights Summary</h3>
+            <div class="summary-card">
     ''', unsafe_allow_html=True)
 
     # Display injury impact if selected
@@ -402,8 +421,8 @@ def enhanced_summary(home_team, away_team, home_stats, away_stats, home_team_rat
     st.markdown(f'''
         <div class="team-card">
             <h4>{away_team} Trends</h4>
-            <p>Recent Form (Last 5 Games): <strong>{away_stats.get('recent_form', 'N/A')}</strong></p>
-            <p>Consistency (Std Dev): <strong>{away_stats.get('std_dev', 'N/A')}</strong></p>
+            <p>Recent Form (Last 5 Games): <strong>{round(away_stats.get('recent_form', 'N/A'), 2)}</strong></p>
+            <p>Consistency (Std Dev): <strong>{round(away_stats.get('std_dev', 'N/A'), 2)}</strong></p>
             <p>Tip: For betting totals (over/under), look at consistency. Highly consistent teams can make predicting total points easier, while erratic scores suggest less predictable outcomes.</p>
         </div>
     ''', unsafe_allow_html=True)
@@ -460,10 +479,12 @@ if predicted_winner != "Unavailable":
     st.markdown(f'''
         <div class="data-section">
             <h2>Predicted Outcome</h2>
-            <p><strong>{home_team}</strong> vs. <strong>{away_team}</strong></p>
-            <p>Predicted Winner: <strong>{predicted_winner}</strong></p>
-            <p>Confidence Level: <strong>{round(confidence, 2)}%</strong></p>
-            <p>Expected Score Difference: <strong>{round(predicted_score_diff, 2)}</strong></p>
+            <div class="prediction-card">
+                <p><strong>{home_team}</strong> vs. <strong>{away_team}</strong></p>
+                <p>Predicted Winner: <strong>{predicted_winner}</strong></p>
+                <p>Confidence Level: <strong>{round(confidence, 2)}%</strong></p>
+                <p>Expected Score Difference: <strong>{round(predicted_score_diff, 2)}</strong></p>
+            </div>
         </div>
     ''', unsafe_allow_html=True)
 
