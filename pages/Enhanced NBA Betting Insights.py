@@ -8,108 +8,168 @@ from nba_api.stats.static import teams as nba_teams
 import warnings
 warnings.filterwarnings('ignore')
 
-# Streamlit App Title
+# Set page configuration
 st.set_page_config(
-    page_title="Enhanced NBA Betting Insights",
+    page_title="NBA FoxEdge - Enhanced Betting Insights",
     page_icon="🏀",
-    layout="centered",
+    layout="wide",
     initial_sidebar_state="collapsed",
 )
 
-# General Styling and High Contrast Toggle
-st.markdown("""
+# Initialize Session State for Theme
+if 'dark_mode' not in st.session_state:
+    st.session_state.dark_mode = False
+
+# Function to Toggle Theme
+def toggle_theme():
+    st.session_state.dark_mode = not st.session_state.dark_mode
+
+# Theme Toggle Button
+st.sidebar.button("🌗 Toggle Theme", on_click=toggle_theme)
+
+# Apply Theme Based on Dark Mode
+if st.session_state.dark_mode:
+    primary_bg = "#121212"
+    primary_text = "#FFFFFF"
+    secondary_bg = "#1E1E1E"
+    accent_color = "#BB86FC"
+    highlight_color = "#03DAC6"
+else:
+    primary_bg = "#FFFFFF"
+    primary_text = "#000000"
+    secondary_bg = "#F5F5F5"
+    accent_color = "#6200EE"
+    highlight_color = "#03DAC6"
+
+# Custom CSS for Novel Design
+st.markdown(f"""
     <style>
-        /* Shared CSS for consistent styling */
-        html, body, [class*="css"] {
-            font-family: 'Open Sans', sans-serif;
-            background: var(--background-color);
-            color: var(--text-color);
-        }
-
-        :root {
-            --background-color: #2C3E50; /* Charcoal Dark Gray */
-            --primary-color: #1E90FF; /* Electric Blue */
-            --secondary-color: #FF8C00; /* Deep Orange */
-            --accent-color: #FF4500; /* Fiery Red */
-            --success-color: #32CD32; /* Lime Green */
-            --alert-color: #FFFF33; /* Neon Yellow */
-            --text-color: #FFFFFF; /* Crisp White */
-            --heading-text-color: #F5F5F5; /* Adjusted for contrast */
-        }
-
-        .header-title {
-            font-family: 'Montserrat', sans-serif;
-            background: linear-gradient(120deg, var(--secondary-color), var(--primary-color));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            font-size: 3em;
-            font-weight: 800;
-        }
-
-        .gradient-bar {
-            height: 10px;
-            background: linear-gradient(90deg, var(--success-color), var(--accent-color));
-            border-radius: 5px;
-        }
-
-        div.stButton > button {
-            background: linear-gradient(90deg, var(--secondary-color), var(--primary-color));
-            color: var(--text-color);
-            border: none;
-            padding: 1em 2em;
-            border-radius: 8px;
-            font-size: 1.1em;
-            font-weight: 700;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        div.stButton > button:hover {
-            background-color: var(--accent-color); /* Fiery Red */
-            transform: scale(1.05);
-        }
+    /* Global Styles */
+    body {{
+        background-color: {primary_bg};
+        color: {primary_text};
+        font-family: 'Roboto', sans-serif;
+    }}
+    /* Hide Streamlit branding */
+    #MainMenu {{visibility: hidden;}}
+    footer {{visibility: hidden;}}
+    /* Header Section */
+    .header {{
+        background-color: {accent_color};
+        padding: 3em;
+        border-radius: 20px;
+        text-align: center;
+        color: #FFFFFF;
+        margin-bottom: 2em;
+        position: relative;
+        overflow: hidden;
+    }}
+    .header::before {{
+        content: '';
+        background-image: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.1), transparent);
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        animation: rotation 30s infinite linear;
+    }}
+    @keyframes rotation {{
+        from {{transform: rotate(0deg);}}
+        to {{transform: rotate(360deg);}}
+    }}
+    .header h1 {{
+        font-size: 3.5em;
+        margin: 0;
+        font-weight: bold;
+        letter-spacing: -1px;
+    }}
+    .header p {{
+        font-size: 1.5em;
+        margin-top: 0.5em;
+    }}
+    .btn {{
+        background-color: {highlight_color};
+        color: {primary_text};
+        padding: 10px 25px;
+        border-radius: 50px;
+        text-decoration: none;
+        font-size: 1.2em;
+        margin-top: 1em;
+        display: inline-block;
+        transition: background-color 0.3s, transform 0.2s;
+    }}
+    .btn:hover {{
+        background-color: #018786;
+        transform: translateY(-5px);
+    }}
+    /* Prediction Section */
+    .prediction-card {{
+        background-color: {accent_color};
+        padding: 2em;
+        border-radius: 15px;
+        color: #FFFFFF;
+        text-align: center;
+        margin-bottom: 2em;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }}
+    .prediction-card:hover {{
+        transform: translateY(-10px);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    }}
+    .prediction-card h2 {{
+        font-size: 2em;
+        margin-bottom: 0.5em;
+    }}
+    .prediction-card p {{
+        font-size: 1.2em;
+        margin-bottom: 0.5em;
+    }}
+    /* Data Section */
+    .data-section {{
+        padding: 2em 1em;
+        background-color: {accent_color};
+        border-radius: 15px;
+        margin-bottom: 2em;
+    }}
+    .data-section h2 {{
+        font-size: 2em;
+        margin-bottom: 1em;
+    }}
+    /* Footer */
+    .footer {{
+        text-align: center;
+        padding: 2em 1em;
+        color: {primary_text};
+        opacity: 0.6;
+        font-size: 0.9em;
+    }}
+    .footer a {{
+        color: {accent_color};
+        text-decoration: none;
+    }}
+    /* Responsive Design */
+    @media (max-width: 768px) {{
+        .header h1 {{
+            font-size: 2.5em;
+        }}
+        .header p {{
+            font-size: 1em;
+        }}
+    }}
     </style>
 """, unsafe_allow_html=True)
 
-# High Contrast Toggle
-if st.button("Toggle High Contrast Mode"):
-    st.markdown("""
-        <style>
-            body {
-                background: #000;
-                color: #FFF;
-            }
-
-            .gradient-bar {
-                background: linear-gradient(90deg, #0F0, #F00);
-            }
-
-            div.stButton > button {
-                background: #FFF;
-                color: #000;
-            }
-        </style>
-    """, unsafe_allow_html=True)
-
 # Header Section
-st.markdown('''
-    <div style="text-align: center; margin-bottom: 1.5em;">
-        <h1 class="header-title">Enhanced NBA Betting Insights</h1>
-        <p style="color: #9CA3AF; font-size: 1.2em;">
-            Analyze NBA team performance with detailed insights for smarter betting decisions.
-        </p>
-    </div>
-''', unsafe_allow_html=True)
-
-# Data Visualizations
-st.markdown('''
-    <h2>Predicted Outcome</h2>
-    <div class="gradient-bar"></div>
-    <p style="color: var(--primary-color); font-weight: 700;">Milwaukee Bucks Win Probability: 77.9%</p>
-''', unsafe_allow_html=True)
+def render_header():
+    st.markdown(f'''
+        <div class="header">
+            <h1>NBA FoxEdge</h1>
+            <p>Enhanced Betting Insights</p>
+        </div>
+    ''', unsafe_allow_html=True)
 
 # Functionality
-st.write("Select an upcoming game to view predictions.")
 
 # Define season start dates and weights for multi-season training
 current_season = '2024-25'
@@ -210,14 +270,14 @@ def predict_game_outcome(home_team, away_team):
         
         if home_team_rating > away_team_rating:
             predicted_winner = home_team
-            predicted_score_diff = round(home_team_rating - away_team_rating, 2)  # Rounded to 2 decimal places
+            predicted_score_diff = round(home_team_rating - away_team_rating, 2)
         elif away_team_rating > home_team_rating:
             predicted_winner = away_team
-            predicted_score_diff = round(away_team_rating - home_team_rating, 2)  # Rounded to 2 decimal places
+            predicted_score_diff = round(away_team_rating - home_team_rating, 2)
         else:
             predicted_winner = "Tie"
             predicted_score_diff = 0
-        return predicted_winner, predicted_score_diff, confidence, round(home_team_rating, 2), round(away_team_rating, 2)  # Rounded to 2 decimal places
+        return predicted_winner, predicted_score_diff, confidence, round(home_team_rating, 2), round(away_team_rating, 2)
     else:
         return "Unavailable", "N/A", "N/A", None, None
 
@@ -248,80 +308,125 @@ def fetch_nba_games():
 
 upcoming_games = fetch_nba_games()
 
-# Streamlit UI for Team Prediction
-st.title('Enhanced NBA Team Points Prediction for Betting Insights')
+# Main App Logic
+def main():
+    render_header()
+    st.markdown('<div id="prediction"></div>', unsafe_allow_html=True)
 
-# Display Game Predictions
-st.header('NBA Game Predictions with Detailed Analysis')
+    # Display Game Predictions
+    st.markdown(f'''
+        <div class="data-section">
+            <h2>NBA Game Predictions with Detailed Analysis</h2>
+        </div>
+    ''', unsafe_allow_html=True)
 
-# Team Name Mapping for Display Purposes
-team_name_mapping = {team['abbreviation']: team['full_name'] for team in nba_teams.get_teams()}
+    # Team Name Mapping for Display Purposes
+    team_name_mapping = {team['abbreviation']: team['full_name'] for team in nba_teams.get_teams()}
 
-# Create game labels for selection
-upcoming_games['game_label'] = [
-    f"{team_name_mapping.get(row['VISITOR_TEAM_ABBREV'])} at {team_name_mapping.get(row['HOME_TEAM_ABBREV'])}"
-    for _, row in upcoming_games.iterrows()
-]
+    # Create game labels for selection
+    if not upcoming_games.empty:
+        upcoming_games['game_label'] = [
+            f"{team_name_mapping.get(row['VISITOR_TEAM_ABBREV'])} at {team_name_mapping.get(row['HOME_TEAM_ABBREV'])}"
+            for _, row in upcoming_games.iterrows()
+        ]
 
-# Let the user select a game and handle possible empty selections
-if not upcoming_games.empty:
-    game_selection = st.selectbox('Select an upcoming game:', upcoming_games['game_label'])
-    selected_game = upcoming_games[upcoming_games['game_label'] == game_selection]
+        game_selection = st.selectbox('Select an upcoming game:', upcoming_games['game_label'])
+        selected_game = upcoming_games[upcoming_games['game_label'] == game_selection]
 
-    if not selected_game.empty:
-        selected_game = selected_game.iloc[0]
-        
-        home_team = selected_game['HOME_TEAM_ABBREV']
-        away_team = selected_game['VISITOR_TEAM_ABBREV']
-        
-        # Predict Outcome for Selected Game
-        predicted_winner, predicted_score_diff, confidence, home_team_rating, away_team_rating = predict_game_outcome(home_team, away_team)
-
-        # Display Prediction Results with Enhanced Betting Insights
-        if predicted_winner != "Unavailable":
-            st.write(f"### Predicted Outcome for {team_name_mapping[home_team]} vs. {team_name_mapping[away_team]}")
-            st.write(f"**Predicted Winner:** {team_name_mapping[predicted_winner]} with confidence: {round(confidence, 2)}%")
-            st.write(f"**Expected Score Difference:** {round(predicted_score_diff, 2)}")
-
-            # Detailed Team Stats for Betting Insights
-            home_stats = st.session_state['current_season_stats'].get(home_team, {})
-            away_stats = st.session_state['current_season_stats'].get(away_team, {})
-
-            st.subheader(f"{team_name_mapping[home_team]} Performance Summary (Current Season)")
-            st.write(f"- **Average Score:** {round(home_stats['avg_score'], 2)}")
-            st.write(f"- **Recent Form (Last 5 Games):** {round(home_stats['recent_form'], 2)}")
-            st.write(f"- **Games Played:** {home_stats['games_played']}")
-            st.write(f"- **Consistency (Std Dev):** {round(home_stats['std_dev'], 2)}")
-            st.write(f"- **Overall Rating:** {round(home_team_rating, 2)}")
-
-            st.subheader(f"{team_name_mapping[away_team]} Performance Summary (Current Season)")
-            st.write(f"- **Average Score:** {round(away_stats['avg_score'], 2)}")
-            st.write(f"- **Recent Form (Last 5 Games):** {round(away_stats['recent_form'], 2)}")
-            st.write(f"- **Games Played:** {away_stats['games_played']}")
-            st.write(f"- **Consistency (Std Dev):** {round(away_stats['std_dev'], 2)}")
-            st.write(f"- **Overall Rating:** {round(away_team_rating, 2)}")
-
-            # Enhanced Betting Insights Summary
-            st.subheader("Betting Insights")
-            likely_advantage = home_team if home_team_rating > away_team_rating else away_team
-            st.write(f"**Advantage:** {team_name_mapping[likely_advantage]} has a higher team rating, suggesting a potential edge.")
+        if not selected_game.empty:
+            selected_game = selected_game.iloc[0]
             
-            if home_stats['std_dev'] < away_stats['std_dev']:
-                st.write(f"**Consistency:** {team_name_mapping[home_team]} is more consistent in scoring, which could reduce risk in betting.")
-            elif away_stats['std_dev'] < home_stats['std_dev']:
-                st.write(f"**Consistency:** {team_name_mapping[away_team]} is more consistent, potentially lowering bet risk.")
-            else:
-                st.write("**Consistency:** Both teams have similar scoring consistency.")
-
-            # Momentum and Scoring Trends
-            avg_total_score = round(home_stats['avg_score'], 2) + round(away_stats['avg_score'], 2)
-            recent_total_score = round(home_stats['recent_form'], 2) + round(away_stats['recent_form'], 2)
-            st.write(f"**Scoring Trends:** Combined average score is around {avg_total_score}, recent combined score is {recent_total_score}.")
+            home_team = selected_game['HOME_TEAM_ABBREV']
+            away_team = selected_game['VISITOR_TEAM_ABBREV']
             
-            if predicted_score_diff > 5:
-                st.write(f"**Spread Insight:** Consider betting on **{team_name_mapping[predicted_winner]}** if the spread is favorable.")
-            else:
-                st.write("**Spread Insight:** A close game suggests caution for spread betting.")
-                
-            st.write(f"**Moneyline Suggestion:** **{team_name_mapping[likely_advantage]}** may be favorable based on rating and consistency.")
+            # Predict Outcome for Selected Game
+            predicted_winner, predicted_score_diff, confidence, home_team_rating, away_team_rating = predict_game_outcome(home_team, away_team)
 
+            # Display Prediction Results with Enhanced Betting Insights
+            if predicted_winner != "Unavailable":
+                st.markdown(f'''
+                    <div class="prediction-card">
+                        <h2>Predicted Outcome</h2>
+                        <p><strong>{team_name_mapping[home_team]}</strong> vs. <strong>{team_name_mapping[away_team]}</strong></p>
+                        <p><strong>Predicted Winner:</strong> {team_name_mapping[predicted_winner]}</p>
+                        <p><strong>Confidence Level:</strong> {round(confidence, 2)}%</p>
+                        <p><strong>Expected Score Difference:</strong> {round(predicted_score_diff, 2)}</p>
+                        <div class="gradient-bar" style="width: {round(confidence, 2)}%;"></div>
+                        <p style="color: {highlight_color}; font-weight: 700;">{team_name_mapping[predicted_winner]} Win Probability: {round(confidence, 2)}%</p>
+                    </div>
+                ''', unsafe_allow_html=True)
+
+                st.markdown(f'''
+                    <div class="data-section">
+                        <h2>Team Performance Insights</h2>
+                ''', unsafe_allow_html=True)
+
+                # Detailed Team Stats for Betting Insights
+                home_stats = st.session_state['current_season_stats'].get(home_team, {})
+                away_stats = st.session_state['current_season_stats'].get(away_team, {})
+
+                st.markdown(f'''
+                    <div style="display: flex; justify-content: space-around; flex-wrap: wrap;">
+                        <div style="flex: 0 0 45%; margin-bottom: 2em;">
+                            <h3>{team_name_mapping[home_team]} Performance Summary</h3>
+                            <p><strong>Average Score:</strong> {round(home_stats['avg_score'], 2)}</p>
+                            <p><strong>Recent Form (Last 5 Games):</strong> {round(home_stats['recent_form'], 2)}</p>
+                            <p><strong>Games Played:</strong> {home_stats['games_played']}</p>
+                            <p><strong>Consistency (Std Dev):</strong> {round(home_stats['std_dev'], 2)}</p>
+                            <p><strong>Overall Rating:</strong> {round(home_team_rating, 2)}</p>
+                        </div>
+                        <div style="flex: 0 0 45%; margin-bottom: 2em;">
+                            <h3>{team_name_mapping[away_team]} Performance Summary</h3>
+                            <p><strong>Average Score:</strong> {round(away_stats['avg_score'], 2)}</p>
+                            <p><strong>Recent Form (Last 5 Games):</strong> {round(away_stats['recent_form'], 2)}</p>
+                            <p><strong>Games Played:</strong> {away_stats['games_played']}</p>
+                            <p><strong>Consistency (Std Dev):</strong> {round(away_stats['std_dev'], 2)}</p>
+                            <p><strong>Overall Rating:</strong> {round(away_team_rating, 2)}</p>
+                        </div>
+                    </div>
+                ''', unsafe_allow_html=True)
+
+                # Enhanced Betting Insights Summary
+                st.markdown(f'''
+                    <div class="prediction-card">
+                        <h2>Betting Insights</h2>
+                ''', unsafe_allow_html=True)
+                likely_advantage = home_team if home_team_rating > away_team_rating else away_team
+                st.write(f"**Advantage:** {team_name_mapping[likely_advantage]} has a higher team rating, suggesting a potential edge.")
+
+                if home_stats['std_dev'] < away_stats['std_dev']:
+                    st.write(f"**Consistency:** {team_name_mapping[home_team]} is more consistent in scoring, which could reduce risk in betting.")
+                elif away_stats['std_dev'] < home_stats['std_dev']:
+                    st.write(f"**Consistency:** {team_name_mapping[away_team]} is more consistent, potentially lowering bet risk.")
+                else:
+                    st.write("**Consistency:** Both teams have similar scoring consistency.")
+
+                avg_total_score = round(home_stats['avg_score'], 2) + round(away_stats['avg_score'], 2)
+                recent_total_score = round(home_stats['recent_form'], 2) + round(away_stats['recent_form'], 2)
+                st.write(f"**Scoring Trends:** Combined average score is around {avg_total_score}, recent combined score is {recent_total_score}.")
+
+                if predicted_score_diff > 5:
+                    st.write(f"**Spread Insight:** Consider betting on **{team_name_mapping[predicted_winner]}** if the spread is favorable.")
+                else:
+                    st.write("**Spread Insight:** A close game suggests caution for spread betting.")
+
+                st.write(f"**Moneyline Suggestion:** **{team_name_mapping[likely_advantage]}** may be favorable based on rating and consistency.")
+
+                st.markdown('</div>', unsafe_allow_html=True)
+
+            else:
+                st.warning("Prediction data unavailable for the selected game.")
+
+    else:
+        st.warning("No upcoming games found.")
+
+    # Footer
+    st.markdown(f'''
+        <div class="footer">
+            &copy; {datetime.now().year} NBA FoxEdge. All rights reserved.
+        </div>
+    ''', unsafe_allow_html=True)
+
+# Run the main function
+if __name__ == "__main__":
+    main()
