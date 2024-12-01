@@ -295,7 +295,7 @@ team_stadium_locations = {
 
 # Get weather data function
 def get_weather_data(location, game_datetime):
-    API_KEY = 'YOUR_API_KEY_HERE'  # Replace with your API key
+    API_KEY = '88H6RKM5HJT8NMDGBFA8ZBM7S'  # Replace with your API key
     date_str = game_datetime.strftime('%Y-%m-%d')
     url = f"https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/{location}/{date_str}?unitGroup=us&key={API_KEY}&include=current"
 
