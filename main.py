@@ -83,9 +83,18 @@ else:
         </style>
     """, unsafe_allow_html=True)
 
-# CSS for Branding, Hero Section, and Tool Cards
-st.markdown('''
+
+# Custom CSS for Novel Design
+st.markdown(f'''
     <style>
+    /* Global Styles */
+    body {{
+        background-color: {primary_bg};
+        color: {primary_text};
+        font-family: 'Roboto', sans-serif;
+    }}
+    /* Hide Streamlit branding */
+    #MainMenu {{visibility: hidden;}}
     footer {{visibility: hidden;}}
     /* Hero Section */
     .hero {{
