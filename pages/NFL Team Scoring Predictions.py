@@ -1,3 +1,5 @@
+# NFL Team Scoring Predictions
+
 # Import Libraries
 import nfl_data_py as nfl
 import pandas as pd
@@ -15,91 +17,154 @@ warnings.filterwarnings('ignore')
 
 # Set page configuration
 st.set_page_config(
-    page_title="FoxEdge - NFL Scoring Predictions",
+    page_title="🏈 FoxEdge - NFL Scoring Predictions",
     page_icon="🦊",
     layout="wide",
     initial_sidebar_state="collapsed",
 )
 
-# Synesthetic Interface CSS
-st.markdown('''
+# Initialize Session State for Theme
+if 'dark_mode' not in st.session_state:
+    st.session_state.dark_mode = False
+
+# Function to Toggle Theme
+def toggle_theme():
+    st.session_state.dark_mode = not st.session_state.dark_mode
+
+# Theme Toggle Button
+st.sidebar.button("🌗 Toggle Theme", on_click=toggle_theme)
+
+# Apply Theme Based on Dark Mode
+if st.session_state.dark_mode:
+    primary_bg = "#2C3E50"  # Charcoal Dark Gray
+    primary_text = "#FFFFFF"  # Crisp White
+    heading_text = "#F5F5F5"  # Light Gray
+    accent_color_teal = "#32CD32"  # Lime Green
+    accent_color_purple = "#1E90FF"  # Electric Blue
+    highlight_color = "#FF4500"  # Fiery Red
+    chart_template = "plotly_dark"
+else:
+    primary_bg = "#FFFFFF"
+    primary_text = "#000000"
+    heading_text = "#2C3E50"
+    accent_color_teal = "#32CD32"
+    accent_color_purple = "#1E90FF"
+    highlight_color = "#FF4500"
+    chart_template = "plotly_white"
+
+# Custom CSS Styling
+st.markdown(f'''
     <style>
-        /* Import Fonts */
-        @import url('https://fonts.googleapis.com/css2?family=Raleway:wght@400;700&family=Open+Sans:wght@400;600&display=swap');
+        body, html {{
+            background-color: {primary_bg};
+            color: {primary_text};
+            font-family: 'Open Sans', sans-serif;
+        }}
 
-        /* Root Variables */
-        :root {
-            --background-color: #2C3E50; /* Charcoal Dark Gray */
-            --primary-text-color: #FFFFFF; /* Crisp White */
-            --heading-text-color: #F5F5F5; /* Light Gray */
-            --accent-color-teal: #32CD32; /* Lime Green */
-            --accent-color-purple: #1E90FF; /* Electric Blue */
-            --highlight-color: #FF4500; /* Fiery Red */
-            --font-heading: 'Raleway', sans-serif;
-            --font-body: 'Open Sans', sans-serif;
-        }
+        /* Hide Streamlit Branding */
+        #MainMenu {{visibility: hidden;}}
+        footer {{visibility: hidden;}}
 
-        /* Global Styles */
-        body, html {
-            background: var(--background-color);
-            color: var(--primary-text-color);
-            font-family: var(--font-body);
-            margin: 0;
-            padding: 0;
-            overflow-x: hidden;
-        }
+        /* Header */
+        .header-title {{
+            font-family: 'Raleway', sans-serif;
+            font-size: 3em;
+            font-weight: 800;
+            text-align: center;
+            margin-bottom: 0.5em;
+            background: linear-gradient(90deg, {accent_color_teal}, {accent_color_purple});
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }}
 
-        h1, h2, h3, h4 {
-            font-family: var(--font-heading);
-            color: var(--heading-text-color);
-        }
+        .header-description {{
+            text-align: center;
+            color: {heading_text};
+            font-size: 1.2em;
+            margin-bottom: 2em;
+        }}
 
         /* Data Section */
-        .data-section {
+        .data-section {{
             padding: 2em 1em;
             text-align: center;
-        }
+            background-color: {primary_bg};
+        }}
 
-        .data-section h2 {
+        .data-section h2 {{
             font-size: 2.5em;
             margin-bottom: 0.5em;
-            color: var(--accent-color-teal);
-        }
-
-        .data-section p {
-            font-size: 1.2em;
-            color: var(--primary-text-color);
-            margin-bottom: 2em;
-        }
+            color: {accent_color_teal};
+        }}
 
         /* Summary Section */
-        .summary-section {
+        .summary-section {{
             padding: 2em 1em;
             text-align: center;
-            background-color: rgba(255, 255, 255, 0.1);
+            background-color: {primary_bg};
             border-radius: 15px;
             margin-bottom: 2em;
-        }
+        }}
 
-        .summary-section h3 {
+        .summary-section h3 {{
             font-size: 2em;
             margin-bottom: 0.5em;
-            color: var(--accent-color-teal);
-        }
+            color: {accent_color_purple};
+        }}
 
-        .summary-section p {
+        .summary-section p {{
             font-size: 1.5em;
-            color: var(--primary-text-color);
-        }
+            color: {primary_text};
+        }}
 
         /* Footer */
-        .footer {
+        .footer {{
             text-align: center;
             padding: 1em 0;
-            background-color: var(--background-color);
-            color: var(--primary-text-color);
-        }
+            background-color: {primary_bg};
+            color: {primary_text};
+        }}
+
+        .footer a {{
+            color: {accent_color_teal};
+            text-decoration: none;
+        }}
+
+        /* Buttons */
+        .stButton > button {{
+            background: linear-gradient(90deg, {accent_color_teal}, {accent_color_purple});
+            color: {primary_text};
+            border: none;
+            padding: 0.8em 2em;
+            border-radius: 30px;
+            font-size: 1em;
+            font-weight: 700;
+            cursor: pointer;
+            transition: transform 0.3s ease, background 0.3s ease;
+        }}
+
+        .stButton > button:hover {{
+            transform: translateY(-5px);
+            background: linear-gradient(90deg, {accent_color_purple}, {accent_color_teal});
+        }}
+
+        /* Responsive Design */
+        @media (max-width: 768px) {{
+            .header-title {{
+                font-size: 2em;
+            }}
+
+            .header-description {{
+                font-size: 1em;
+            }}
+        }}
     </style>
+''', unsafe_allow_html=True)
+
+# Header Section
+st.markdown(f'''
+    <h1 class="header-title">FoxEdge</h1>
+    <p class="header-description">NFL Scoring Predictions</p>
 ''', unsafe_allow_html=True)
 
 # Team Abbreviation to Full Name Mapping
@@ -146,13 +211,13 @@ full_name_to_abbrev = {v: k for k, v in team_abbrev_mapping.items()}
 def load_and_preprocess_data():
     current_year = datetime.now().year
     previous_years = [current_year - 1, current_year - 2]
-    
+
     # Importing schedules for the current and previous seasons
     schedule = nfl.import_schedules([current_year] + previous_years)
-    
+
     # Converting dates to datetime and splitting data for home and away teams
     schedule['gameday'] = pd.to_datetime(schedule['gameday'], errors='coerce')
-    
+
     # Prepare home and away data
     home_df = schedule[['gameday', 'home_team', 'home_score']].copy()
     home_df.rename(columns={'home_team': 'team', 'home_score': 'score'}, inplace=True)
@@ -173,7 +238,7 @@ def load_and_preprocess_data():
 team_data = load_and_preprocess_data()
 
 # Get list of teams
-teams_list = team_data['team'].unique()
+teams_list = sorted(team_data['team'].unique())
 
 # Train or Load Models
 @st.cache_resource
@@ -241,8 +306,13 @@ def predict_team_score(team_abbrev, periods=1):
         return None
 
 # Streamlit Interface for Selecting a Team and Viewing Predictions
-teams_list = sorted(team_data['team'].unique())
-team = st.selectbox('Select a team for prediction:', teams_list)
+st.markdown(f'''
+    <div class="data-section">
+        <h2>Select a Team for Prediction</h2>
+    </div>
+''', unsafe_allow_html=True)
+
+team = st.selectbox('Select a team:', teams_list)
 
 if team:
     team_scores = team_data[team_data['team'] == team]['score']
@@ -260,12 +330,15 @@ if team:
         forecast = team_models[team].predict(n_periods=5)
         future_dates = pd.date_range(start=team_scores.index[-1] + pd.Timedelta(days=7), periods=5, freq='7D')
         prediction_df = pd.DataFrame({'Date': future_dates, 'Predicted_Score': forecast})
-        st.write(f"### Predicted Scores for {team} (Next 5 Games)")
+        st.markdown(f'''
+            <div class="summary-section">
+                <h3>Predicted Scores for {team} (Next 5 Games)</h3>
+            </div>
+        ''', unsafe_allow_html=True)
         st.write(prediction_df)
 
 # Fetch Upcoming Games and Predict Scores
-st.write('---')
-st.markdown('''
+st.markdown(f'''
     <div class="data-section">
         <h2>NFL Game Predictions for Upcoming Games</h2>
         <p>Select an upcoming game to view predicted scores and the likely winner.</p>
@@ -359,8 +432,8 @@ if not upcoming_games.empty:
         st.error("Could not find abbreviation for one or both teams.")
 
 # Footer
-st.markdown('''
+st.markdown(f'''
     <div class="footer">
-        &copy; 2023 <a href="#">FoxEdge</a>. All rights reserved.
+        &copy; {datetime.now().year} <a href="#">FoxEdge</a>. All rights reserved.
     </div>
 ''', unsafe_allow_html=True)
