@@ -5,6 +5,7 @@ import plotly.graph_objects as go
 import os
 import firebase_admin
 from firebase_admin import credentials
+import datetime
 
 # Define icons directory path
 ICONS_DIR = "icons"  # Ensure this is set correctly
@@ -307,6 +308,6 @@ render_tool_cards()
 # Footer
 st.markdown(f'''
     <div class="footer">
-        &copy; {datetime.now().year} FoxEdge. All rights reserved.
+        &copy; {datetime.datetime.now().year} FoxEdge. All rights reserved.
     </div>
 ''', unsafe_allow_html=True)
