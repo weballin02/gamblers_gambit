@@ -200,7 +200,7 @@ data = load_data_func()
 
 # Function to Render Hero Section
 def render_hero_section():
-    st.markdown('''
+    st.markdown(f'''
         <div class="hero">
             <h1>FoxEdge</h1>
             <p>Your Ultimate Toolkit for Predictive Betting Insights</p>
