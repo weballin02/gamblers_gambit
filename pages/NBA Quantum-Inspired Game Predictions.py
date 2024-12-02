@@ -37,14 +37,14 @@ st.sidebar.button("🌗 Toggle Theme", on_click=toggle_theme)
 # Apply Theme Based on Dark Mode
 if st.session_state.dark_mode:
     primary_bg = "#121212"
-    primary_text = "#000000"
+    primary_text = "#FFFFFF"
     secondary_bg = "#1E1E1E"
     accent_color = "#BB86FC"
     highlight_color = "#03DAC6"
     chart_template = "plotly_dark"
 else:
     primary_bg = "#FFFFFF"
-    primary_text = "#000000"
+    primary_text = "#FFFFFF"
     secondary_bg = "#F5F5F5"
     accent_color = "#6200EE"
     highlight_color = "#03DAC6"
