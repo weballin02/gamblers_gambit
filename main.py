@@ -34,7 +34,7 @@ def toggle_dark_mode():
     st.session_state.dark_mode = not st.session_state.dark_mode
 
 # Dark Mode Toggle Button
-st.sidebar.button("🌗 Toggle Dark Mode", on_click=toggle_dark_mode)
+st.button("🌗 Toggle Dark Mode", on_click=toggle_dark_mode)
 
 # Apply Theme Based on Dark Mode
 if st.session_state.dark_mode:
