@@ -32,7 +32,7 @@ def toggle_theme():
     st.session_state.dark_mode = not st.session_state.dark_mode
 
 # Theme Toggle Button
-st.sidebar.button("🌗 Toggle Theme", on_click=toggle_theme)
+st.button("🌗 Toggle Theme", on_click=toggle_theme)
 
 # Apply Theme Based on Dark Mode
 if st.session_state.dark_mode:
@@ -44,7 +44,7 @@ if st.session_state.dark_mode:
     chart_template = "plotly_dark"
 else:
     primary_bg = "#FFFFFF"
-    primary_text = "#000000"
+    primary_text = "##FFFFFF"
     secondary_bg = "#F5F5F5"
     accent_color = "#6200EE"
     highlight_color = "#03DAC6"
@@ -350,8 +350,7 @@ if 'nba_team_stats' not in st.session_state:
     st.session_state.nba_team_stats = calculate_team_stats(game_logs)
 
 # Sidebar for controls
-with st.sidebar:
-    st.header("Simulation Controls")
+with st.header: ("Simulation Controls")
     upcoming_games = get_upcoming_games()
     
     if not upcoming_games.empty:
