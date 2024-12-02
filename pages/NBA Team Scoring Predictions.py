@@ -47,8 +47,8 @@ if st.session_state.dark_mode:
     chart_template = "plotly_dark"
 else:
     primary_bg = "#FFFFFF"
-    secondary_bg = "#F0F0F0"
-    primary_text = "#000000"
+    secondary_bg = "#1E1E1E"
+    primary_text = "#FFFFFF"
     secondary_text = "#4F4F4F"
     accent_color = "#6200EE"
     highlight_color = "#03DAC6"
