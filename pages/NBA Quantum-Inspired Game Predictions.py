@@ -48,7 +48,7 @@ else:
     secondary_bg = "#F5F5F5"
     accent_color = "#6200EE"
     highlight_color = "#03DAC6"
-    chart_template = "plotly_white"
+    chart_template = "plotly_dark"
 
 # Custom CSS for Novel Design
 st.markdown(f"""
