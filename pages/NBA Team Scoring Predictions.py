@@ -1,3 +1,5 @@
+# NBA Team Scoring Predictions
+
 # Import Libraries
 import pandas as pd
 from pmdarima import auto_arima
@@ -6,132 +8,185 @@ import joblib
 import os
 import numpy as np
 import streamlit as st
-from nba_api.stats.endpoints import teamgamelog  # Import teamgamelog
+from nba_api.stats.endpoints import teamgamelog, ScoreboardV2
 from nba_api.stats.static import teams as nba_teams
 from datetime import datetime, timedelta
 import matplotlib.dates as mdates
 import warnings
-warnings.filterwarnings('ignore')
-from nba_api.stats.endpoints import ScoreboardV2
 
-# Streamlit App Title
+warnings.filterwarnings('ignore')
+
+# Streamlit App Configuration
 st.set_page_config(
     page_title="NBA Team Scoring Predictions",
     page_icon="🏀",
-    layout="centered",
+    layout="wide",
     initial_sidebar_state="collapsed",
 )
 
+# Initialize Session State for Theme
+if 'dark_mode' not in st.session_state:
+    st.session_state.dark_mode = False
+
+# Function to Toggle Theme
+def toggle_theme():
+    st.session_state.dark_mode = not st.session_state.dark_mode
+
+# Theme Toggle Button
+st.sidebar.button("🌗 Toggle Theme", on_click=toggle_theme)
+
+# Apply Theme Based on Dark Mode
+if st.session_state.dark_mode:
+    primary_bg = "#121212"
+    secondary_bg = "#1E1E1E"
+    primary_text = "#FFFFFF"
+    secondary_text = "#B0B0B0"
+    accent_color = "#BB86FC"
+    highlight_color = "#03DAC6"
+    chart_color = "#BB86FC"
+    chart_template = "plotly_dark"
+else:
+    primary_bg = "#FFFFFF"
+    secondary_bg = "#F0F0F0"
+    primary_text = "#000000"
+    secondary_text = "#4F4F4F"
+    accent_color = "#6200EE"
+    highlight_color = "#03DAC6"
+    chart_color = "#6200EE"
+    chart_template = "plotly_white"
+
 # General Styling and High Contrast Toggle
-st.markdown("""
+st.markdown(f"""
     <style>
-        /* Shared CSS for consistent styling */
-        html, body, [class*="css"] {
-            font-family: 'Open Sans', sans-serif;
-            background: var(--background-color);
-            color: var(--text-color);
-        }
+    /* Overall Page Styling */
+    body {{
+        background-color: {primary_bg};
+        color: {primary_text};
+        font-family: 'Open Sans', sans-serif;
+    }}
 
-        :root {
-            --background-color: #2C3E50; /* Charcoal Dark Gray */
-            --primary-color: #1E90FF; /* Electric Blue */
-            --secondary-color: #FF8C00; /* Deep Orange */
-            --accent-color: #FF4500; /* Fiery Red */
-            --success-color: #32CD32; /* Lime Green */
-            --alert-color: #FFFF33; /* Neon Yellow */
-            --text-color: #FFFFFF; /* Crisp White */
-            --heading-text-color: #F5F5F5; /* Adjusted for contrast */
-        }
+    /* Hide Streamlit Branding */
+    #MainMenu {{visibility: hidden;}}
+    footer {{visibility: hidden;}}
 
-        .header-title {
-            font-family: 'Montserrat', sans-serif;
-            background: linear-gradient(120deg, var(--secondary-color), var(--primary-color));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            font-size: 3em;
-            font-weight: 800;
-        }
+    /* Header Section */
+    .header-title {{
+        font-family: 'Montserrat', sans-serif;
+        background: linear-gradient(90deg, {highlight_color}, {accent_color});
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        font-size: 3em;
+        font-weight: 800;
+        text-align: center;
+        margin-bottom: 0.5em;
+    }}
 
-        .gradient-bar {
-            height: 10px;
-            background: linear-gradient(90deg, var(--success-color), var(--accent-color));
-            border-radius: 5px;
-        }
+    .subheader-text {{
+        color: {secondary_text};
+        font-size: 1.2em;
+        text-align: center;
+        margin-bottom: 1.5em;
+    }}
 
-        div.stButton > button {
-            background: linear-gradient(90deg, var(--secondary-color), var(--primary-color));
-            color: var(--text-color);
-            border: none;
-            padding: 1em 2em;
-            border-radius: 8px;
-            font-size: 1.1em;
-            font-weight: 700;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
+    /* Gradient Bar */
+    .gradient-bar {{
+        height: 10px;
+        background: linear-gradient(90deg, {highlight_color}, {accent_color});
+        border-radius: 5px;
+    }}
 
-        div.stButton > button:hover {
-            background-color: var(--accent-color); /* Fiery Red */
-            transform: scale(1.05);
-        }
+    /* Button Styling */
+    div.stButton > button {{
+        background: linear-gradient(90deg, {highlight_color}, {accent_color});
+        color: {primary_text};
+        border: none;
+        padding: 0.8em 1.5em;
+        border-radius: 30px;
+        font-size: 1em;
+        cursor: pointer;
+        transition: transform 0.3s ease, background 0.3s ease;
+    }}
+
+    div.stButton > button:hover {{
+        transform: translateY(-5px);
+        background: linear-gradient(90deg, {accent_color}, {highlight_color});
+    }}
+
+    /* High Contrast Toggle */
+    .high-contrast {{
+        background-color: #000000;
+        color: #FFFFFF;
+    }}
+
+    /* Data Section Styling */
+    .data-section {{
+        padding: 2em 1em;
+        background-color: {secondary_bg};
+        border-radius: 15px;
+        margin: 2em 0;
+    }}
+
+    .data-section h2 {{
+        font-size: 2em;
+        margin-bottom: 0.5em;
+        color: {accent_color};
+    }}
+
+    .data-section p {{
+        font-size: 1em;
+        color: {secondary_text};
+        margin-bottom: 1em;
+    }}
+
+    /* Plotly Chart Styling */
+    .plotly-graph-div {{
+        background-color: {secondary_bg} !important;
+    }}
+
+    /* Footer Styling */
+    .footer {{
+        text-align: center;
+        padding: 2em 1em;
+        color: {secondary_text};
+        font-size: 0.9em;
+    }}
+
+    .footer a {{
+        color: {accent_color};
+        text-decoration: none;
+    }}
+
+    /* Responsive Design */
+    @media (max-width: 768px) {{
+        .header-title {{
+            font-size: 2em;
+        }}
+
+        .subheader-text {{
+            font-size: 1em;
+        }}
+
+        .data-section {{
+            padding: 1em 0.5em;
+        }}
+    }}
     </style>
 """, unsafe_allow_html=True)
 
-# High Contrast Toggle
-if st.button("Toggle High Contrast Mode"):
-    st.markdown("""
-        <style>
-            body {
-                background: #000;
-                color: #FFF;
-            }
-
-            .gradient-bar {
-                background: linear-gradient(90deg, #0F0, #F00);
-            }
-
-            div.stButton > button {
-                background: #FFF;
-                color: #000;
-            }
-        </style>
-    """, unsafe_allow_html=True)
-
 # Header Section
-st.markdown('''
-    <div style="text-align: center; margin-bottom: 1.5em;">
+st.markdown(f'''
+    <div>
         <h1 class="header-title">NBA Team Scoring Predictions</h1>
-        <p style="color: #9CA3AF; font-size: 1.2em;">
-            Explore team scoring trends and forecasts for smarter decisions.
-        </p>
+        <p class="subheader-text">Explore team scoring trends and forecasts for smarter decisions.</p>
     </div>
 ''', unsafe_allow_html=True)
 
-# Data Visualizations
-st.markdown('''
-    <h2>Scoring Predictions</h2>
-    <div class="gradient-bar"></div>
-    <p style="color: var(--primary-color); font-weight: 700;">Atlanta Hawks Projected Score: 112.5</p>
-''', unsafe_allow_html=True)
-
-# Functionality
-st.write("Analyze scoring trends.")
-
 # Fetch NBA team abbreviations and IDs
 nba_team_list = nba_teams.get_teams()
-team_abbreviations = [team['abbreviation'] for team in nba_team_list]  # List of all team abbreviations
+team_abbreviations = [team['abbreviation'] for team in nba_team_list]
 
 # Define Team Name Mapping Globally
-team_name_mapping = {
-    'ATL': 'Atlanta Hawks', 'BOS': 'Boston Celtics', 'BKN': 'Brooklyn Nets', 'CHA': 'Charlotte Hornets',
-    'CHI': 'Chicago Bulls', 'CLE': 'Cleveland Cavaliers', 'DAL': 'Dallas Mavericks', 'DEN': 'Denver Nuggets',
-    'DET': 'Detroit Pistons', 'GSW': 'Golden State Warriors', 'HOU': 'Houston Rockets', 'IND': 'Indiana Pacers',
-    'LAC': 'LA Clippers', 'LAL': 'Los Angeles Lakers', 'MEM': 'Memphis Grizzlies', 'MIA': 'Miami Heat',
-    'MIL': 'Milwaukee Bucks', 'MIN': 'Minnesota Timberwolves', 'NOP': 'New Orleans Pelicans', 'NYK': 'New York Knicks',
-    'OKC': 'Oklahoma City Thunder', 'ORL': 'Orlando Magic', 'PHI': 'Philadelphia 76ers', 'PHX': 'Phoenix Suns',
-    'POR': 'Portland Trail Blazers', 'SAC': 'Sacramento Kings', 'SAS': 'San Antonio Spurs', 'TOR': 'Toronto Raptors',
-    'UTA': 'Utah Jazz', 'WAS': 'Washington Wizards'
-}
+team_name_mapping = {team['abbreviation']: team['full_name'] for team in nba_team_list}
 inverse_team_name_mapping = {v: k for k, v in team_name_mapping.items()}
 
 # Fetch and Preprocess Data from NBA API
@@ -151,7 +206,7 @@ def fetch_and_preprocess_data(season):
 
             # Filter and rename columns to match our target structure
             team_logs = team_logs[['Game_ID', 'GAME_DATE', 'PTS']]
-            team_logs['TEAM_ABBREV'] = team_abbrev
+            team_logs['TEAM_ABBREVIATION'] = team_abbrev
             all_data.append(team_logs)
         
         except Exception as e:
@@ -163,17 +218,9 @@ def fetch_and_preprocess_data(season):
     data['GAME_DATE'] = pd.to_datetime(data['GAME_DATE'])
     return data
 
-# Apply Team Name Mapping
-def apply_team_name_mapping(data):
-    data['team_abbrev'] = data['team']
-    data['team'] = data['team'].map(team_name_mapping)
-    data.dropna(subset=['team'], inplace=True)
-    return data
-
-
 # Aggregate Points by Team and Date
 def aggregate_points_by_team(data):
-    team_data = data.groupby(['GAME_DATE', 'TEAM_ABBREV'])['PTS'].sum().reset_index()
+    team_data = data.groupby(['GAME_DATE', 'TEAM_ABBREVIATION'])['PTS'].sum().reset_index()
     team_data.set_index('GAME_DATE', inplace=True)
     return team_data
 
@@ -184,12 +231,12 @@ def train_arima_models(team_data):
     os.makedirs(model_dir, exist_ok=True)
 
     team_models = {}
-    teams_list = team_data['TEAM_ABBREV'].unique()
+    teams_list = team_data['TEAM_ABBREVIATION'].unique()
 
     for team_abbrev in teams_list:
         model_filename = f'{team_abbrev}_arima_model.pkl'
         model_path = os.path.join(model_dir, model_filename)
-        team_points = team_data[team_data['TEAM_ABBREV'] == team_abbrev]['PTS']
+        team_points = team_data[team_data['TEAM_ABBREVIATION'] == team_abbrev]['PTS']
         team_points.reset_index(drop=True, inplace=True)
 
         # Train a new ARIMA model
@@ -239,7 +286,7 @@ def compute_team_forecasts(_team_models, team_data):
     forecast_periods = 5
 
     for team_abbrev, model in _team_models.items():
-        team_points = team_data[team_data['TEAM_ABBREV'] == team_abbrev]['PTS']
+        team_points = team_data[team_data['TEAM_ABBREVIATION'] == team_abbrev]['PTS']
         if team_points.empty:
             continue
         last_date = team_points.index.max()
@@ -256,47 +303,48 @@ def compute_team_forecasts(_team_models, team_data):
 all_forecasts = compute_team_forecasts(team_models, team_data)
 
 # Streamlit App for Team Points Prediction
-st.title('NBA Team Points Prediction')
+st.markdown('<div class="data-section"><h2>Select a Team for Prediction</h2></div>', unsafe_allow_html=True)
 
 # Dropdown menu for selecting a team
-teams_list = sorted(team_data['TEAM_ABBREV'].unique())
+teams_list = sorted(team_data['TEAM_ABBREVIATION'].unique())
 team_abbrev = st.selectbox('Select a team for prediction:', teams_list)
 
 if team_abbrev:
-    team_full_name = [team['full_name'] for team in nba_team_list if team['abbreviation'] == team_abbrev][0]
-    team_points = team_data[team_data['TEAM_ABBREV'] == team_abbrev]['PTS']
+    team_full_name = team_name_mapping.get(team_abbrev, "Unknown Team")
+    team_points = team_data[team_data['TEAM_ABBREVIATION'] == team_abbrev]['PTS']
     team_points.index = pd.to_datetime(team_points.index)
 
-    st.write(f'### Historical Points for {team_full_name}')
+    st.markdown(f'<div class="data-section"><h2>Historical Points for {team_full_name}</h2></div>', unsafe_allow_html=True)
     st.line_chart(team_points)
 
     team_forecast = all_forecasts[all_forecasts['Team'] == team_abbrev]
-    st.write(f'### Predicted Points for Next 5 Games ({team_full_name})')
+    st.markdown(f'<div class="data-section"><h2>Predicted Points for Next 5 Games ({team_full_name})</h2></div>', unsafe_allow_html=True)
     st.write(team_forecast[['Date', 'Predicted_PTS']])
 
-    st.write(f'### Points Prediction for {team_full_name}')
+    st.markdown(f'<div class="data-section"><h2>Points Prediction for {team_full_name}</h2></div>', unsafe_allow_html=True)
     fig, ax = plt.subplots(figsize=(10, 6))
     forecast_dates = mdates.date2num(team_forecast['Date'])
     historical_dates = mdates.date2num(team_points.index)
 
-    ax.plot(historical_dates, team_points.values, label=f'Historical Points for {team_full_name}', color='blue')
-    ax.plot(forecast_dates, team_forecast['Predicted_PTS'], label='Predicted Points', color='red')
+    ax.plot(historical_dates, team_points.values, label=f'Historical Points for {team_full_name}', color=chart_color)
+    ax.plot(forecast_dates, team_forecast['Predicted_PTS'], label='Predicted Points', color=highlight_color)
     lower_bound = team_forecast['Predicted_PTS'] - 5
     upper_bound = team_forecast['Predicted_PTS'] + 5
     finite_indices = np.isfinite(forecast_dates) & np.isfinite(lower_bound) & np.isfinite(upper_bound)
     ax.fill_between(forecast_dates[finite_indices], lower_bound.values[finite_indices], upper_bound.values[finite_indices], color='gray', alpha=0.2, label='Confidence Interval')
     ax.xaxis_date()
     fig.autofmt_xdate()
-    ax.set_title(f'Points Prediction for {team_full_name}')
-    ax.set_xlabel('Date')
-    ax.set_ylabel('Points')
+    ax.set_title(f'Points Prediction for {team_full_name}', color=primary_text)
+    ax.set_xlabel('Date', color=primary_text)
+    ax.set_ylabel('Points', color=primary_text)
     ax.legend()
     ax.grid(True)
+    ax.set_facecolor(secondary_bg)
+    fig.patch.set_facecolor(primary_bg)
     st.pyplot(fig)
 
-# New functionality: Fetch upcoming games using nba_api and get predictions
-st.write('---')
-st.header('NBA Game Predictions for Today')
+# Fetch upcoming games using nba_api and get predictions
+st.markdown('<div class="data-section"><h2>NBA Game Predictions for Today</h2></div>', unsafe_allow_html=True)
 
 # Fetch upcoming games
 @st.cache_data(ttl=3600)
@@ -309,22 +357,21 @@ def fetch_nba_games():
 games = fetch_nba_games()
 
 # Map team IDs to abbreviations
-nba_team_list = nba_teams.get_teams()
 nba_team_dict = {int(team['id']): team['abbreviation'] for team in nba_team_list}
 
 # Map team IDs to your dataset's abbreviations
-games['HOME_TEAM_ABBREV'] = games['HOME_TEAM_ID'].map(nba_team_dict)
-games['VISITOR_TEAM_ABBREV'] = games['VISITOR_TEAM_ID'].map(nba_team_dict)
+games['HOME_TEAM_ABBREVIATION'] = games['HOME_TEAM_ID'].map(nba_team_dict)
+games['VISITOR_TEAM_ABBREVIATION'] = games['VISITOR_TEAM_ID'].map(nba_team_dict)
 
 # Filter out any games where teams could not be mapped
-games = games.dropna(subset=['HOME_TEAM_ABBREV', 'VISITOR_TEAM_ABBREV'])
+games = games.dropna(subset=['HOME_TEAM_ABBREVIATION', 'VISITOR_TEAM_ABBREVIATION'])
 
 # Process game data
 game_list = []
 for index, row in games.iterrows():
     game_id = row['GAME_ID']
-    home_team_abbrev = row['HOME_TEAM_ABBREV']
-    away_team_abbrev = row['VISITOR_TEAM_ABBREV']
+    home_team_abbrev = row['HOME_TEAM_ABBREVIATION']
+    away_team_abbrev = row['VISITOR_TEAM_ABBREVIATION']
     home_team_full = team_name_mapping.get(home_team_abbrev)
     away_team_full = team_name_mapping.get(away_team_abbrev)
 
@@ -343,6 +390,7 @@ games_df = pd.DataFrame(game_list)
 
 # Check if there are games today
 if not games_df.empty:
+    st.markdown('<div class="data-section"><h2>Select a Game for Prediction</h2></div>', unsafe_allow_html=True)
     game_selection = st.selectbox('Select a game to get predictions:', games_df['Game Label'])
 
     # Get selected game details
@@ -372,17 +420,28 @@ if not games_df.empty:
         else:
             away_team_forecast = away_team_forecast[0]
 
-        st.write(f"### Predicted Points")
-        st.write(f"**{home_team_full} ({home_team_abbrev}):** {home_team_forecast:.2f}")
-        st.write(f"**{away_team_full} ({away_team_abbrev}):** {away_team_forecast:.2f}")
+        st.markdown(f'''
+            <div class="data-section">
+                <h2>Predicted Points</h2>
+                <p><strong>{home_team_full} ({home_team_abbrev}):</strong> {home_team_forecast:.2f}</p>
+                <p><strong>{away_team_full} ({away_team_abbrev}):</strong> {away_team_forecast:.2f}</p>
+        ''', unsafe_allow_html=True)
 
         if home_team_forecast > away_team_forecast:
-            st.success(f"**Predicted Winner:** {home_team_full}")
+            st.markdown(f'<p style="color: {highlight_color}; font-weight: bold;">Predicted Winner: {home_team_full}</p>', unsafe_allow_html=True)
         elif away_team_forecast > home_team_forecast:
-            st.success(f"**Predicted Winner:** {away_team_full}")
+            st.markdown(f'<p style="color: {highlight_color}; font-weight: bold;">Predicted Winner: {away_team_full}</p>', unsafe_allow_html=True)
         else:
-            st.info("**Predicted Outcome:** Tie")
+            st.markdown('<p style="font-weight: bold;">Predicted Outcome: Tie</p>', unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
     else:
         st.error("Prediction models for one or both teams are not available.")
 else:
     st.write("No games scheduled for today.")
+
+# Footer
+st.markdown(f'''
+    <div class="footer">
+        &copy; {datetime.now().year} NBA Team Scoring Predictions. All rights reserved.
+    </div>
+''', unsafe_allow_html=True)
