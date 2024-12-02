@@ -349,14 +349,14 @@ if 'nba_team_stats' not in st.session_state:
     game_logs = load_nba_game_logs(season=current_season)
     st.session_state.nba_team_stats = calculate_team_stats(game_logs)
 
-# Main Page for Simulation Controls
+# Main Page: Simulation Controls
 st.subheader("🏀 Simulation Controls")
 
 # Load upcoming games
 upcoming_games = get_upcoming_games()
 
 if not upcoming_games.empty:
-    # Select game
+    # Controls for game selection
     st.write("### Select a Game")
     game_options = [
         f"{row['Game Label']} on {row['Game ID']}"
@@ -364,12 +364,12 @@ if not upcoming_games.empty:
     ]
     selected_game = st.selectbox("Select Game", game_options)
 
-    # Get selected game details
+    # Extract selected game details
     selected_game_row = upcoming_games[upcoming_games['Game ID'] == selected_game.split(' on ')[1]].iloc[0]
     home_team = selected_game_row['Home Team Full']
     away_team = selected_game_row['Away Team Full']
 
-    # Spread adjustment slider
+    # Spread adjustment
     st.write("### Adjust Spread")
     spread_adjustment = st.slider(
         "Home Team Spread Adjustment",
@@ -383,7 +383,7 @@ if not upcoming_games.empty:
         [1000, 10000, 100000]
     )
 
-    # Simulation buttons
+    # Buttons for running simulations
     st.write("### Run Simulations")
     col1, col2 = st.columns(2)
     with col1:
@@ -391,9 +391,9 @@ if not upcoming_games.empty:
     with col2:
         predict_all = st.button("Predict All Upcoming Games")
 else:
-    st.info("No upcoming games are available for simulation.")
+    st.info("No upcoming games available for simulation.")
 
-# Refresh data button
+# Refresh data functionality
 st.write("### Data Refresh")
 if st.button("Refresh Data & Predict"):
     with st.spinner("Refreshing data and updating models..."):
@@ -439,6 +439,7 @@ if predict_all:
     for game in all_results:
         with st.expander(f"{game['home_team_full']} vs {game['away_team_full']}"):
             display_results(game['results'], game['home_team_full'], game['away_team_full'])
+
 
 
 # Footer
