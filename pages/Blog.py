@@ -483,13 +483,16 @@ def create_blog_post():
     st.header("📝 Create a New Blog Post")
     post_type = st.selectbox("Select Post Type", ["Manual Entry", "Upload PDF/HTML"])
 
+    # Initialize title and content
+    title = ""
+    content = ""
+
     if post_type == "Manual Entry":
         title = st.text_input("🖊️ Post Title")
         content = st.text_area("📝 Content", height=300)
     elif post_type == "Upload PDF/HTML":
         uploaded_file = st.file_uploader("📂 Upload PDF or HTML File", type=["pdf", "html"])
         title = st.text_input("🖊️ Post Title (Optional)", placeholder="Enter the title of your post (optional)")
-        content = None  # Will be populated after processing the file
 
         if uploaded_file:
             if uploaded_file.type == "application/pdf":
@@ -498,56 +501,60 @@ def create_blog_post():
                 content = process_html(uploaded_file)
             else:
                 st.error("❌ Unsupported file type.")
-
+    
     image = st.file_uploader("🖼️ Upload Thumbnail Image", type=["png", "jpg", "jpeg"])
     scheduled_date = st.date_input("📅 Schedule Date", value=datetime.date.today())
     scheduled_time = st.time_input("⏰ Schedule Time", value=datetime.time(9, 0))
     scheduled_datetime = datetime.datetime.combine(scheduled_date, scheduled_time)
 
     # Convert to user's local timezone (Pacific Time)
-    local_tz = pytz.timezone("America/Los_Angeles")  # Change this to the user's local timezone
+    local_tz = pytz.timezone("America/Los_Angeles")
     scheduled_datetime = local_tz.localize(scheduled_datetime)
 
     if st.button("📤 Publish"):
-        if post_type == "Manual Entry" and (not title or not content):
-            st.warning("⚠️ Please provide both a title and content for the post.")
+        if not title:
+            st.warning("⚠️ Please provide a title for the post.")
             return
-        elif post_type == "Upload PDF/HTML" and not uploaded_file:
-            st.warning("⚠️ Please upload a PDF or HTML file to create a post.")
+        if not content:
+            st.warning("⚠️ Please provide content for the post.")
             return
 
-        # Set title from file name if not provided
-        if not title and post_type == "Upload PDF/HTML":
-            title = uploaded_file.name.rsplit('.', 1)[0].replace('_', ' ').title()
-
+        # Generate filename and save path
         filename = f"{title.replace(' ', '_').lower()}.md"
         filepath = POSTS_DIR / filename
         metadata_path = filepath.with_suffix('.json')
 
+        # Check for duplicate titles
         if filepath.exists():
             st.error("❌ A post with this title already exists. Please choose a different title.")
             return
 
         # Save the markdown file
-        with open(filepath, 'w', encoding='utf-8') as file:
-            file.write(content)
+        try:
+            with open(filepath, 'w', encoding='utf-8') as file:
+                file.write(content)
 
-        # Save scheduling metadata
-        with open(metadata_path, 'w', encoding='utf-8') as file:
-            json.dump({"scheduled_time": scheduled_datetime.isoformat()}, file)
+            # Save scheduling metadata
+            with open(metadata_path, 'w', encoding='utf-8') as file:
+                json.dump({"scheduled_time": scheduled_datetime.isoformat()}, file)
 
-        # Save the uploaded image if provided
-        if image:
-            try:
-                img = Image.open(image)
-                img.save(IMAGES_DIR / f"{filepath.stem}.png", format="PNG")
-                st.markdown(f'<div class="success-message">✅ Published post with image: **{title}** scheduled for {scheduled_datetime}</div>', unsafe_allow_html=True)
-            except Exception as e:
-                st.error(f"❌ Failed to save image: {e}")
-        else:
-            st.markdown(f'<div class="success-message">✅ Published post: **{title}** (No image uploaded) scheduled for {scheduled_datetime}</div>', unsafe_allow_html=True)
+            # Save the uploaded image if provided
+            if image:
+                try:
+                    img = Image.open(image)
+                    img.save(IMAGES_DIR / f"{filepath.stem}.png", format="PNG")
+                except Exception as e:
+                    st.error(f"❌ Failed to save image: {e}")
+            
+            st.markdown(
+                f'<div class="success-message">✅ Published post: **{title}** scheduled for {scheduled_datetime}</div>',
+                unsafe_allow_html=True
+            )
+            st.rerun()
 
-        st.rerun()
+        except Exception as e:
+            st.error(f"❌ Failed to save post: {e}")
+
 
 def edit_scheduled_post():
     if not st.session_state.logged_in:
