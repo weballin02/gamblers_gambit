@@ -285,6 +285,7 @@ def render_tool_cards():
         {"name": "NBA Team Scoring Predictions", "description": "Predict NBA team scoring outcomes.", "url": "https://foxedge.streamlit.app/NBA_Team_Scoring_Predictions", "icon": "📈"},
         {"name": "NBA Quantum Simulations", "description": "Quantum-inspired simulations for NBA games.", "url": "https://foxedge.streamlit.app/NBA_Quantum-Inspired_Game_Predictions", "icon": "🔮"},
         {"name": "NFL Quantum Simulations", "description": "Quantum-inspired simulations for NFL games.", "url": "https://foxedge.streamlit.app/NFL_Quantum-Inspired_Game_Predictions", "icon": "🔮"},
+        {"name": "NFL Brain", "description": "Neural Network for NFL games.", "url": "https://foxedge.streamlit.app/NFL_Brain", "icon": "🧠"},
         {"name": "Gambler's Gambit", "description": "Read articles and insights.", "url": "https://foxedge.streamlit.app/Blog", "icon": "📝"}
     ]
     
