@@ -349,36 +349,52 @@ if 'nba_team_stats' not in st.session_state:
     game_logs = load_nba_game_logs(season=current_season)
     st.session_state.nba_team_stats = calculate_team_stats(game_logs)
 
-# Sidebar for controls
-with st.sidebar:
-    st.header("Simulation Controls")
-    upcoming_games = get_upcoming_games()
-    
-    if not upcoming_games.empty:
-        game_options = [
-            f"{row['Game Label']} on {row['Game ID']}"
-            for _, row in upcoming_games.iterrows()
-        ]
-        selected_game = st.selectbox("Select Game", game_options)
-        
-        selected_game_row = upcoming_games[upcoming_games['Game ID'] == selected_game.split(' on ')[1]].iloc[0]
-        home_team = selected_game_row['Home Team Full']
-        away_team = selected_game_row['Away Team Full']
-        
-        spread_adjustment = st.slider(
-            "Home Team Spread Adjustment",
-            -10.0, 10.0, 0.0, step=0.5
-        )
-        
-        num_simulations = st.selectbox(
-            "Number of Simulations",
-            [1000, 10000, 100000]
-        )
-        
-        run_simulation = st.button("Run Simulation")
-        predict_all = st.button("Predict All Upcoming Games")
+# Main Page for Simulation Controls
+st.subheader("🏀 Simulation Controls")
 
-# Button to refresh data, update models, and predict
+# Load upcoming games
+upcoming_games = get_upcoming_games()
+
+if not upcoming_games.empty:
+    # Select game
+    st.write("### Select a Game")
+    game_options = [
+        f"{row['Game Label']} on {row['Game ID']}"
+        for _, row in upcoming_games.iterrows()
+    ]
+    selected_game = st.selectbox("Select Game", game_options)
+
+    # Get selected game details
+    selected_game_row = upcoming_games[upcoming_games['Game ID'] == selected_game.split(' on ')[1]].iloc[0]
+    home_team = selected_game_row['Home Team Full']
+    away_team = selected_game_row['Away Team Full']
+
+    # Spread adjustment slider
+    st.write("### Adjust Spread")
+    spread_adjustment = st.slider(
+        "Home Team Spread Adjustment",
+        -10.0, 10.0, 0.0, step=0.5
+    )
+
+    # Number of simulations
+    st.write("### Number of Simulations")
+    num_simulations = st.selectbox(
+        "Select Number of Simulations",
+        [1000, 10000, 100000]
+    )
+
+    # Simulation buttons
+    st.write("### Run Simulations")
+    col1, col2 = st.columns(2)
+    with col1:
+        run_simulation = st.button("Run Simulation")
+    with col2:
+        predict_all = st.button("Predict All Upcoming Games")
+else:
+    st.info("No upcoming games are available for simulation.")
+
+# Refresh data button
+st.write("### Data Refresh")
 if st.button("Refresh Data & Predict"):
     with st.spinner("Refreshing data and updating models..."):
         current_season = "2024-25"
@@ -386,6 +402,7 @@ if st.button("Refresh Data & Predict"):
         st.session_state.nba_team_stats = calculate_team_stats(game_logs)
         st.success("Data refreshed and models updated.")
 
+# Simulation logic remains unchanged
 if run_simulation:
     with st.spinner("Running simulation..."):
         results = quantum_monte_carlo_simulation(
@@ -422,6 +439,7 @@ if predict_all:
     for game in all_results:
         with st.expander(f"{game['home_team_full']} vs {game['away_team_full']}"):
             display_results(game['results'], game['home_team_full'], game['away_team_full'])
+
 
 # Footer
 st.markdown(f'''
