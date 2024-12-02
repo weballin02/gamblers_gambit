@@ -24,7 +24,7 @@ st.set_page_config(
 )
 
 # Sidebar Injury Toggle
-include_injuries = st.sidebar.checkbox("Include Injury Impact")
+include_injuries = st.checkbox("Include Injury Impact")
 
 
 # Utility Functions
