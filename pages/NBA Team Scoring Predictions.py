@@ -49,7 +49,7 @@ else:
     primary_bg = "#FFFFFF"
     secondary_bg = "#1E1E1E"
     primary_text = "#FFFFFF"
-    secondary_text = "#4F4F4F"
+    secondary_text = "#B0B0B0"
     accent_color = "#6200EE"
     highlight_color = "#03DAC6"
     chart_color = "#6200EE"
