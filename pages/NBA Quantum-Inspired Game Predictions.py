@@ -37,7 +37,7 @@ st.sidebar.button("🌗 Toggle Theme", on_click=toggle_theme)
 # Apply Theme Based on Dark Mode
 if st.session_state.dark_mode:
     primary_bg = "#121212"
-    primary_text = "#FFFFFF"
+    primary_text = "#000000"
     secondary_bg = "#1E1E1E"
     accent_color = "#BB86FC"
     highlight_color = "#03DAC6"
