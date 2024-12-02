@@ -1,3 +1,5 @@
+# NBA Quantum Predictions
+
 # Import Libraries
 import streamlit as st
 import pandas as pd
@@ -13,83 +15,148 @@ import warnings
 # Suppress warnings for cleaner output
 warnings.filterwarnings('ignore')
 
+# Set page configuration
 st.set_page_config(
     page_title="NBA Quantum Predictions",
     page_icon="🔮",
-    layout="centered",
+    layout="wide",
     initial_sidebar_state="collapsed",
 )
 
-st.markdown("""
+# Initialize Session State for Theme
+if 'dark_mode' not in st.session_state:
+    st.session_state.dark_mode = False
+
+# Function to Toggle Theme
+def toggle_theme():
+    st.session_state.dark_mode = not st.session_state.dark_mode
+
+# Theme Toggle Button
+st.button("🌗 Toggle Theme", on_click=toggle_theme)
+
+# Apply Theme Based on Dark Mode
+if st.session_state.dark_mode:
+    primary_bg = "#121212"
+    primary_text = "#FFFFFF"
+    secondary_bg = "#1E1E1E"
+    accent_color = "#BB86FC"
+    highlight_color = "#03DAC6"
+    chart_template = "plotly_dark"
+else:
+    primary_bg = "#FFFFFF"
+    primary_text = "#000000"
+    secondary_bg = "#F5F5F5"
+    accent_color = "#6200EE"
+    highlight_color = "#03DAC6"
+    chart_template = "plotly_white"
+
+# Custom CSS for Novel Design
+st.markdown(f"""
     <style>
-        /* Shared CSS for consistent styling */
-        html, body, [class*="css"] {
-            font-family: 'Open Sans', sans-serif;
-            background: var(--background-color);
-            color: var(--text-color);
-        }
+    /* Shared CSS for consistent styling */
+    body {{
+        background-color: {primary_bg};
+        color: {primary_text};
+        font-family: 'Open Sans', sans-serif;
+    }}
 
-        :root {
-            --background-color: #2C3E50; /* Charcoal Dark Gray */
-            --primary-color: #1E90FF; /* Electric Blue */
-            --secondary-color: #FF8C00; /* Deep Orange */
-            --accent-color: #FF4500; /* Fiery Red */
-            --success-color: #32CD32; /* Lime Green */
-            --alert-color: #FFFF33; /* Neon Yellow */
-            --text-color: #FFFFFF; /* Crisp White */
-            --heading-text-color: #F5F5F5; /* Adjusted for contrast */
-        }
+    /* Hide Streamlit branding */
+    #MainMenu {{visibility: hidden;}}
+    footer {{visibility: hidden;}}
 
-        .header-title {
-            font-family: 'Montserrat', sans-serif;
-            background: linear-gradient(120deg, var(--secondary-color), var(--primary-color));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            font-size: 3em;
-            font-weight: 800;
-        }
+    .header-title {{
+        font-family: 'Montserrat', sans-serif;
+        background: linear-gradient(120deg, {highlight_color}, {accent_color});
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        font-size: 3em;
+        font-weight: 800;
+    }}
 
-        .gradient-bar {
-            height: 10px;
-            background: linear-gradient(90deg, var(--success-color), var(--accent-color));
-            border-radius: 5px;
-        }
+    .gradient-bar {{
+        height: 10px;
+        background: linear-gradient(90deg, {highlight_color}, {accent_color});
+        border-radius: 5px;
+    }}
 
-        div.stButton > button {
-            background: linear-gradient(90deg, var(--secondary-color), var(--primary-color));
-            color: var(--text-color);
-            border: none;
-            padding: 1em 2em;
-            border-radius: 8px;
-            font-size: 1.1em;
-            font-weight: 700;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
+    div.stButton > button {{
+        background: linear-gradient(90deg, {highlight_color}, {accent_color});
+        color: {primary_text};
+        border: none;
+        padding: 1em 2em;
+        border-radius: 8px;
+        font-size: 1.1em;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }}
 
-        div.stButton > button:hover {
-            background-color: var(--accent-color); /* Fiery Red */
-            transform: scale(1.05);
-        }
+    div.stButton > button:hover {{
+        background-color: {accent_color};
+        transform: scale(1.05);
+    }}
+
+    /* Prediction Section */
+    .prediction-card {{
+        background-color: {secondary_bg};
+        padding: 2em;
+        border-radius: 15px;
+        margin-bottom: 2em;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }}
+    .prediction-card:hover {{
+        transform: translateY(-10px);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    }}
+    .prediction-card h2 {{
+        font-size: 2em;
+        margin-bottom: 0.5em;
+    }}
+    .prediction-card p {{
+        font-size: 1.2em;
+        margin-bottom: 0.5em;
+    }}
+
+    /* Footer */
+    .footer {{
+        text-align: center;
+        padding: 2em 1em;
+        color: {primary_text};
+        opacity: 0.6;
+        font-size: 0.9em;
+    }}
+    .footer a {{
+        color: {accent_color};
+        text-decoration: none;
+    }}
     </style>
 """, unsafe_allow_html=True)
 
 # Header Section
-st.markdown('''
+st.markdown(f'''
     <div style="text-align: center; margin-bottom: 1.5em;">
         <h1 class="header-title">NBA Quantum Predictions</h1>
-        <p style="color: #9CA3AF; font-size: 1.2em;">
+        <p style="color: {primary_text}; opacity: 0.7; font-size: 1.2em;">
             Leverage quantum-inspired simulations for smarter decisions.
         </p>
     </div>
 ''', unsafe_allow_html=True)
 
 # Trust Indicators
-st.markdown('''
-    <div class="trust-badges">
-        <div class="trust-badge"><span style="color: var(--primary-color);">🔮</span> Quantum Algorithms</div>
-        <div class="trust-badge"><span style="color: var(--primary-color);">📊</span> Predictive Analytics</div>
-        <div class="trust-badge"><span style="color: var(--primary-color);">🎯</span> Proven Results</div>
+st.markdown(f'''
+    <div style="display: flex; justify-content: center; gap: 2em; margin-bottom: 2em;">
+        <div style="text-align: center;">
+            <span style="font-size: 2em; color: {highlight_color};">🔮</span>
+            <p style="margin-top: 0.5em;">Quantum Algorithms</p>
+        </div>
+        <div style="text-align: center;">
+            <span style="font-size: 2em; color: {highlight_color};">📊</span>
+            <p style="margin-top: 0.5em;">Predictive Analytics</p>
+        </div>
+        <div style="text-align: center;">
+            <span style="font-size: 2em; color: {highlight_color};">🎯</span>
+            <p style="margin-top: 0.5em;">Proven Results</p>
+        </div>
     </div>
 ''', unsafe_allow_html=True)
 
@@ -98,18 +165,7 @@ st.write("Select a game to view quantum-inspired predictions.")
 
 # Team Name Mapping - Corrected and Cleaned
 def find_team_full_name(abbrev):
-    team_name_mapping = {
-        'ATL': 'Atlanta Hawks', 'BOS': 'Boston Celtics', 'BKN': 'Brooklyn Nets',
-        'CHA': 'Charlotte Hornets', 'CHI': 'Chicago Bulls', 'CLE': 'Cleveland Cavaliers',
-        'DAL': 'Dallas Mavericks', 'DEN': 'Denver Nuggets', 'DET': 'Detroit Pistons',
-        'GSW': 'Golden State Warriors', 'HOU': 'Houston Rockets', 'IND': 'Indiana Pacers',
-        'LAC': 'LA Clippers', 'LAL': 'Los Angeles Lakers', 'MEM': 'Memphis Grizzlies',
-        'MIA': 'Miami Heat', 'MIL': 'Milwaukee Bucks', 'MIN': 'Minnesota Timberwolves',
-        'NOP': 'New Orleans Pelicans', 'NYK': 'New York Knicks', 'OKC': 'Oklahoma City Thunder',
-        'ORL': 'Orlando Magic', 'PHI': 'Philadelphia 76ers', 'PHX': 'Phoenix Suns',
-        'POR': 'Portland Trail Blazers', 'SAC': 'Sacramento Kings', 'SAS': 'San Antonio Spurs',
-        'TOR': 'Toronto Raptors', 'UTA': 'Utah Jazz', 'WAS': 'Washington Wizards'
-    }
+    team_name_mapping = {team['abbreviation']: team['full_name'] for team in nba_teams.get_teams()}
     return team_name_mapping.get(abbrev, abbrev)
 
 # Fetch team list and create abbreviation mappings
@@ -262,15 +318,15 @@ def quantum_monte_carlo_simulation(home_team_abbrev, away_team_abbrev, home_team
 
 def display_results(results, home_team_full, away_team_full):
     if results:
-        col1, col2 = st.columns(2)
-        with col1:
-            st.metric(f"{home_team_full} Win Probability", f"{results[f'{home_team_full} Win Percentage']:.2f}%")
-        with col2:
-            st.metric(f"{away_team_full} Win Probability", f"{results[f'{away_team_full} Win Percentage']:.2f}%")
-        
-        st.subheader("Detailed Predictions")
-        metrics = {k: round(v, 2) if isinstance(v, (float, int)) else v for k, v in results.items()}
-        st.json(metrics)
+        st.markdown(f'''
+            <div class="prediction-card">
+                <h2>Simulation Results</h2>
+                <p><strong>{home_team_full} Win Probability:</strong> {results[f"{home_team_full} Win Percentage"]}%</p>
+                <p><strong>{away_team_full} Win Probability:</strong> {results[f"{away_team_full} Win Percentage"]}%</p>
+                <p><strong>Average Total Score:</strong> {results["Average Total Score"]}</p>
+                <p><strong>Score Differential:</strong> {results[f"Score Differential ({home_team_full} - {away_team_full})"]}</p>
+            </div>
+        ''', unsafe_allow_html=True)
 
 def create_summary_table(all_results):
     summary_data = []
@@ -294,46 +350,32 @@ if 'nba_team_stats' not in st.session_state:
     st.session_state.nba_team_stats = calculate_team_stats(game_logs)
 
 # Sidebar for controls
-st.header("Simulation Controls")
-upcoming_games = get_upcoming_games()
-
-if not upcoming_games.empty:
-    # Split layout into two columns
-    col1, col2 = st.columns(2)
-
-    # Game selection in Column 1
-    with col1:
+with st.header("Simulation Controls")
+    upcoming_games = get_upcoming_games()
+    
+    if not upcoming_games.empty:
         game_options = [
             f"{row['Game Label']} on {row['Game ID']}"
             for _, row in upcoming_games.iterrows()
         ]
         selected_game = st.selectbox("Select Game", game_options)
-
-    # Details and sliders in Column 2
-    with col2:
-        selected_game_row = upcoming_games[
-            upcoming_games['Game ID'] == selected_game.split(' on ')[1]
-        ].iloc[0]
+        
+        selected_game_row = upcoming_games[upcoming_games['Game ID'] == selected_game.split(' on ')[1]].iloc[0]
         home_team = selected_game_row['Home Team Full']
         away_team = selected_game_row['Away Team Full']
-
+        
         spread_adjustment = st.slider(
             "Home Team Spread Adjustment",
-            -30.0, 30.0, 0.0, step=0.5
+            -10.0, 10.0, 0.0, step=0.5
         )
-
-    # Actions in a single row
-    st.markdown("---")
-    col1, col2 = st.columns(2)
-    with col1:
+        
         num_simulations = st.selectbox(
             "Number of Simulations",
-            [1000, 10000, 100000, 1000000]
+            [1000, 10000, 100000]
         )
-    with col2:
+        
         run_simulation = st.button("Run Simulation")
         predict_all = st.button("Predict All Upcoming Games")
-
 
 # Button to refresh data, update models, and predict
 if st.button("Refresh Data & Predict"):
@@ -380,3 +422,9 @@ if predict_all:
         with st.expander(f"{game['home_team_full']} vs {game['away_team_full']}"):
             display_results(game['results'], game['home_team_full'], game['away_team_full'])
 
+# Footer
+st.markdown(f'''
+    <div class="footer">
+        &copy; {datetime.now().year} NBA Quantum Predictions. All rights reserved.
+    </div>
+''', unsafe_allow_html=True)
