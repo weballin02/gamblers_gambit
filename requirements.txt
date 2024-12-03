@@ -76,3 +76,4 @@ cbbpy
 PyMuPDF
 html2text
 xgboost
+shap
