@@ -73,10 +73,8 @@ st.markdown(f"""
         color: {primary_text};
         font-family: 'Roboto', sans-serif;
     }}
-    /* Hide Streamlit branding */
     #MainMenu {{visibility: hidden;}}
     footer {{visibility: hidden;}}
-    /* Header Section */
     .header {{
         background-color: {accent_color};
         padding: 3em;
@@ -111,7 +109,6 @@ st.markdown(f"""
         font-size: 1.5em;
         margin-top: 0.5em;
     }}
-    /* Prediction Section */
     .prediction-card {{
         background-color: {accent_color};
         padding: 2em;
@@ -133,7 +130,6 @@ st.markdown(f"""
         font-size: 1.2em;
         margin-bottom: 0.5em;
     }}
-    /* Data Section */
     .data-section {{
         padding: 2em 1em;
         background-color: {accent_color};
@@ -144,7 +140,6 @@ st.markdown(f"""
         font-size: 2em;
         margin-bottom: 1em;
     }}
-    /* Footer */
     .footer {{
         text-align: center;
         padding: 2em 1em;
@@ -156,7 +151,6 @@ st.markdown(f"""
         color: {highlight_color};
         text-decoration: none;
     }}
-    /* Responsive Design */
     @media (max-width: 768px) {{
         .header h1 {{
             font-size: 2.5em;
@@ -213,37 +207,25 @@ def preprocess_data(game_logs):
     team_data['GAME_DATE'] = pd.to_datetime(team_data['GAME_DATE'])
     team_data.sort_values(['team', 'GAME_DATE'], inplace=True)
 
-    # Add home/away indicator
     team_data['is_home'] = team_data['MATCHUP'].apply(lambda x: 1 if 'vs.' in x else 0)
-
-    # Calculate rest days
     team_data['rest_days'] = team_data.groupby('team')['GAME_DATE'].diff().dt.days.fillna(7)
-
-    # Add game number
     team_data['game_number'] = team_data.groupby('team').cumcount() + 1
 
-    # Calculate rolling average of scores
     team_data['score_rolling_mean'] = team_data.groupby('team')['score'].transform(
         lambda x: x.rolling(window=5, min_periods=1).mean()
     )
 
-    # Extract opponent team
     team_data['opponent'] = team_data['MATCHUP'].apply(
         lambda x: x.split('vs. ')[1] if 'vs.' in x else x.split('@ ')[1]
     )
 
-    # Calculate opponent average score
     opponent_avg_score = team_data.groupby('team')['score'].mean().reset_index()
     opponent_avg_score.columns = ['opponent', 'opponent_avg_score']
     team_data = team_data.merge(opponent_avg_score, on='opponent', how='left')
 
-    # Apply exponential decay weights
     decay = 0.9
     team_data['decay_weight'] = team_data.groupby('team').cumcount().apply(lambda x: decay ** x)
-
-    # Drop any remaining NaN values
     team_data.dropna(inplace=True)
-
     return team_data
 
 game_logs = load_nba_game_logs([current_season] + previous_seasons)
@@ -252,6 +234,7 @@ team_data = preprocess_data(game_logs)
 # =======================
 # 5. Model Training
 # =======================
+@st.cache_data
 def train_team_models(team_data):
     models = {}
     team_stats = {}
@@ -260,14 +243,10 @@ def train_team_models(team_data):
         if len(team_df) < 15:
             continue  # Skip teams with insufficient data
 
-        # Prepare features and target
         features = team_df[['game_number', 'is_home', 'rest_days', 'score_rolling_mean', 'opponent_avg_score']]
         target = team_df['score']
-
-        # Handle missing values
         features.fillna(method='ffill', inplace=True)
 
-        # Hyperparameter tuning
         param_grid = {
             'n_estimators': [100, 200],
             'max_depth': [3, 5],
@@ -275,15 +254,12 @@ def train_team_models(team_data):
             'subsample': [0.8, 1.0]
         }
 
-        # TimeSeriesSplit for cross-validation
         tscv = TimeSeriesSplit(n_splits=3)
 
-        # Initialize models
         gbr = GradientBoostingRegressor()
         rf = RandomForestRegressor()
         xgb = XGBRegressor(eval_metric='rmse', use_label_encoder=False)
 
-        # Perform Grid Search
         gbr_grid = GridSearchCV(gbr, param_grid, cv=tscv)
         gbr_grid.fit(features, target)
 
@@ -293,7 +269,6 @@ def train_team_models(team_data):
         xgb_grid = GridSearchCV(xgb, param_grid, cv=tscv)
         xgb_grid.fit(features, target)
 
-        # Store models
         models[team] = {
             'gbr': gbr_grid.best_estimator_,
             'rf': rf_grid.best_estimator_,
@@ -301,7 +276,6 @@ def train_team_models(team_data):
             'features': features.columns
         }
 
-        # Collect team stats
         team_stats[team] = {
             'avg_score': target.mean(),
             'std_dev': target.std(),
@@ -322,16 +296,14 @@ def predict_team_score(team, models, team_stats, team_data):
 
     if team in models:
         team_df = team_data[team_data['team'] == team].iloc[-1]
-        # Prepare features for the next game
         next_features = pd.DataFrame({
             'game_number': [team_df['game_number'] + 1],
-            'is_home': [team_df['is_home']],  # Assume same as last game
-            'rest_days': [7],  # Assume default rest days
+            'is_home': [team_df['is_home']],
+            'rest_days': [7],
             'score_rolling_mean': [team_df['score_rolling_mean']],
             'opponent_avg_score': [team_df['opponent_avg_score']]
         })
 
-        # Get models
         model_dict = models[team]
         predictions = []
         for model_name in ['gbr', 'rf', 'xgb']:
@@ -339,7 +311,6 @@ def predict_team_score(team, models, team_stats, team_data):
             pred = model.predict(next_features[model_dict['features']])[0]
             predictions.append(pred)
 
-        # Ensemble prediction (average)
         ensemble_prediction = np.mean(predictions)
 
     if team in team_stats:
@@ -386,7 +357,6 @@ def main():
     render_header()
     st.markdown('<div id="prediction"></div>', unsafe_allow_html=True)
 
-    # Display Game Predictions
     st.markdown(f'''
         <div class="data-section">
             <h2>NBA Game Predictions with Enhanced Models</h2>
@@ -400,11 +370,9 @@ def main():
         home_team = selected_game['HOME_TEAM_ABBREV']
         away_team = selected_game['VISITOR_TEAM_ABBREV']
 
-        # Predictions for selected game
         home_pred, home_ci = predict_team_score(home_team, models, team_stats, team_data)
         away_pred, away_ci = predict_team_score(away_team, models, team_stats, team_data)
 
-        # Display Predictions
         st.markdown("### 📊 Predictions")
         col1, col2 = st.columns(2)
 
@@ -424,14 +392,13 @@ def main():
             else:
                 st.warning("Insufficient data for predictions.")
 
-        # Betting Insights
         st.markdown("### 💡 Betting Insights")
         with st.expander("View Betting Suggestions"):
             if home_pred is not None and away_pred is not None:
                 suggested_winner = home_team if home_pred > away_pred else away_team
                 margin_of_victory = abs(home_pred - away_pred)
                 total_points = home_pred + away_pred
-                over_under_threshold = team_data['score'].mean() * 2  # Dynamic threshold
+                over_under_threshold = team_data['score'].mean() * 2  
                 over_under = "Over" if total_points > over_under_threshold else "Under"
 
                 col1, col2, col3 = st.columns(3)
@@ -449,7 +416,6 @@ def main():
             else:
                 st.warning("Insufficient data to provide betting insights for this game.")
 
-        # Visual Comparison
         st.markdown("### 📊 Predicted Scores Comparison")
         scores_df = pd.DataFrame({
             "Team": [team_name_mapping.get(home_team, home_team), team_name_mapping.get(away_team, away_team)],
@@ -459,7 +425,6 @@ def main():
             ]
         })
 
-        # Customize the bar chart with Seaborn
         fig, ax = plt.subplots(figsize=(8, 6))
         sns.set_style("whitegrid")
         sns.barplot(x="Team", y="Predicted Score", data=scores_df, palette="viridis", ax=ax)
@@ -467,18 +432,16 @@ def main():
         ax.set_ylabel("Score")
         ax.set_ylim(0, max(scores_df["Predicted Score"].max(), 150) + 10 if scores_df["Predicted Score"].max() > 0 else 150)
 
-        # Annotate bars with values
         for index, row in scores_df.iterrows():
             ax.text(index, row["Predicted Score"] + 0.5, f'{row["Predicted Score"]:.2f}', color='black', ha="center")
 
         st.pyplot(fig)
 
-        # Feature Importance Visualization
         st.markdown("### 🔍 Feature Importance")
         with st.expander("View Feature Importance for Home Team"):
             if home_team in models:
                 model_dict = models[home_team]
-                model = model_dict['xgb']  # Using XGBoost for feature importance
+                model = model_dict['xgb']  
                 explainer = shap.TreeExplainer(model)
                 team_df = team_data[team_data['team'] == home_team]
                 team_features = team_df[model_dict['features']].iloc[-1:]
@@ -505,7 +468,6 @@ def main():
             else:
                 st.warning("Insufficient data for feature importance visualization.")
 
-        # Additional Team Statistics (Optional)
         st.markdown("### 📋 Team Statistics")
         with st.expander("View Team Performance Stats"):
             stats_df = pd.DataFrame(team_stats).T
@@ -515,13 +477,11 @@ def main():
     else:
         st.warning("No upcoming games found.")
 
-    # Footer
     st.markdown(f'''
         <div class="footer">
             &copy; {datetime.now().year} NBA Advanced Betting Insights. All rights reserved.
         </div>
     ''', unsafe_allow_html=True)
 
-# Run the main function
 if __name__ == "__main__":
     main()
