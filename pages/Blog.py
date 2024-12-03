@@ -10,11 +10,11 @@ from pathlib import Path
 from PIL import Image
 import shutil
 import datetime
-import pytz  # Import pytz for timezone handling
+import pytz
+import json
 from io import BytesIO
 import base64
-import json  # For saving scheduled metadata
-import fitz  # PyMuPDF
+import fitz
 import html2text
 
 # ===========================
@@ -36,7 +36,7 @@ for directory in [POSTS_DIR, TRASH_DIR, IMAGES_DIR]:
 # ===========================
 
 st.set_page_config(
-    page_title="FoxEdge - Gambler's Gambit",
+    page_title="FoxEdge - Blog Management",
     page_icon="📝",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -64,18 +64,15 @@ def login():
         if st.sidebar.button("Login"):
             if username == "admin" and password == "password":  # Replace with secure authentication
                 st.session_state.logged_in = True
-                st.sidebar.markdown('<div class="success-message">✅ Logged in successfully!</div>', unsafe_allow_html=True)
+                st.sidebar.success("Logged in successfully!")
             else:
-                st.sidebar.markdown('<div class="important-alert">❌ Invalid credentials</div>', unsafe_allow_html=True)
+                st.sidebar.error("Invalid credentials")
 
 # ===========================
 # 7. Helper Functions
 # ===========================
 
 def list_posts():
-    """
-    List all published and scheduled posts, including those with missing metadata.
-    """
     local_tz = pytz.timezone("America/Los_Angeles")
     now = datetime.datetime.now(local_tz)
     posts = []
@@ -86,11 +83,9 @@ def list_posts():
             with open(metadata_path, 'r', encoding='utf-8') as file:
                 metadata = json.load(file)
                 scheduled_time = datetime.datetime.fromisoformat(metadata['scheduled_time']).astimezone(local_tz)
-                # Include posts that are published or currently scheduled
                 if now >= scheduled_time:
                     posts.append(post_path.name)
         else:
-            # Include posts without metadata as already published
             posts.append(post_path.name)
 
     return sorted(posts, reverse=True)
@@ -108,6 +103,24 @@ def delete_post(post_name):
         return True
     return False
 
+def move_to_trash(post_name):
+    post_path = POSTS_DIR / post_name
+    trash_post_path = TRASH_DIR / post_name
+    image_path = IMAGES_DIR / f"{post_path.stem}.png"
+    trash_image_path = TRASH_DIR / f"{post_path.stem}.png"
+
+    metadata_path = post_path.with_suffix('.json')
+    trash_metadata_path = TRASH_DIR / metadata_path.name
+
+    if post_path.exists():
+        post_path.rename(trash_post_path)
+        if image_path.exists():
+            image_path.rename(trash_image_path)
+        if metadata_path.exists():
+            metadata_path.rename(trash_metadata_path)
+        return True
+    return False
+
 def get_post_content(post_name):
     post_file = POSTS_DIR / post_name
     if post_file.exists():
@@ -116,7 +129,6 @@ def get_post_content(post_name):
     return "Post content not found."
 
 def display_full_post(post_name):
-    """Display the full content of the selected post."""
     st.button("🔙 Back to Posts", on_click=lambda: st.session_state.update(selected_post=None))
     post_title = post_name.replace('.md', '').replace('_', ' ').title()
     st.header(post_title)
@@ -148,10 +160,7 @@ def process_html(file):
 # ===========================
 
 def view_blog_posts():
-    """
-    Display all published posts.
-    """
-    st.header("📖 Explore The Gambit")
+    st.header("📖 Explore Posts")
 
     if st.session_state.selected_post:
         display_full_post(st.session_state.selected_post)
@@ -162,63 +171,141 @@ def view_blog_posts():
         st.info("No blog posts available.")
         return
 
-    search_query = st.text_input("🔍 Search Posts", "")
-    if search_query:
-        posts = [post for post in posts if search_query.lower() in post.lower()]
-
-    if not posts:
-        st.warning("No posts match your search.")
-        return
-
     for post in posts:
         post_title = post.replace('.md', '').replace('_', ' ').title()
         post_path = POSTS_DIR / post
-
         content_preview = get_post_content(post)[:200] + "..."
-        image_path = IMAGES_DIR / f"{post_path.stem}.png"
-
         pub_date = datetime.datetime.fromtimestamp(post_path.stat().st_mtime).strftime('%Y-%m-%d %H:%M')
-        read_more_key = f"read_more_{post}"
 
-        # Check if image exists
-        if image_path.exists():
-            with open(image_path, "rb") as img_file:
-                img_bytes = img_file.read()
-            img_base64 = base64.b64encode(img_bytes).decode()
-            img_tag = f'<img src="data:image/png;base64,{img_base64}" width="150" height="100" />'
-        else:
-            img_tag = '<div style="width:150px; height:100px; background-color:#2C3E50; border-radius:5px;"></div>'
-
-        # Card layout for each post
-        st.markdown(f"""
-            <div class="post-card">
-                <div class="post-image">
-                    {img_tag}
-                </div>
-                <div class="post-content">
-                    <h3 class="post-title">{post_title}</h3>
-                    <p class="post-date">Published on: {pub_date}</p>
-                    <p class="post-preview">{content_preview}</p>
-                    <button class="read-more-button" id="{read_more_key}">Read More</button>
-                </div>
-            </div>
-        """, unsafe_allow_html=True)
-
-        # Handle Read More button clicks
-        if st.button("Read More", key=read_more_key):
+        if st.button(f"Read More: {post_title}"):
             st.session_state.selected_post = post
             st.rerun()
+
+def create_blog_post():
+    st.header("📝 Create a New Post")
+    title = st.text_input("Post Title")
+    content = st.text_area("Content", height=300)
+    image = st.file_uploader("Upload Thumbnail Image", type=["png", "jpg", "jpeg"])
+    scheduled_date = st.date_input("Schedule Date", value=datetime.date.today())
+    scheduled_time = st.time_input("Schedule Time", value=datetime.time(9, 0))
+    local_tz = pytz.timezone("America/Los_Angeles")
+    scheduled_datetime = local_tz.localize(datetime.datetime.combine(scheduled_date, scheduled_time))
+
+    if st.button("Publish"):
+        if not title or not content:
+            st.warning("Title and content are required.")
+            return
+
+        filename = f"{title.replace(' ', '_').lower()}.md"
+        filepath = POSTS_DIR / filename
+        metadata_path = filepath.with_suffix('.json')
+
+        if filepath.exists():
+            st.error("A post with this title already exists.")
+            return
+
+        try:
+            with open(filepath, 'w', encoding='utf-8') as file:
+                file.write(content)
+
+            with open(metadata_path, 'w', encoding='utf-8') as file:
+                json.dump({"scheduled_time": scheduled_datetime.isoformat()}, file)
+
+            if image:
+                img = Image.open(image)
+                img.save(IMAGES_DIR / f"{filepath.stem}.png", format="PNG")
+
+            st.success(f"Published post: {title}")
+            st.rerun()
+
+        except Exception as e:
+            st.error(f"Failed to publish post: {e}")
+
+def edit_blog_post():
+    posts = list_posts()
+    selected_post = st.selectbox("Select a post to edit", posts)
+
+    if not selected_post:
+        st.warning("Select a post to edit.")
+        return
+
+    post_path = POSTS_DIR / selected_post
+    metadata_path = post_path.with_suffix('.json')
+
+    content = get_post_content(selected_post)
+    with open(metadata_path, 'r', encoding='utf-8') as file:
+        metadata = json.load(file)
+
+    scheduled_time = datetime.datetime.fromisoformat(metadata['scheduled_time'])
+    scheduled_date = scheduled_time.date()
+    scheduled_time_input = scheduled_time.time()
+
+    title = st.text_input("Post Title", value=selected_post.replace('_', ' ').replace('.md', ''))
+    updated_content = st.text_area("Content", value=content, height=300)
+    new_date = st.date_input("Schedule Date", value=scheduled_date)
+    new_time = st.time_input("Schedule Time", value=scheduled_time_input)
+
+    local_tz = pytz.timezone("America/Los_Angeles")
+    updated_scheduled_time = local_tz.localize(datetime.datetime.combine(new_date, new_time))
+
+    if st.button("Update Post"):
+        with open(post_path, 'w', encoding='utf-8') as file:
+            file.write(updated_content)
+
+        with open(metadata_path, 'w', encoding='utf-8') as file:
+            json.dump({"scheduled_time": updated_scheduled_time.isoformat()}, file)
+
+        st.success("Post updated successfully!")
+        st.rerun()
+
+def delete_blog_posts():
+    posts = list_posts()
+    selected_posts = st.multiselect("Select posts to delete", posts)
+
+    if st.button("Delete Selected"):
+        for post in selected_posts:
+            delete_post(post)
+        st.success("Selected posts deleted successfully.")
+        st.rerun()
+
+def view_scheduled_posts():
+    st.header("📅 Scheduled Posts")
+    local_tz = pytz.timezone("America/Los_Angeles")
+    now = datetime.datetime.now(local_tz)
+
+    scheduled_posts = []
+    for metadata_path in POSTS_DIR.glob('*.json'):
+        with open(metadata_path, 'r', encoding='utf-8') as file:
+            metadata = json.load(file)
+            scheduled_time = datetime.datetime.fromisoformat(metadata['scheduled_time']).astimezone(local_tz)
+            if scheduled_time > now:
+                scheduled_posts.append((metadata_path.stem, scheduled_time))
+
+    if not scheduled_posts:
+        st.info("No scheduled posts available.")
+        return
+
+    for post_name, scheduled_time in scheduled_posts:
+        st.markdown(f"**{post_name.replace('_', ' ').title()}** - Scheduled for: {scheduled_time.strftime('%Y-%m-%d %H:%M')}")
 
 # ===========================
 # 9. Main Functionality
 # ===========================
 
 def main():
-    st.sidebar.title("📂 Blog Management")
-    page = st.sidebar.radio("🛠️ Choose an option", ["View Posts", "Create Post"])
+    st.sidebar.title("Blog Management")
+    page = st.sidebar.radio("Choose an option", ["View Posts", "Create Post", "Edit Post", "Delete Posts", "Scheduled Posts"])
 
     if page == "View Posts":
         view_blog_posts()
+    elif page == "Create Post":
+        create_blog_post()
+    elif page == "Edit Post":
+        edit_blog_post()
+    elif page == "Delete Posts":
+        delete_blog_posts()
+    elif page == "Scheduled Posts":
+        view_scheduled_posts()
 
 if __name__ == "__main__":
     main()
