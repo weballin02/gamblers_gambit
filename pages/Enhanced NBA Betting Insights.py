@@ -441,15 +441,16 @@ def main():
         with st.expander("View Feature Importance for Home Team"):
             if home_team in models:
                 model_dict = models[home_team]
-                model = model_dict['xgb']  
+                model = model_dict['xgb']  # Using the XGB model for SHAP
                 explainer = shap.TreeExplainer(model)
                 team_df = team_data[team_data['team'] == home_team]
                 team_features = team_df[model_dict['features']].iloc[-1:]
                 shap_values = explainer.shap_values(team_features)
-                shap.initjs()
-                plt.title(f"Feature Importance for {team_name_mapping.get(home_team, home_team)}")
-                shap.summary_plot(shap_values, team_features, plot_type="bar")
-                st.pyplot(bbox_inches='tight')
+                
+                # Plot SHAP summary and display in Streamlit
+                fig, ax = plt.subplots(figsize=(8, 6))
+                shap.summary_plot(shap_values, team_features, plot_type="bar", show=False)
+                st.pyplot(fig)
             else:
                 st.warning("Insufficient data for feature importance visualization.")
 
@@ -461,12 +462,14 @@ def main():
                 team_df = team_data[team_data['team'] == away_team]
                 team_features = team_df[model_dict['features']].iloc[-1:]
                 shap_values = explainer.shap_values(team_features)
-                shap.initjs()
-                plt.title(f"Feature Importance for {team_name_mapping.get(away_team, away_team)}")
-                shap.summary_plot(shap_values, team_features, plot_type="bar")
-                st.pyplot(bbox_inches='tight')
+                
+                # Plot SHAP summary and display in Streamlit
+                fig, ax = plt.subplots(figsize=(8, 6))
+                shap.summary_plot(shap_values, team_features, plot_type="bar", show=False)
+                st.pyplot(fig)
             else:
                 st.warning("Insufficient data for feature importance visualization.")
+
 
         st.markdown("### 📋 Team Statistics")
         with st.expander("View Team Performance Stats"):
