@@ -1,16 +1,37 @@
-# Import Libraries
+# NBA Enhanced Prediction Script with Advanced Features and Models
+
+# =======================
+# 1. Import Libraries
+# =======================
+import streamlit as st
 import pandas as pd
 import numpy as np
-import streamlit as st
 from datetime import datetime, timedelta
-from nba_api.stats.endpoints import LeagueGameLog, ScoreboardV2
-from nba_api.stats.static import teams as nba_teams
+import joblib
+import os
 import warnings
+import matplotlib.pyplot as plt
+import seaborn as sns
+import plotly.graph_objects as go
+from nba_api.stats.endpoints import (
+    LeagueGameLog,
+    ScoreboardV2,
+    teamgamelog,
+)
+from nba_api.stats.static import teams as nba_teams
+from sklearn.ensemble import GradientBoostingRegressor, RandomForestRegressor
+from xgboost import XGBRegressor
+from sklearn.model_selection import TimeSeriesSplit, GridSearchCV
+from sklearn.metrics import mean_absolute_error, mean_squared_error
+import shap
+
 warnings.filterwarnings('ignore')
 
-# Set page configuration
+# =======================
+# 2. Streamlit App Configuration
+# =======================
 st.set_page_config(
-    page_title="NBA FoxEdge - Enhanced Betting Insights",
+    page_title="NBA Advanced Betting Insights",
     page_icon="🏀",
     layout="wide",
     initial_sidebar_state="collapsed",
@@ -25,7 +46,7 @@ def toggle_theme():
     st.session_state.dark_mode = not st.session_state.dark_mode
 
 # Theme Toggle Button
-st.button("🌗 Toggle Theme", on_click=toggle_theme)
+st.sidebar.button("🌗 Toggle Theme", on_click=toggle_theme)
 
 # Apply Theme Based on Dark Mode
 if st.session_state.dark_mode:
@@ -34,12 +55,14 @@ if st.session_state.dark_mode:
     secondary_bg = "#1E1E1E"
     accent_color = "#BB86FC"
     highlight_color = "#03DAC6"
+    chart_template = "plotly_dark"
 else:
     primary_bg = "#FFFFFF"
     primary_text = "#000000"
     secondary_bg = "#F5F5F5"
     accent_color = "#6200EE"
     highlight_color = "#03DAC6"
+    chart_template = "plotly_white"
 
 # Custom CSS for Novel Design
 st.markdown(f"""
@@ -88,21 +111,6 @@ st.markdown(f"""
         font-size: 1.5em;
         margin-top: 0.5em;
     }}
-    .btn {{
-        background-color: {highlight_color};
-        color: {primary_text};
-        padding: 10px 25px;
-        border-radius: 50px;
-        text-decoration: none;
-        font-size: 1.2em;
-        margin-top: 1em;
-        display: inline-block;
-        transition: background-color 0.3s, transform 0.2s;
-    }}
-    .btn:hover {{
-        background-color: #018786;
-        transform: translateY(-5px);
-    }}
     /* Prediction Section */
     .prediction-card {{
         background-color: {accent_color};
@@ -145,7 +153,7 @@ st.markdown(f"""
         font-size: 0.9em;
     }}
     .footer a {{
-        color: {accent_color};
+        color: {highlight_color};
         text-decoration: none;
     }}
     /* Responsive Design */
@@ -160,23 +168,28 @@ st.markdown(f"""
     </style>
 """, unsafe_allow_html=True)
 
-# Header Section
+# =======================
+# 3. Header Section
+# =======================
 def render_header():
     st.markdown(f'''
         <div class="header">
-            <h1>NBA FoxEdge</h1>
-            <p>Enhanced Betting Insights</p>
+            <h1>NBA Advanced Betting Insights</h1>
+            <p>Predictive Analytics with Enhanced Features</p>
         </div>
     ''', unsafe_allow_html=True)
 
-# Functionality
+# =======================
+# 4. Data Fetching and Preprocessing
+# =======================
+nba_team_list = nba_teams.get_teams()
+team_name_mapping = {team['abbreviation']: team['full_name'] for team in nba_team_list}
+id_to_abbrev = {team['id']: team['abbreviation'] for team in nba_team_list}
 
-# Define season start dates and weights for multi-season training
-current_season = '2024-25'
-previous_seasons = ['2023-24', '2022-23']
-season_weights = {current_season: 1.0, '2023-24': 0.7, '2022-23': 0.5}
+current_season = '2023-24'
+previous_seasons = ['2022-23', '2021-22']
+season_weights = {current_season: 1.0, '2022-23': 0.7, '2021-22': 0.5}
 
-# Fetch and Preprocess Game Logs for Multiple Seasons
 @st.cache_data
 def load_nba_game_logs(seasons):
     """Fetch and preprocess game logs for the specified NBA seasons."""
@@ -193,102 +206,159 @@ def load_nba_game_logs(seasons):
             st.error(f"Error loading NBA game logs for {season}: {str(e)}")
     return pd.concat(all_games, ignore_index=True) if all_games else None
 
-# Aggregate Team Stats with Season Weights for Training
-def aggregate_team_stats(game_logs):
-    if game_logs is None:
-        return {}
-    
-    team_stats = game_logs.groupby('TEAM_ABBREVIATION').apply(
-        lambda x: pd.Series({
-            'avg_score': np.average(x['PTS'], weights=x['WEIGHT']),
-            'min_score': x['PTS'].min(),
-            'max_score': x['PTS'].max(),
-            'std_dev': np.std(x['PTS']),
-            'games_played': x['PTS'].count()
+def preprocess_data(game_logs):
+    # Prepare team data
+    team_data = game_logs[['GAME_DATE', 'TEAM_ABBREVIATION', 'PTS', 'MATCHUP']]
+    team_data = team_data.rename(columns={'TEAM_ABBREVIATION': 'team', 'PTS': 'score'})
+    team_data['GAME_DATE'] = pd.to_datetime(team_data['GAME_DATE'])
+    team_data.sort_values(['team', 'GAME_DATE'], inplace=True)
+
+    # Add home/away indicator
+    team_data['is_home'] = team_data['MATCHUP'].apply(lambda x: 1 if 'vs.' in x else 0)
+
+    # Calculate rest days
+    team_data['rest_days'] = team_data.groupby('team')['GAME_DATE'].diff().dt.days.fillna(7)
+
+    # Add game number
+    team_data['game_number'] = team_data.groupby('team').cumcount() + 1
+
+    # Calculate rolling average of scores
+    team_data['score_rolling_mean'] = team_data.groupby('team')['score'].transform(
+        lambda x: x.rolling(window=5, min_periods=1).mean()
+    )
+
+    # Extract opponent team
+    team_data['opponent'] = team_data['MATCHUP'].apply(
+        lambda x: x.split('vs. ')[1] if 'vs.' in x else x.split('@ ')[1]
+    )
+
+    # Calculate opponent average score
+    opponent_avg_score = team_data.groupby('team')['score'].mean().reset_index()
+    opponent_avg_score.columns = ['opponent', 'opponent_avg_score']
+    team_data = team_data.merge(opponent_avg_score, on='opponent', how='left')
+
+    # Apply exponential decay weights
+    decay = 0.9
+    team_data['decay_weight'] = team_data.groupby('team').cumcount().apply(lambda x: decay ** x)
+
+    # Drop any remaining NaN values
+    team_data.dropna(inplace=True)
+
+    return team_data
+
+game_logs = load_nba_game_logs([current_season] + previous_seasons)
+team_data = preprocess_data(game_logs)
+
+# =======================
+# 5. Model Training
+# =======================
+def train_team_models(team_data):
+    models = {}
+    team_stats = {}
+    for team in team_data['team'].unique():
+        team_df = team_data[team_data['team'] == team]
+        if len(team_df) < 15:
+            continue  # Skip teams with insufficient data
+
+        # Prepare features and target
+        features = team_df[['game_number', 'is_home', 'rest_days', 'score_rolling_mean', 'opponent_avg_score']]
+        target = team_df['score']
+
+        # Handle missing values
+        features.fillna(method='ffill', inplace=True)
+
+        # Hyperparameter tuning
+        param_grid = {
+            'n_estimators': [100, 200],
+            'max_depth': [3, 5],
+            'learning_rate': [0.01, 0.1],
+            'subsample': [0.8, 1.0]
+        }
+
+        # TimeSeriesSplit for cross-validation
+        tscv = TimeSeriesSplit(n_splits=3)
+
+        # Initialize models
+        gbr = GradientBoostingRegressor()
+        rf = RandomForestRegressor()
+        xgb = XGBRegressor(eval_metric='rmse', use_label_encoder=False)
+
+        # Perform Grid Search
+        gbr_grid = GridSearchCV(gbr, param_grid, cv=tscv)
+        gbr_grid.fit(features, target)
+
+        rf_grid = GridSearchCV(rf, {'n_estimators': [100, 200], 'max_depth': [5, 10]}, cv=tscv)
+        rf_grid.fit(features, target)
+
+        xgb_grid = GridSearchCV(xgb, param_grid, cv=tscv)
+        xgb_grid.fit(features, target)
+
+        # Store models
+        models[team] = {
+            'gbr': gbr_grid.best_estimator_,
+            'rf': rf_grid.best_estimator_,
+            'xgb': xgb_grid.best_estimator_,
+            'features': features.columns
+        }
+
+        # Collect team stats
+        team_stats[team] = {
+            'avg_score': target.mean(),
+            'std_dev': target.std(),
+            'min_score': target.min(),
+            'max_score': target.max()
+        }
+
+    return models, team_stats
+
+models, team_stats = train_team_models(team_data)
+
+# =======================
+# 6. Prediction Logic
+# =======================
+def predict_team_score(team, models, team_stats, team_data):
+    ensemble_prediction = None
+    confidence_interval = None
+
+    if team in models:
+        team_df = team_data[team_data['team'] == team].iloc[-1]
+        # Prepare features for the next game
+        next_features = pd.DataFrame({
+            'game_number': [team_df['game_number'] + 1],
+            'is_home': [team_df['is_home']],  # Assume same as last game
+            'rest_days': [7],  # Assume default rest days
+            'score_rolling_mean': [team_df['score_rolling_mean']],
+            'opponent_avg_score': [team_df['opponent_avg_score']]
         })
-    ).to_dict(orient='index')
-    return team_stats
 
-# Fetch and Calculate Current Season Stats
-@st.cache_data
-def load_current_season_logs(season):
-    """Fetch and calculate current season logs for specific insights."""
-    game_logs = LeagueGameLog(season=season, season_type_all_star='Regular Season', player_or_team_abbreviation='T')
-    games = game_logs.get_data_frames()[0]
-    games['GAME_DATE'] = pd.to_datetime(games['GAME_DATE'])
-    return games
+        # Get models
+        model_dict = models[team]
+        predictions = []
+        for model_name in ['gbr', 'rf', 'xgb']:
+            model = model_dict[model_name]
+            pred = model.predict(next_features[model_dict['features']])[0]
+            predictions.append(pred)
 
-def calculate_current_season_stats(current_season_logs):
-    """Calculate stats for current season only."""
-    recent_games = current_season_logs[current_season_logs['GAME_DATE'] >= datetime.now() - timedelta(days=30)]
-    current_season_stats = current_season_logs.groupby('TEAM_ABBREVIATION').apply(
-        lambda x: pd.Series({
-            'avg_score': x['PTS'].mean(),
-            'min_score': x['PTS'].min(),
-            'max_score': x['PTS'].max(),
-            'std_dev': np.std(x['PTS']),
-            'games_played': x['PTS'].count(),
-            'recent_form': recent_games[recent_games['TEAM_ABBREVIATION'] == x.name]['PTS'].mean()
-        })
-    ).to_dict(orient='index')
-    return current_season_stats
+        # Ensemble prediction (average)
+        ensemble_prediction = np.mean(predictions)
 
-# Load data when the button is pressed or on first load
-if 'game_logs' not in st.session_state:
-    st.session_state['game_logs'] = load_nba_game_logs([current_season] + previous_seasons)
-    st.session_state['team_stats'] = aggregate_team_stats(st.session_state['game_logs'])
-    st.session_state['current_season_logs'] = load_current_season_logs(current_season)
-    st.session_state['current_season_stats'] = calculate_current_season_stats(st.session_state['current_season_logs'])
+    if team in team_stats:
+        avg = team_stats[team]['avg_score']
+        std = team_stats[team]['std_dev']
+        confidence_interval = (avg - 1.96 * std, avg + 1.96 * std)
 
-if st.button("Refresh Data & Predict"):
-    with st.spinner("Refreshing data and updating predictions..."):
-        st.session_state['game_logs'] = load_nba_game_logs([current_season] + previous_seasons)
-        st.session_state['team_stats'] = aggregate_team_stats(st.session_state['game_logs'])
-        st.session_state['current_season_logs'] = load_current_season_logs(current_season)
-        st.session_state['current_season_stats'] = calculate_current_season_stats(st.session_state['current_season_logs'])
-        st.success("Data refreshed and predictions updated.")
+    return ensemble_prediction, confidence_interval
 
-# Predict Game Outcome Based on Current Season Data
-def predict_game_outcome(home_team, away_team):
-    home_stats = st.session_state['current_season_stats'].get(home_team, {})
-    away_stats = st.session_state['current_season_stats'].get(away_team, {})
-
-    if home_stats and away_stats:
-        home_team_rating = (
-            home_stats['avg_score'] * 0.5 +
-            home_stats['max_score'] * 0.2 +
-            home_stats['recent_form'] * 0.3
-        )
-        away_team_rating = (
-            away_stats['avg_score'] * 0.5 +
-            away_stats['max_score'] * 0.2 +
-            away_stats['recent_form'] * 0.3
-        )
-        rating_diff = abs(home_team_rating - away_team_rating)
-        
-        confidence = min(100, max(0, 50 + rating_diff * 5))
-        
-        if home_team_rating > away_team_rating:
-            predicted_winner = home_team
-            predicted_score_diff = round(home_team_rating - away_team_rating, 2)
-        elif away_team_rating > home_team_rating:
-            predicted_winner = away_team
-            predicted_score_diff = round(away_team_rating - home_team_rating, 2)
-        else:
-            predicted_winner = "Tie"
-            predicted_score_diff = 0
-        return predicted_winner, predicted_score_diff, confidence, round(home_team_rating, 2), round(away_team_rating, 2)
-    else:
-        return "Unavailable", "N/A", "N/A", None, None
-
-# Fetch Upcoming Games
+# =======================
+# 7. Fetch Upcoming Games
+# =======================
 @st.cache_data(ttl=3600)
 def fetch_nba_games():
     today = datetime.now().date()
     next_day = today + timedelta(days=1)
     today_scoreboard = ScoreboardV2(game_date=today.strftime('%Y-%m-%d'))
     tomorrow_scoreboard = ScoreboardV2(game_date=next_day.strftime('%Y-%m-%d'))
-    
+
     try:
         today_games = today_scoreboard.get_data_frames()[0]
         tomorrow_games = tomorrow_scoreboard.get_data_frames()[0]
@@ -296,19 +366,22 @@ def fetch_nba_games():
     except Exception as e:
         st.error(f"Error fetching games: {e}")
         return pd.DataFrame()
-    
-    nba_team_list = nba_teams.get_teams()
-    id_to_abbrev = {team['id']: team['abbreviation'] for team in nba_team_list}
-    
+
     combined_games['HOME_TEAM_ABBREV'] = combined_games['HOME_TEAM_ID'].map(id_to_abbrev)
     combined_games['VISITOR_TEAM_ABBREV'] = combined_games['VISITOR_TEAM_ID'].map(id_to_abbrev)
     combined_games.dropna(subset=['HOME_TEAM_ABBREV', 'VISITOR_TEAM_ABBREV'], inplace=True)
-    
-    return combined_games[['GAME_ID', 'HOME_TEAM_ABBREV', 'VISITOR_TEAM_ABBREV']]
+
+    combined_games['GAME_LABEL'] = combined_games.apply(
+        lambda row: f"{team_name_mapping.get(row['VISITOR_TEAM_ABBREV'])} at {team_name_mapping.get(row['HOME_TEAM_ABBREV'])}",
+        axis=1
+    )
+    return combined_games[['GAME_ID', 'HOME_TEAM_ABBREV', 'VISITOR_TEAM_ABBREV', 'GAME_LABEL']]
 
 upcoming_games = fetch_nba_games()
 
-# Main App Logic
+# =======================
+# 8. Main App Logic
+# =======================
 def main():
     render_header()
     st.markdown('<div id="prediction"></div>', unsafe_allow_html=True)
@@ -316,106 +389,128 @@ def main():
     # Display Game Predictions
     st.markdown(f'''
         <div class="data-section">
-            <h2>NBA Game Predictions with Detailed Analysis</h2>
+            <h2>NBA Game Predictions with Enhanced Models</h2>
         </div>
     ''', unsafe_allow_html=True)
 
-    # Team Name Mapping for Display Purposes
-    team_name_mapping = {team['abbreviation']: team['full_name'] for team in nba_teams.get_teams()}
-
-    # Create game labels for selection
     if not upcoming_games.empty:
-        upcoming_games['game_label'] = [
-            f"{team_name_mapping.get(row['VISITOR_TEAM_ABBREV'])} at {team_name_mapping.get(row['HOME_TEAM_ABBREV'])}"
-            for _, row in upcoming_games.iterrows()
-        ]
+        game_selection = st.selectbox('Select an upcoming game:', upcoming_games['GAME_LABEL'])
+        selected_game = upcoming_games[upcoming_games['GAME_LABEL'] == game_selection].iloc[0]
 
-        game_selection = st.selectbox('Select an upcoming game:', upcoming_games['game_label'])
-        selected_game = upcoming_games[upcoming_games['game_label'] == game_selection]
+        home_team = selected_game['HOME_TEAM_ABBREV']
+        away_team = selected_game['VISITOR_TEAM_ABBREV']
 
-        if not selected_game.empty:
-            selected_game = selected_game.iloc[0]
-            
-            home_team = selected_game['HOME_TEAM_ABBREV']
-            away_team = selected_game['VISITOR_TEAM_ABBREV']
-            
-            # Predict Outcome for Selected Game
-            predicted_winner, predicted_score_diff, confidence, home_team_rating, away_team_rating = predict_game_outcome(home_team, away_team)
+        # Predictions for selected game
+        home_pred, home_ci = predict_team_score(home_team, models, team_stats, team_data)
+        away_pred, away_ci = predict_team_score(away_team, models, team_stats, team_data)
 
-            # Display Prediction Results with Enhanced Betting Insights
-            if predicted_winner != "Unavailable":
-                st.markdown(f'''
-                    <div class="prediction-card">
-                        <h2>Predicted Outcome</h2>
-                        <p><strong>{team_name_mapping[home_team]}</strong> vs. <strong>{team_name_mapping[away_team]}</strong></p>
-                        <p><strong>Predicted Winner:</strong> {team_name_mapping[predicted_winner]}</p>
-                        <p><strong>Confidence Level:</strong> {round(confidence, 2)}%</p>
-                        <p><strong>Expected Score Difference:</strong> {round(predicted_score_diff, 2)}</p>
-                        <div class="gradient-bar" style="width: {round(confidence, 2)}%;"></div>
-                        <p style="color: {highlight_color}; font-weight: 700;">{team_name_mapping[predicted_winner]} Win Probability: {round(confidence, 2)}%</p>
-                    </div>
-                ''', unsafe_allow_html=True)
+        # Display Predictions
+        st.markdown("### 📊 Predictions")
+        col1, col2 = st.columns(2)
 
-                st.markdown(f'''
-                    <div class="data-section">
-                        <h2>Team Performance Insights</h2>
-                ''', unsafe_allow_html=True)
-
-                # Detailed Team Stats for Betting Insights
-                home_stats = st.session_state['current_season_stats'].get(home_team, {})
-                away_stats = st.session_state['current_season_stats'].get(away_team, {})
-
-                st.markdown(f'''
-                    <div style="display: flex; justify-content: space-around; flex-wrap: wrap;">
-                        <div style="flex: 0 0 45%; margin-bottom: 2em;">
-                            <h3>{team_name_mapping[home_team]} Performance Summary</h3>
-                            <p><strong>Average Score:</strong> {round(home_stats['avg_score'], 2)}</p>
-                            <p><strong>Recent Form (Last 5 Games):</strong> {round(home_stats['recent_form'], 2)}</p>
-                            <p><strong>Games Played:</strong> {home_stats['games_played']}</p>
-                            <p><strong>Consistency (Std Dev):</strong> {round(home_stats['std_dev'], 2)}</p>
-                            <p><strong>Overall Rating:</strong> {round(home_team_rating, 2)}</p>
-                        </div>
-                        <div style="flex: 0 0 45%; margin-bottom: 2em;">
-                            <h3>{team_name_mapping[away_team]} Performance Summary</h3>
-                            <p><strong>Average Score:</strong> {round(away_stats['avg_score'], 2)}</p>
-                            <p><strong>Recent Form (Last 5 Games):</strong> {round(away_stats['recent_form'], 2)}</p>
-                            <p><strong>Games Played:</strong> {away_stats['games_played']}</p>
-                            <p><strong>Consistency (Std Dev):</strong> {round(away_stats['std_dev'], 2)}</p>
-                            <p><strong>Overall Rating:</strong> {round(away_team_rating, 2)}</p>
-                        </div>
-                    </div>
-                ''', unsafe_allow_html=True)
-
-                # Enhanced Betting Insights Summary
-                st.markdown(f'''
-                    <div class="prediction-card">
-                        <h2>Betting Insights</h2>
-                ''', unsafe_allow_html=True)
-                likely_advantage = home_team if home_team_rating > away_team_rating else away_team
-                st.write(f"**Advantage:** {team_name_mapping[likely_advantage]} has a higher team rating, suggesting a potential edge.")
-
-                if home_stats['std_dev'] < away_stats['std_dev']:
-                    st.write(f"**Consistency:** {team_name_mapping[home_team]} is more consistent in scoring, which could reduce risk in betting.")
-                elif away_stats['std_dev'] < home_stats['std_dev']:
-                    st.write(f"**Consistency:** {team_name_mapping[away_team]} is more consistent, potentially lowering bet risk.")
-                else:
-                    st.write("**Consistency:** Both teams have similar scoring consistency.")
-
-                avg_total_score = round(home_stats['avg_score'], 2) + round(away_stats['avg_score'], 2)
-                recent_total_score = round(home_stats['recent_form'], 2) + round(away_stats['recent_form'], 2)
-                st.write(f"**Scoring Trends:** Combined average score is around {avg_total_score}, recent combined score is {recent_total_score}.")
-
-                if predicted_score_diff > 5:
-                    st.write(f"**Spread Insight:** Consider betting on **{team_name_mapping[predicted_winner]}** if the spread is favorable.")
-                else:
-                    st.write("**Spread Insight:** A close game suggests caution for spread betting.")
-
-                st.write(f"**Moneyline Suggestion:** **{team_name_mapping[likely_advantage]}** may be favorable based on rating and consistency.")
-
-                st.markdown('</div>', unsafe_allow_html=True)
-
+        with col1:
+            st.markdown(f"#### 🏠 **{team_name_mapping.get(home_team, home_team)}**")
+            if home_pred is not None and home_ci is not None:
+                st.markdown(f"**Ensemble Prediction:** {home_pred:.2f}")
+                st.markdown(f"**95% Confidence Interval:** {home_ci[0]:.2f} - {home_ci[1]:.2f}")
             else:
-                st.warning("Prediction data unavailable for the selected game.")
+                st.warning("Insufficient data for predictions.")
+
+        with col2:
+            st.markdown(f"#### 🚗 **{team_name_mapping.get(away_team, away_team)}**")
+            if away_pred is not None and away_ci is not None:
+                st.markdown(f"**Ensemble Prediction:** {away_pred:.2f}")
+                st.markdown(f"**95% Confidence Interval:** {away_ci[0]:.2f} - {away_ci[1]:.2f}")
+            else:
+                st.warning("Insufficient data for predictions.")
+
+        # Betting Insights
+        st.markdown("### 💡 Betting Insights")
+        with st.expander("View Betting Suggestions"):
+            if home_pred is not None and away_pred is not None:
+                suggested_winner = home_team if home_pred > away_pred else away_team
+                margin_of_victory = abs(home_pred - away_pred)
+                total_points = home_pred + away_pred
+                over_under_threshold = team_data['score'].mean() * 2  # Dynamic threshold
+                over_under = "Over" if total_points > over_under_threshold else "Under"
+
+                col1, col2, col3 = st.columns(3)
+
+                with col1:
+                    st.markdown(f"**🏆 Suggested Winner:** **{team_name_mapping.get(suggested_winner, suggested_winner)}**")
+
+                with col2:
+                    st.markdown(f"**📈 Margin of Victory:** {margin_of_victory:.2f} pts")
+
+                with col3:
+                    st.markdown(f"**🔢 Total Points:** {total_points:.2f}")
+
+                st.markdown(f"**💰 Over/Under Suggestion:** **Take the {over_under} ({over_under_threshold:.2f})**")
+            else:
+                st.warning("Insufficient data to provide betting insights for this game.")
+
+        # Visual Comparison
+        st.markdown("### 📊 Predicted Scores Comparison")
+        scores_df = pd.DataFrame({
+            "Team": [team_name_mapping.get(home_team, home_team), team_name_mapping.get(away_team, away_team)],
+            "Predicted Score": [
+                home_pred if home_pred is not None else 0,
+                away_pred if away_pred is not None else 0
+            ]
+        })
+
+        # Customize the bar chart with Seaborn
+        fig, ax = plt.subplots(figsize=(8, 6))
+        sns.set_style("whitegrid")
+        sns.barplot(x="Team", y="Predicted Score", data=scores_df, palette="viridis", ax=ax)
+        ax.set_title("Predicted Scores")
+        ax.set_ylabel("Score")
+        ax.set_ylim(0, max(scores_df["Predicted Score"].max(), 150) + 10 if scores_df["Predicted Score"].max() > 0 else 150)
+
+        # Annotate bars with values
+        for index, row in scores_df.iterrows():
+            ax.text(index, row["Predicted Score"] + 0.5, f'{row["Predicted Score"]:.2f}', color='black', ha="center")
+
+        st.pyplot(fig)
+
+        # Feature Importance Visualization
+        st.markdown("### 🔍 Feature Importance")
+        with st.expander("View Feature Importance for Home Team"):
+            if home_team in models:
+                model_dict = models[home_team]
+                model = model_dict['xgb']  # Using XGBoost for feature importance
+                explainer = shap.TreeExplainer(model)
+                team_df = team_data[team_data['team'] == home_team]
+                team_features = team_df[model_dict['features']].iloc[-1:]
+                shap_values = explainer.shap_values(team_features)
+                shap.initjs()
+                plt.title(f"Feature Importance for {team_name_mapping.get(home_team, home_team)}")
+                shap.summary_plot(shap_values, team_features, plot_type="bar")
+                st.pyplot(bbox_inches='tight')
+            else:
+                st.warning("Insufficient data for feature importance visualization.")
+
+        with st.expander("View Feature Importance for Away Team"):
+            if away_team in models:
+                model_dict = models[away_team]
+                model = model_dict['xgb']
+                explainer = shap.TreeExplainer(model)
+                team_df = team_data[team_data['team'] == away_team]
+                team_features = team_df[model_dict['features']].iloc[-1:]
+                shap_values = explainer.shap_values(team_features)
+                shap.initjs()
+                plt.title(f"Feature Importance for {team_name_mapping.get(away_team, away_team)}")
+                shap.summary_plot(shap_values, team_features, plot_type="bar")
+                st.pyplot(bbox_inches='tight')
+            else:
+                st.warning("Insufficient data for feature importance visualization.")
+
+        # Additional Team Statistics (Optional)
+        st.markdown("### 📋 Team Statistics")
+        with st.expander("View Team Performance Stats"):
+            stats_df = pd.DataFrame(team_stats).T
+            stats_df = stats_df.rename_axis("Team").reset_index()
+            st.dataframe(stats_df.style.highlight_max(axis=0), use_container_width=True)
 
     else:
         st.warning("No upcoming games found.")
@@ -423,7 +518,7 @@ def main():
     # Footer
     st.markdown(f'''
         <div class="footer">
-            &copy; {datetime.now().year} NBA FoxEdge. All rights reserved.
+            &copy; {datetime.now().year} NBA Advanced Betting Insights. All rights reserved.
         </div>
     ''', unsafe_allow_html=True)
 
