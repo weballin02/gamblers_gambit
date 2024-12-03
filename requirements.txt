@@ -75,3 +75,4 @@ plotly
 cbbpy
 PyMuPDF
 html2text
+xgboost
