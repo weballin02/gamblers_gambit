@@ -6,30 +6,46 @@
 
 import os
 import streamlit as st
+import firebase_admin
+from firebase_admin import credentials, firestore, storage
 from pathlib import Path
 from PIL import Image
-import shutil
 import datetime
 import pytz  # Import pytz for timezone handling
 from io import BytesIO
 import base64
-import json  # For saving scheduled metadata
-import fitz  # PyMuPDF
-import html2text
+import json  # For handling JSON data
+import fitz  # PyMuPDF for PDF processing
+import html2text  # For converting HTML to Markdown
 
 # ===========================
-# 2. Define Directories
+# 2. Initialize Firebase
 # ===========================
 
-# Define directories
-POSTS_DIR = Path('posts')
-TRASH_DIR = Path('trash')
-IMAGES_DIR = Path('images')
+# Initialize Firebase only if not already initialized
+if not firebase_admin._apps:
+    cred_info = {
+        "type": st.secrets["firebase"]["type"],
+        "project_id": st.secrets["firebase"]["project_id"],
+        "private_key_id": st.secrets["firebase"]["private_key_id"],
+        "private_key": st.secrets["firebase"]["private_key"].replace('\\n', '\n'),
+        "client_email": st.secrets["firebase"]["client_email"],
+        "client_id": st.secrets["firebase"]["client_id"],
+        "auth_uri": st.secrets["firebase"]["auth_uri"],
+        "token_uri": st.secrets["firebase"]["token_uri"],
+        "auth_provider_x509_cert_url": st.secrets["firebase"]["auth_provider_x509_cert_url"],
+        "client_x509_cert_url": st.secrets["firebase"]["client_x509_cert_url"],
+    }
+    cred = credentials.Certificate(cred_info)
+    firebase_admin.initialize_app(cred, {
+        'storageBucket': 'your-project-id.appspot.com'  # Replace with your actual storage bucket
+    })
 
-# Ensure directories exist
-for directory in [POSTS_DIR, TRASH_DIR, IMAGES_DIR]:
-    if not directory.exists():
-        directory.mkdir(parents=True)
+# Firestore client
+db = firestore.client()
+
+# Storage bucket
+bucket = storage.bucket()
 
 # ===========================
 # 3. Streamlit App Configuration
@@ -200,20 +216,20 @@ st.markdown('''
             color: #FFFFFF; /* Crisp White */
         }
 
-        .read-more-button {{
-            background: {accent_color_purple};
-            color: {primary_text};
+        .read-more-button {
+            background: var(--accent-color-purple);
+            color: var(--primary-text-color);
             border: none;
             border-radius: 5px;
             padding: 5px 10px;
             cursor: pointer;
             transition: background 0.3s ease;
             font-family: 'Montserrat', sans-serif;
-        }}
+        }
 
-        .read-more-button:hover {{
-            background: {accent_color_teal};
-        }}
+        .read-more-button:hover {
+            background: var(--accent-color-teal);
+        }
 
         /* Summary and Prediction Results Sections */
         .summary-section, .results-section {
@@ -328,78 +344,6 @@ def login():
 # 7. Helper Functions
 # ===========================
 
-def list_posts():
-    """
-    List all published and scheduled posts, ensuring posts are not removed after the day ends.
-    """
-    local_tz = pytz.timezone("America/Los_Angeles")
-    now = datetime.datetime.now(local_tz)
-    posts = []
-
-    for post_path in POSTS_DIR.glob('*.md'):
-        metadata_path = post_path.with_suffix('.json')
-
-        # If metadata exists, consider the post's scheduling
-        if metadata_path.exists():
-            with open(metadata_path, 'r', encoding='utf-8') as file:
-                metadata = json.load(file)
-                scheduled_time = datetime.datetime.fromisoformat(metadata['scheduled_time']).astimezone(local_tz)
-                # Include posts scheduled in the past or present
-                if now >= scheduled_time:
-                    posts.append(post_path.name)
-        else:
-            # Include posts without metadata as "already published"
-            posts.append(post_path.name)
-
-    return sorted(posts, reverse=True)
-
-def delete_post(post_name):
-    post_path = POSTS_DIR / post_name
-    image_path = IMAGES_DIR / f"{post_path.stem}.png"
-    metadata_path = post_path.with_suffix('.json')
-    if post_path.exists():
-        os.remove(post_path)
-        if image_path.exists():
-            os.remove(image_path)
-        if metadata_path.exists():
-            os.remove(metadata_path)
-        return True
-    return False
-
-def move_to_trash(post_name):
-    post_path = POSTS_DIR / post_name
-    trash_post_path = TRASH_DIR / post_name
-    image_path = IMAGES_DIR / f"{post_path.stem}.png"
-    trash_image_path = TRASH_DIR / f"{post_path.stem}.png"
-
-    metadata_path = post_path.with_suffix('.json')
-    trash_metadata_path = TRASH_DIR / metadata_path.name
-
-    if post_path.exists():
-        post_path.rename(trash_post_path)
-        if image_path.exists():
-            image_path.rename(trash_image_path)
-        if metadata_path.exists():
-            metadata_path.rename(trash_metadata_path)
-        return True
-    return False
-
-def get_post_content(post_name):
-    post_file = POSTS_DIR / post_name
-    if post_file.exists():
-        with open(post_file, 'r', encoding='utf-8') as file:
-            return file.read()
-    return "Post content not found."
-
-def display_full_post(post_name):
-    """Display the full content of the selected post."""
-    st.button("🔙 Back to Posts", on_click=lambda: st.session_state.update(selected_post=None))
-    post_title = post_name.replace('.md', '').replace('_', ' ').title()
-    st.header(post_title)
-    content = get_post_content(post_name)
-    st.markdown(content)
-
-# Function to process PDF files
 def process_pdf(file):
     try:
         with fitz.open(stream=file.read(), filetype="pdf") as doc:
@@ -411,7 +355,6 @@ def process_pdf(file):
         st.error(f"❌ Failed to process PDF: {e}")
         return None
 
-# Function to process HTML files
 def process_html(file):
     try:
         html_content = file.read().decode("utf-8")
@@ -420,6 +363,123 @@ def process_html(file):
     except Exception as e:
         st.error(f"❌ Failed to process HTML: {e}")
         return None
+
+def create_firestore_post(title, content, scheduled_time, image_url=None):
+    try:
+        doc_ref = db.collection('posts').document()
+        doc_ref.set({
+            'title': title,
+            'content': content,
+            'scheduled_time': scheduled_time,
+            'image_url': image_url,
+            'created_at': datetime.datetime.utcnow()
+        })
+        st.markdown(
+            f'<div class="success-message">✅ Published post: **{title}** scheduled for {scheduled_time.astimezone(pytz.timezone("America/Los_Angeles")).strftime("%Y-%m-%d %H:%M")}</div>',
+            unsafe_allow_html=True
+        )
+    except Exception as e:
+        st.error(f"❌ Failed to create post: {e}")
+
+def list_firestore_posts():
+    now = datetime.datetime.utcnow().replace(tzinfo=pytz.UTC)
+    posts_ref = db.collection('posts').where('scheduled_time', '<=', now).order_by('scheduled_time', direction=firestore.Query.DESCENDING)
+    try:
+        docs = posts_ref.stream()
+        posts = []
+        for doc in docs:
+            post = doc.to_dict()
+            post['id'] = doc.id
+            posts.append(post)
+        return posts
+    except Exception as e:
+        st.error(f"❌ Failed to fetch posts: {e}")
+        return []
+
+def delete_firestore_post(post_id):
+    try:
+        post_ref = db.collection('posts').document(post_id)
+        post = post_ref.get()
+        if post.exists:
+            # Delete associated image from Storage if exists
+            image_url = post.to_dict().get('image_url')
+            if image_url:
+                # Extract the blob path from the URL
+                blob_path = image_url.split('.com/')[1]
+                blob = bucket.blob(blob_path)
+                if blob.exists():
+                    blob.delete()
+            # Delete the Firestore document
+            post_ref.delete()
+            st.success("✅ Post deleted successfully.")
+        else:
+            st.error("❌ Post does not exist.")
+    except Exception as e:
+        st.error(f"❌ Failed to delete post: {e}")
+
+def update_firestore_post(post_id, title, content, scheduled_time, image_file=None):
+    try:
+        post_ref = db.collection('posts').document(post_id)
+        post = post_ref.get()
+        if not post.exists:
+            st.error("❌ Post does not exist.")
+            return
+
+        update_data = {
+            'title': title,
+            'content': content,
+            'scheduled_time': scheduled_time
+        }
+
+        if image_file:
+            # Delete old image if exists
+            old_image_url = post.to_dict().get('image_url')
+            if old_image_url:
+                old_blob_path = old_image_url.split('.com/')[1]
+                old_blob = bucket.blob(old_blob_path)
+                if old_blob.exists():
+                    old_blob.delete()
+            # Upload new image
+            blob = bucket.blob(f'images/{uuid.uuid4()}_{image_file.name}')
+            blob.upload_from_file(image_file, content_type=image_file.type)
+            blob.make_public()
+            new_image_url = blob.public_url
+            update_data['image_url'] = new_image_url
+
+        post_ref.update(update_data)
+        st.success(f"✅ Updated post: **{title}** scheduled for {scheduled_time.astimezone(pytz.timezone('America/Los_Angeles')).strftime('%Y-%m-%d %H:%M')}")
+    except Exception as e:
+        st.error(f"❌ Failed to update post: {e}")
+
+def get_post_content(post_id):
+    try:
+        post_ref = db.collection('posts').document(post_id)
+        post = post_ref.get()
+        if post.exists:
+            return post.to_dict().get('content', "Post content not found.")
+        else:
+            return "Post not found."
+    except Exception as e:
+        st.error(f"❌ Failed to fetch post content: {e}")
+        return "Error fetching content."
+
+def display_full_post(post_id):
+    try:
+        post_ref = db.collection('posts').document(post_id)
+        post = post_ref.get()
+        if not post.exists:
+            st.error("❌ Post not found.")
+            return
+
+        post_data = post.to_dict()
+        st.button("🔙 Back to Posts", on_click=lambda: st.session_state.update(selected_post=None))
+        st.header(post_data['title'])
+        st.markdown(post_data['content'])
+
+        if post_data.get('image_url'):
+            st.image(post_data['image_url'], caption="Thumbnail", use_column_width=True)
+    except Exception as e:
+        st.error(f"❌ Failed to display post: {e}")
 
 # ===========================
 # 8. Streamlit Interface Functions
@@ -432,43 +492,37 @@ def view_blog_posts():
         display_full_post(st.session_state.selected_post)
         return
 
-    posts = list_posts()
+    posts = list_firestore_posts()
     if not posts:
         st.info("No blog posts available.")
         return
 
     search_query = st.text_input("🔍 Search Posts", "")
     if search_query:
-        posts = [post for post in posts if search_query.lower() in post.lower()]
+        posts = [post for post in posts if search_query.lower() in post['title'].lower()]
 
     if not posts:
         st.warning("No posts match your search.")
         return
 
     for post in posts:
-        post_title = post.replace('.md', '').replace('_', ' ').title()
-        post_path = POSTS_DIR / post
+        post_title = post["title"]
+        content_preview = post["content"][:200] + "..."
+        image_tag = ""
 
-        content_preview = get_post_content(post)[:200] + "..."
-        image_path = IMAGES_DIR / f"{post_path.stem}.png"
-
-        pub_date = datetime.datetime.fromtimestamp(post_path.stat().st_mtime).strftime('%Y-%m-%d %H:%M')
-        read_more_key = f"read_more_{post}"
-
-        # Check if image exists
-        if image_path.exists():
-            with open(image_path, "rb") as img_file:
-                img_bytes = img_file.read()
-            img_base64 = base64.b64encode(img_bytes).decode()
-            img_tag = f'<img src="data:image/png;base64,{img_base64}" width="150" height="100" />'
+        if post["image_url"]:
+            image_tag = f'<img src="{post["image_url"]}" width="150" height="100" />'
         else:
-            img_tag = '<div style="width:150px; height:100px; background-color:#2C3E50; border-radius:5px;"></div>'
+            image_tag = '<div style="width:150px; height:100px; background-color:#2C3E50; border-radius:5px;"></div>'
+
+        pub_date = post['scheduled_time'].astimezone(pytz.timezone("America/Los_Angeles")).strftime('%Y-%m-%d %H:%M')
+        read_more_key = f"read_more_{post['id']}"
 
         # Card layout for each post
         st.markdown(f"""
             <div class="post-card">
                 <div class="post-image">
-                    {img_tag}
+                    {image_tag}
                 </div>
                 <div class="post-content">
                     <h3 class="post-title">{post_title}</h3>
@@ -481,8 +535,8 @@ def view_blog_posts():
 
         # Handle Read More button clicks
         if st.button("Read More", key=read_more_key):
-            st.session_state.selected_post = post
-            st.rerun()
+            st.session_state.selected_post = post["id"]
+            st.experimental_rerun()
 
 def create_blog_post():
     st.header("📝 Create a New Blog Post")
@@ -506,15 +560,16 @@ def create_blog_post():
                 content = process_html(uploaded_file)
             else:
                 st.error("❌ Unsupported file type.")
-    
+
     image = st.file_uploader("🖼️ Upload Thumbnail Image", type=["png", "jpg", "jpeg"])
     scheduled_date = st.date_input("📅 Schedule Date", value=datetime.date.today())
     scheduled_time = st.time_input("⏰ Schedule Time", value=datetime.time(9, 0))
     scheduled_datetime = datetime.datetime.combine(scheduled_date, scheduled_time)
 
-    # Convert to user's local timezone (Pacific Time)
-    local_tz = pytz.timezone("America/Los_Angeles")
-    scheduled_datetime = local_tz.localize(scheduled_datetime)
+    # Convert to UTC for consistency
+    local_tz = pytz.timezone("America/Los_Angeles")  # Adjust if needed
+    localized_datetime = local_tz.localize(scheduled_datetime)
+    utc_datetime = localized_datetime.astimezone(pytz.UTC)
 
     if st.button("📤 Publish"):
         if not title:
@@ -524,42 +579,33 @@ def create_blog_post():
             st.warning("⚠️ Please provide content for the post.")
             return
 
-        # Generate filename and save path
-        filename = f"{title.replace(' ', '_').lower()}.md"
-        filepath = POSTS_DIR / filename
-        metadata_path = filepath.with_suffix('.json')
-
-        # Check for duplicate titles
-        if filepath.exists():
-            st.error("❌ A post with this title already exists. Please choose a different title.")
+        # Optional: Validate scheduled_time is in the future
+        if utc_datetime < datetime.datetime.utcnow().replace(tzinfo=pytz.UTC):
+            st.warning("⚠️ Scheduled time must be in the future.")
             return
 
-        # Save the markdown file
-        try:
-            with open(filepath, 'w', encoding='utf-8') as file:
-                file.write(content)
+        # Handle Image Upload
+        image_url = ""
+        if image:
+            try:
+                # Compress the image
+                img = Image.open(image)
+                img_io = BytesIO()
+                img.save(img_io, format='PNG', optimize=True, quality=70)
+                img_io.seek(0)
 
-            # Save scheduling metadata
-            with open(metadata_path, 'w', encoding='utf-8') as file:
-                json.dump({"scheduled_time": scheduled_datetime.isoformat()}, file)
+                # Upload to Firebase Storage
+                blob = bucket.blob(f'images/{uuid.uuid4()}_{image.name}')
+                blob.upload_from_file(img_io, content_type=image.type)
+                blob.make_public()
+                image_url = blob.public_url
+            except Exception as e:
+                st.error(f"❌ Failed to upload image: {e}")
+                return
 
-            # Save the uploaded image if provided
-            if image:
-                try:
-                    img = Image.open(image)
-                    img.save(IMAGES_DIR / f"{filepath.stem}.png", format="PNG")
-                except Exception as e:
-                    st.error(f"❌ Failed to save image: {e}")
-            
-            st.markdown(
-                f'<div class="success-message">✅ Published post: **{title}** scheduled for {scheduled_datetime}</div>',
-                unsafe_allow_html=True
-            )
-            st.rerun()
-
-        except Exception as e:
-            st.error(f"❌ Failed to save post: {e}")
-
+        # Create Firestore document
+        create_firestore_post(title, content, utc_datetime, image_url)
+        st.experimental_rerun()
 
 def edit_scheduled_post():
     if not st.session_state.logged_in:
@@ -567,59 +613,88 @@ def edit_scheduled_post():
         return
 
     st.header("✏️ Edit Scheduled Post")
-    # Get all posts, including scheduled ones
-    all_posts = list_posts()  # This will only include already published posts
-    scheduled_posts = []
+    # Get all scheduled posts (scheduled_time in the future)
+    now = datetime.datetime.utcnow().replace(tzinfo=pytz.UTC)
+    scheduled_posts_ref = db.collection('posts').where('scheduled_time', '>', now)
+    try:
+        docs = scheduled_posts_ref.stream()
+        scheduled_posts = []
+        for doc in docs:
+            post = doc.to_dict()
+            post['id'] = doc.id
+            scheduled_posts.append(post)
+    except Exception as e:
+        st.error(f"❌ Failed to fetch scheduled posts: {e}")
+        return
 
-    # Collect scheduled posts
-    for post_path in POSTS_DIR.glob('*.json'):
-        with open(post_path, 'r', encoding='utf-8') as file:
-            metadata = json.load(file)
-            scheduled_time = datetime.datetime.fromisoformat(metadata['scheduled_time']).astimezone(pytz.timezone("America/Los_Angeles"))
-            if scheduled_time > datetime.datetime.now(pytz.timezone("America/Los_Angeles")):
-                scheduled_posts.append(post_path.stem)  # Add the post name without extension
+    if not scheduled_posts:
+        st.info("No scheduled posts available.")
+        return
 
-    # Combine both lists for selection
-    all_posts.extend(scheduled_posts)
-    selected_post = st.selectbox("Select a post to edit", all_posts)  # Show all posts including scheduled ones
+    # Create a selection list
+    post_options = {f"{post['title']} (Scheduled for {post['scheduled_time'].astimezone(pytz.timezone('America/Los_Angeles')).strftime('%Y-%m-%d %H:%M')})": post['id'] for post in scheduled_posts}
+    selected_post_display = st.selectbox("Select a post to edit", list(post_options.keys()))
+    selected_post_id = post_options.get(selected_post_display)
 
-    if selected_post:
-        post_path = POSTS_DIR / f"{selected_post}.md"
-        metadata_path = post_path.with_suffix('.json')
-
-        # Check if the post exists
-        if not post_path.exists() or not metadata_path.exists():
-            st.error("❌ The selected post or its metadata does not exist.")
+    if selected_post_id:
+        post_ref = db.collection('posts').document(selected_post_id)
+        post = post_ref.get()
+        if not post.exists:
+            st.error("❌ Selected post does not exist.")
             return
 
-        # Load existing content and metadata
-        content = get_post_content(f"{selected_post}.md")
-        with open(metadata_path, 'r', encoding='utf-8') as file:
-            metadata = json.load(file)
-            scheduled_time = datetime.datetime.fromisoformat(metadata['scheduled_time'])
+        post_data = post.to_dict()
+        title = st.text_input("🖊️ Post Title", value=post_data.get('title', ''))
+        content = st.text_area("📝 Content", value=post_data.get('content', ''), height=300)
+        scheduled_datetime = post_data.get('scheduled_time').astimezone(pytz.timezone("America/Los_Angeles"))
+        scheduled_date = st.date_input("📅 Schedule Date", value=scheduled_datetime.date())
+        scheduled_time = st.time_input("⏰ Schedule Time", value=scheduled_datetime.time())
 
-        # Display current values
-        title = st.text_input("🖊️ Post Title", value=selected_post.replace('_', ' ').title())
-        content = st.text_area("📝 Content", value=content, height=300)
-        scheduled_date = st.date_input("📅 Schedule Date", value=scheduled_time.date())
-        scheduled_time_input = st.time_input("⏰ Schedule Time", value=scheduled_time.time())
+        # Combine date and time
+        new_scheduled_datetime = datetime.datetime.combine(scheduled_date, scheduled_time)
+        localized_new_scheduled_datetime = local_tz.localize(new_scheduled_datetime)
+        utc_new_scheduled_datetime = localized_new_scheduled_datetime.astimezone(pytz.UTC)
 
-        # Convert to user's local timezone (Pacific Time)
-        local_tz = pytz.timezone("America/Los_Angeles")  # Change this to the user's local timezone
-        scheduled_datetime = datetime.datetime.combine(scheduled_date, scheduled_time_input)
-        scheduled_datetime = local_tz.localize(scheduled_datetime)
+        image = st.file_uploader("🖼️ Upload New Thumbnail Image (Optional)", type=["png", "jpg", "jpeg"])
 
         if st.button("📤 Update Post"):
-            # Save the updated markdown file
-            with open(post_path, 'w', encoding='utf-8') as file:
-                file.write(content)
+            if not title:
+                st.warning("⚠️ Please provide a title for the post.")
+                return
+            if not content:
+                st.warning("⚠️ Please provide content for the post.")
+                return
 
-            # Save updated scheduling metadata
-            with open(metadata_path, 'w', encoding='utf-8') as file:
-                json.dump({"scheduled_time": scheduled_datetime.isoformat()}, file)
+            # Handle Image Upload if a new image is provided
+            image_url = post_data.get('image_url', "")
+            if image:
+                try:
+                    # Compress the image
+                    img = Image.open(image)
+                    img_io = BytesIO()
+                    img.save(img_io, format='PNG', optimize=True, quality=70)
+                    img_io.seek(0)
 
-            st.markdown(f'<div class="success-message">✅ Updated post: **{title}** scheduled for {scheduled_datetime}</div>', unsafe_allow_html=True)
-            st.rerun()
+                    # Upload to Firebase Storage
+                    blob = bucket.blob(f'images/{uuid.uuid4()}_{image.name}')
+                    blob.upload_from_file(img_io, content_type=image.type)
+                    blob.make_public()
+                    image_url = blob.public_url
+
+                    # Delete old image if exists
+                    old_image_url = post_data.get('image_url')
+                    if old_image_url:
+                        old_blob_path = old_image_url.split('.com/')[1]
+                        old_blob = bucket.blob(old_blob_path)
+                        if old_blob.exists():
+                            old_blob.delete()
+                except Exception as e:
+                    st.error(f"❌ Failed to upload new image: {e}")
+                    return
+
+            # Update Firestore document
+            update_firestore_post(selected_post_id, title, content, utc_new_scheduled_datetime, image_file=image if image else None)
+            st.experimental_rerun()
 
 def delete_blog_posts():
     if not st.session_state.logged_in:
@@ -627,15 +702,22 @@ def delete_blog_posts():
         return
 
     st.header("🗑️ Delete Blog Posts")
-    posts = list_posts()
-    selected_posts = st.multiselect("Select posts to delete", posts)  # Only show post names
+    posts = list_firestore_posts()
+    if not posts:
+        st.info("No blog posts available.")
+        return
+
+    # Create selection list
+    post_options = {f"{post['title']} (Published on {post['scheduled_time'].astimezone(pytz.timezone('America/Los_Angeles')).strftime('%Y-%m-%d %H:%M')})": post["id"] for post in posts}
+    selected_posts = st.multiselect("Select posts to delete", list(post_options.keys()))
     confirm_delete = st.checkbox("⚠️ Confirm Deletion")
 
     if st.button("Delete Selected") and confirm_delete:
-        for post in selected_posts:
-            delete_post(post)
-        st.markdown('<div class="success-message">✅ Deleted successfully</div>', unsafe_allow_html=True)
-        st.rerun()
+        for post_display in selected_posts:
+            post_id = post_options.get(post_display)
+            if post_id:
+                delete_firestore_post(post_id)
+        st.experimental_rerun()
 
 def view_scheduled_posts():
     if not st.session_state.logged_in:
@@ -643,25 +725,28 @@ def view_scheduled_posts():
         return
 
     st.header("📅 Scheduled Posts")
-    # Get current time in user's local timezone (Pacific Time)
-    local_tz = pytz.timezone("America/Los_Angeles")  # Change this to the user's local timezone
-    now = datetime.datetime.now(local_tz)
-    scheduled_posts = []
-
-    for post_path in POSTS_DIR.glob('*.json'):
-        with open(post_path, 'r', encoding='utf-8') as file:
-            metadata = json.load(file)
-            scheduled_time = datetime.datetime.fromisoformat(metadata['scheduled_time']).astimezone(local_tz)
-            if scheduled_time > now:
-                scheduled_posts.append((post_path.stem, scheduled_time))
+    now = datetime.datetime.utcnow().replace(tzinfo=pytz.UTC)
+    scheduled_posts_ref = db.collection('posts').where('scheduled_time', '>', now).order_by('scheduled_time', direction=firestore.Query.ASCENDING)
+    try:
+        docs = scheduled_posts_ref.stream()
+        scheduled_posts = []
+        for doc in docs:
+            post = doc.to_dict()
+            post['id'] = doc.id
+            scheduled_posts.append(post)
+    except Exception as e:
+        st.error(f"❌ Failed to fetch scheduled posts: {e}")
+        return
 
     if not scheduled_posts:
         st.info("No scheduled posts available.")
         return
 
-    for post_title, scheduled_time in scheduled_posts:
-        st.markdown(f"**Post Title:** {post_title.replace('_', ' ').title()}")
-        st.markdown(f"**Scheduled for:** {scheduled_time.strftime('%Y-%m-%d %H:%M')}")
+    for post in scheduled_posts:
+        post_title = post["title"]
+        scheduled_time = post["scheduled_time"].astimezone(pytz.timezone("America/Los_Angeles")).strftime('%Y-%m-%d %H:%M')
+        st.markdown(f"**Post Title:** {post_title}")
+        st.markdown(f"**Scheduled for:** {scheduled_time}")
         st.markdown("---")
 
 # ===========================
@@ -671,17 +756,20 @@ def view_scheduled_posts():
 def main():
     st.sidebar.title("📂 Blog Management")
     page = st.sidebar.radio("🛠️ Choose an option", ["View Posts", "View Scheduled Posts", "Create Post", "Edit Scheduled Post", "Delete Post"])
-    
+
     if page == "View Posts":
         view_blog_posts()
     elif page == "View Scheduled Posts":
-        view_scheduled_posts()  # New option to view scheduled posts
+        view_scheduled_posts()
     elif page == "Edit Scheduled Post":
-        edit_scheduled_post()  # New option to edit scheduled posts
+        edit_scheduled_post()
     elif page in ["Create Post", "Delete Post"]:
         login()
         if st.session_state.logged_in:
-            create_blog_post() if page == "Create Post" else delete_blog_posts()
+            if page == "Create Post":
+                create_blog_post()
+            else:
+                delete_blog_posts()
 
 if __name__ == "__main__":
     main()
