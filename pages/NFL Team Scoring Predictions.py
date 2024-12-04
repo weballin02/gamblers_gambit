@@ -132,9 +132,13 @@ gbr_models, arima_models, team_stats = train_team_models(team_data)
 # 5. SHAP Explainer Setup
 # =======================
 @st.cache_data(ttl=3600)
-def initialize_shap_explainers(models):
+def initialize_shap_explainers(_models):
+    """
+    Initialize SHAP explainers for each model.
+    Arguments prefixed with underscores are ignored by Streamlit's hashing mechanism.
+    """
     explainers = {}
-    for team, model in models.items():
+    for team, model in _models.items():
         # Create a SHAP TreeExplainer for each model
         explainers[team] = shap.TreeExplainer(model)
     return explainers
