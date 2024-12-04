@@ -132,6 +132,19 @@ def train_team_models(team_data):
 gbr_models, arima_models, team_stats = train_team_models(team_data)
 
 # =======================
+# 4. SHAP Explainer Setup
+# =======================
+@st.cache_data(ttl=3600)
+def initialize_shap_explainers(models):
+    explainers = {}
+    for team, model in models.items():
+        # Create a SHAP TreeExplainer for each model
+        explainers[team] = shap.TreeExplainer(model)
+    return explainers
+
+shap_explainers = initialize_shap_explainers(gbr_models)
+
+# =======================
 # 5. Prediction Logic
 # =======================
 def predict_team_score(team, models, arima_models, team_stats, team_data):
@@ -217,21 +230,24 @@ with col2:
     else:
         st.warning("Insufficient data for predictions.")
         
-# Filter data for the selected home team
+# SHAP Visualization
 team_df = team_data[team_data['team'] == home_team]
 if not team_df.empty:
-    # Extract the latest features for the team
     team_features = team_df[model_dict['features']].iloc[-1:]
+    
+    # Use the SHAP explainer for the specific team
+    if home_team in shap_explainers:
+        explainer = shap_explainers[home_team]
+        shap_values = explainer.shap_values(team_features)
 
-    # Compute SHAP values for the team
-    shap_values = explainer.shap_values(team_features)
-
-    # Display SHAP summary plot as a bar chart using Matplotlib
-    st.markdown(f"### 🔍 Feature Importance for **{home_team}**")
-    plt.figure(figsize=(10, 5))
-    plt.title(f"Feature Importance for {home_team}")
-    shap.summary_plot(shap_values, team_features, plot_type="bar", show=False)
-    st.pyplot(bbox_inches='tight')
+        # Display SHAP summary plot as a bar chart using Matplotlib
+        st.markdown(f"### 🔍 Feature Importance for **{home_team}**")
+        plt.figure(figsize=(10, 5))
+        plt.title(f"Feature Importance for {home_team}")
+        shap.summary_plot(shap_values, team_features, plot_type="bar", show=False)
+        st.pyplot(bbox_inches='tight')
+    else:
+        st.warning(f"SHAP explainer not available for {home_team}.")
 else:
     st.warning(f"No data available for {home_team}. Cannot generate SHAP visualizations.")
 
