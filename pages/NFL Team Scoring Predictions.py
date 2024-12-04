@@ -1,3 +1,6 @@
+
+
+
 # Enhanced NFL Prediction Script with Betting Insights and Improved Visuals
 
 # =======================
@@ -12,7 +15,6 @@ from pmdarima import auto_arima
 from datetime import datetime
 import matplotlib.pyplot as plt
 import seaborn as sns
-import shap
 
 # =======================
 # 2. Initialization and Theme Configuration
@@ -129,24 +131,7 @@ def train_team_models(team_data):
 gbr_models, arima_models, team_stats = train_team_models(team_data)
 
 # =======================
-# 5. SHAP Explainer Setup
-# =======================
-@st.cache_data(ttl=3600)
-def initialize_shap_explainers(_models):
-    """
-    Initialize SHAP explainers for each model.
-    Arguments prefixed with underscores are ignored by Streamlit's hashing mechanism.
-    """
-    explainers = {}
-    for team, model in _models.items():
-        # Create a SHAP TreeExplainer for each model
-        explainers[team] = shap.TreeExplainer(model)
-    return explainers
-
-shap_explainers = initialize_shap_explainers(gbr_models)
-
-# =======================
-# 6. Prediction Logic
+# 5. Prediction Logic
 # =======================
 def predict_team_score(team, models, arima_models, team_stats, team_data):
     gbr_prediction = None
@@ -173,28 +158,18 @@ def predict_team_score(team, models, arima_models, team_stats, team_data):
     return gbr_prediction, arima_prediction, confidence_interval
 
 # =======================
-# 7. Fetch Upcoming Games
+# 6. Fetch Upcoming Games
 # =======================
 @st.cache_data(ttl=3600)
-def fetch_upcoming_games():
-    schedule = nfl.import_schedules([current_year])
-    schedule['game_datetime'] = pd.to_datetime(schedule['gameday'].astype(str) + ' ' + schedule['gametime'].astype(str), errors='coerce', utc=True)
-    now = datetime.now(pytz.UTC)
-    weekday = now.weekday()
+def fetch_upcoming_games(schedule):
+    upcoming_games = schedule[(schedule['home_score'].isna()) & (schedule['away_score'].isna())]
+    upcoming_games['matchup'] = upcoming_games['home_team'] + " vs " + upcoming_games['away_team']
+    return upcoming_games[['gameday', 'home_team', 'away_team', 'matchup']].reset_index(drop=True)
 
-    target_days = {3: [3, 6, 0], 6: [6, 0, 3], 0: [0, 3, 6]}.get(weekday, [3, 6, 0])
-    upcoming_game_dates = [now + timedelta(days=(d - weekday + 7) % 7) for d in target_days]
+upcoming_games = fetch_upcoming_games(schedule)
 
-    upcoming_games = schedule[
-        (schedule['game_type'] == 'REG') &
-        (schedule['game_datetime'].dt.date.isin([date.date() for date in upcoming_game_dates]))
-    ].sort_values('game_datetime')
-
-    return upcoming_games[['game_datetime', 'home_team', 'away_team']]
-
-upcoming_games = fetch_upcoming_games()
 # =======================
-# 8. User Interface and Prediction Display
+# 7. User Interface and Prediction Display
 # =======================
 # Title and Description
 st.markdown('<div class="title">🏈 Enhanced NFL Betting Predictions</div>', unsafe_allow_html=True)
@@ -240,23 +215,6 @@ with col2:
         st.markdown(f"**95% Confidence Interval:** {away_ci[0]:.2f} - {away_ci[1]:.2f}")
     else:
         st.warning("Insufficient data for predictions.")
-        
-# SHAP Visualization
-team_df = team_data[team_data['team'] == home_team]
-if not team_df.empty:
-    team_features = team_df[['score']].iloc[-1:]  # Replace 'score' with your model's feature columns
-    if home_team in shap_explainers:
-        explainer = shap_explainers[home_team]
-        shap_values = explainer.shap_values(team_features)
-        st.markdown(f"### 🔍 Feature Importance for **{home_team}**")
-        plt.figure(figsize=(10, 5))
-        plt.title(f"Feature Importance for {home_team}")
-        shap.summary_plot(shap_values, team_features, plot_type="bar", show=False)
-        st.pyplot(bbox_inches='tight')
-    else:
-        st.warning(f"SHAP explainer not available for {home_team}.")
-else:
-    st.warning(f"No data available for {home_team}. Cannot generate SHAP visualizations.")
 
 # Betting Insights
 st.markdown("### 💡 Betting Insights")
