@@ -14,7 +14,7 @@ import pytz
 import json
 from io import BytesIO
 import base64
-import fitz
+import fitz  # PyMuPDF
 import html2text
 
 # ===========================
@@ -103,37 +103,12 @@ def delete_post(post_name):
         return True
     return False
 
-def move_to_trash(post_name):
-    post_path = POSTS_DIR / post_name
-    trash_post_path = TRASH_DIR / post_name
-    image_path = IMAGES_DIR / f"{post_path.stem}.png"
-    trash_image_path = TRASH_DIR / f"{post_path.stem}.png"
-
-    metadata_path = post_path.with_suffix('.json')
-    trash_metadata_path = TRASH_DIR / metadata_path.name
-
-    if post_path.exists():
-        post_path.rename(trash_post_path)
-        if image_path.exists():
-            image_path.rename(trash_image_path)
-        if metadata_path.exists():
-            metadata_path.rename(trash_metadata_path)
-        return True
-    return False
-
 def get_post_content(post_name):
     post_file = POSTS_DIR / post_name
     if post_file.exists():
         with open(post_file, 'r', encoding='utf-8') as file:
             return file.read()
     return "Post content not found."
-
-def display_full_post(post_name):
-    st.button("🔙 Back to Posts", on_click=lambda: st.session_state.update(selected_post=None))
-    post_title = post_name.replace('.md', '').replace('_', ' ').title()
-    st.header(post_title)
-    content = get_post_content(post_name)
-    st.markdown(content)
 
 def process_pdf(file):
     try:
@@ -153,6 +128,14 @@ def process_html(file):
         return markdown
     except Exception as e:
         st.error(f"❌ Failed to process HTML: {e}")
+        return None
+
+def process_txt(file):
+    try:
+        content = file.read().decode("utf-8")
+        return content
+    except Exception as e:
+        st.error(f"❌ Failed to process TXT: {e}")
         return None
 
 # ===========================
@@ -183,8 +166,27 @@ def view_blog_posts():
 
 def create_blog_post():
     st.header("📝 Create a New Post")
-    title = st.text_input("Post Title")
-    content = st.text_area("Content", height=300)
+    post_type = st.selectbox("Select Post Type", ["Manual Entry", "Upload TXT/PDF/HTML"])
+
+    title = ""
+    content = ""
+
+    if post_type == "Manual Entry":
+        title = st.text_input("Post Title")
+        content = st.text_area("Content", height=300)
+    elif post_type == "Upload TXT/PDF/HTML":
+        uploaded_file = st.file_uploader("Upload File", type=["txt", "pdf", "html"])
+        if uploaded_file:
+            if uploaded_file.type == "text/plain":
+                content = process_txt(uploaded_file)
+            elif uploaded_file.type == "application/pdf":
+                content = process_pdf(uploaded_file)
+            elif uploaded_file.type in ["text/html", "application/xhtml+xml"]:
+                content = process_html(uploaded_file)
+            else:
+                st.error("Unsupported file type.")
+        title = st.text_input("Post Title (Optional)")
+
     image = st.file_uploader("Upload Thumbnail Image", type=["png", "jpg", "jpeg"])
     scheduled_date = st.date_input("Schedule Date", value=datetime.date.today())
     scheduled_time = st.time_input("Schedule Time", value=datetime.time(9, 0))
@@ -192,8 +194,11 @@ def create_blog_post():
     scheduled_datetime = local_tz.localize(datetime.datetime.combine(scheduled_date, scheduled_time))
 
     if st.button("Publish"):
-        if not title or not content:
-            st.warning("Title and content are required.")
+        if not title:
+            st.warning("Title is required.")
+            return
+        if not content:
+            st.warning("Content is required.")
             return
 
         filename = f"{title.replace(' ', '_').lower()}.md"
