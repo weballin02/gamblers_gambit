@@ -15,6 +15,7 @@ from pmdarima import auto_arima
 from datetime import datetime
 import matplotlib.pyplot as plt
 import seaborn as sns
+import shap
 
 # =======================
 # 2. Initialization and Theme Configuration
@@ -215,6 +216,24 @@ with col2:
         st.markdown(f"**95% Confidence Interval:** {away_ci[0]:.2f} - {away_ci[1]:.2f}")
     else:
         st.warning("Insufficient data for predictions.")
+        
+# Filter data for the selected home team
+team_df = team_data[team_data['team'] == home_team]
+if not team_df.empty:
+    # Extract the latest features for the team
+    team_features = team_df[model_dict['features']].iloc[-1:]
+
+    # Compute SHAP values for the team
+    shap_values = explainer.shap_values(team_features)
+
+    # Display SHAP summary plot as a bar chart using Matplotlib
+    st.markdown(f"### 🔍 Feature Importance for **{home_team}**")
+    plt.figure(figsize=(10, 5))
+    plt.title(f"Feature Importance for {home_team}")
+    shap.summary_plot(shap_values, team_features, plot_type="bar", show=False)
+    st.pyplot(bbox_inches='tight')
+else:
+    st.warning(f"No data available for {home_team}. Cannot generate SHAP visualizations.")
 
 # Betting Insights
 st.markdown("### 💡 Betting Insights")
