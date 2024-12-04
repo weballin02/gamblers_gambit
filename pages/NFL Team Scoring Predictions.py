@@ -1,6 +1,3 @@
-
-
-
 # Enhanced NFL Prediction Script with Betting Insights and Improved Visuals
 
 # =======================
@@ -132,7 +129,7 @@ def train_team_models(team_data):
 gbr_models, arima_models, team_stats = train_team_models(team_data)
 
 # =======================
-# 4. SHAP Explainer Setup
+# 5. SHAP Explainer Setup
 # =======================
 @st.cache_data(ttl=3600)
 def initialize_shap_explainers(models):
@@ -145,7 +142,7 @@ def initialize_shap_explainers(models):
 shap_explainers = initialize_shap_explainers(gbr_models)
 
 # =======================
-# 5. Prediction Logic
+# 6. Prediction Logic
 # =======================
 def predict_team_score(team, models, arima_models, team_stats, team_data):
     gbr_prediction = None
@@ -172,18 +169,28 @@ def predict_team_score(team, models, arima_models, team_stats, team_data):
     return gbr_prediction, arima_prediction, confidence_interval
 
 # =======================
-# 6. Fetch Upcoming Games
+# 7. Fetch Upcoming Games
 # =======================
 @st.cache_data(ttl=3600)
-def fetch_upcoming_games(schedule):
-    upcoming_games = schedule[(schedule['home_score'].isna()) & (schedule['away_score'].isna())]
-    upcoming_games['matchup'] = upcoming_games['home_team'] + " vs " + upcoming_games['away_team']
-    return upcoming_games[['gameday', 'home_team', 'away_team', 'matchup']].reset_index(drop=True)
+def fetch_upcoming_games():
+    schedule = nfl.import_schedules([current_year])
+    schedule['game_datetime'] = pd.to_datetime(schedule['gameday'].astype(str) + ' ' + schedule['gametime'].astype(str), errors='coerce', utc=True)
+    now = datetime.now(pytz.UTC)
+    weekday = now.weekday()
 
-upcoming_games = fetch_upcoming_games(schedule)
+    target_days = {3: [3, 6, 0], 6: [6, 0, 3], 0: [0, 3, 6]}.get(weekday, [3, 6, 0])
+    upcoming_game_dates = [now + timedelta(days=(d - weekday + 7) % 7) for d in target_days]
 
+    upcoming_games = schedule[
+        (schedule['game_type'] == 'REG') &
+        (schedule['game_datetime'].dt.date.isin([date.date() for date in upcoming_game_dates]))
+    ].sort_values('game_datetime')
+
+    return upcoming_games[['game_datetime', 'home_team', 'away_team']]
+
+upcoming_games = fetch_upcoming_games()
 # =======================
-# 7. User Interface and Prediction Display
+# 8. User Interface and Prediction Display
 # =======================
 # Title and Description
 st.markdown('<div class="title">🏈 Enhanced NFL Betting Predictions</div>', unsafe_allow_html=True)
@@ -233,14 +240,10 @@ with col2:
 # SHAP Visualization
 team_df = team_data[team_data['team'] == home_team]
 if not team_df.empty:
-    team_features = team_df[model_dict['features']].iloc[-1:]
-    
-    # Use the SHAP explainer for the specific team
+    team_features = team_df[['score']].iloc[-1:]  # Replace 'score' with your model's feature columns
     if home_team in shap_explainers:
         explainer = shap_explainers[home_team]
         shap_values = explainer.shap_values(team_features)
-
-        # Display SHAP summary plot as a bar chart using Matplotlib
         st.markdown(f"### 🔍 Feature Importance for **{home_team}**")
         plt.figure(figsize=(10, 5))
         plt.title(f"Feature Importance for {home_team}")
