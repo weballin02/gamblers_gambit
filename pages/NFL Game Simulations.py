@@ -1,4 +1,4 @@
-# Enhanced NFL Prediction Script with Advanced Features and Models
+# Enhanced NFL Prediction Script with Betting Insights and Improved Visuals
 
 # =======================
 # 1. Import Libraries
@@ -7,23 +7,17 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import nfl_data_py as nfl
-from sklearn.ensemble import GradientBoostingRegressor, RandomForestRegressor
-from sklearn.model_selection import TimeSeriesSplit, GridSearchCV
-from sklearn.metrics import mean_absolute_error, mean_squared_error
-from xgboost import XGBRegressor
+from sklearn.ensemble import GradientBoostingRegressor
+from pmdarima import auto_arima
 from datetime import datetime
 import matplotlib.pyplot as plt
 import seaborn as sns
-import shap
-import warnings
-
-warnings.filterwarnings("ignore")
 
 # =======================
 # 2. Initialization and Theme Configuration
 # =======================
 st.set_page_config(
-    page_title="🏈 Advanced NFL Betting Predictions",
+    page_title="🏈 Enhanced NFL Betting Predictions",
     page_icon="🏈",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -87,51 +81,21 @@ st.sidebar.button("🌗 Toggle Theme", on_click=toggle_theme)
 @st.cache_data(ttl=3600)
 def load_nfl_data():
     current_year = datetime.now().year
-    previous_years = [current_year - i for i in range(1, 6)]  # Last 5 years
+    previous_years = [current_year - 1, current_year - 2]
     schedule = nfl.import_schedules([current_year] + previous_years)
     return schedule
 
 @st.cache_data(ttl=3600)
 def preprocess_data(schedule):
-    # Prepare team data
-    home_df = schedule[['gameday', 'home_team', 'home_score', 'away_team']].rename(
-        columns={'home_team': 'team', 'home_score': 'score', 'away_team': 'opponent'}
+    home_df = schedule[['gameday', 'home_team', 'home_score']].rename(
+        columns={'home_team': 'team', 'home_score': 'score'}
     )
-    home_df['is_home'] = 1
-
-    away_df = schedule[['gameday', 'away_team', 'away_score', 'home_team']].rename(
-        columns={'away_team': 'team', 'away_score': 'score', 'home_team': 'opponent'}
+    away_df = schedule[['gameday', 'away_team', 'away_score']].rename(
+        columns={'away_team': 'team', 'away_score': 'score'}
     )
-    away_df['is_home'] = 0
-
     team_data = pd.concat([home_df, away_df], ignore_index=True)
     team_data.dropna(subset=['score'], inplace=True)
-    team_data['gameday'] = pd.to_datetime(team_data['gameday'])
-    team_data.sort_values(['team', 'gameday'], inplace=True)
-
-    # Add rest days
-    team_data['rest_days'] = team_data.groupby('team')['gameday'].diff().dt.days.fillna(7)
-
-    # Add game number
-    team_data['game_number'] = team_data.groupby('team').cumcount() + 1
-
-    # Add rolling average of scores
-    team_data['score_rolling_mean'] = team_data.groupby('team')['score'].transform(
-        lambda x: x.rolling(window=3, min_periods=1).mean()
-    )
-
-    # Add opponent's average score
-    opponent_avg_score = team_data.groupby('team')['score'].mean().reset_index()
-    opponent_avg_score.columns = ['opponent', 'opponent_avg_score']
-    team_data = team_data.merge(opponent_avg_score, on='opponent', how='left')
-
-    # Add exponential decay weights
-    decay = 0.9
-    team_data['decay_weight'] = team_data.groupby('team').cumcount().apply(lambda x: decay ** x)
-
-    # Drop any remaining NaN values
-    team_data.dropna(inplace=True)
-
+    team_data.sort_values('gameday', inplace=True)  # Ensure data is in chronological order
     return team_data
 
 schedule = load_nfl_data()
@@ -142,100 +106,53 @@ team_data = preprocess_data(schedule)
 # =======================
 def train_team_models(team_data):
     models = {}
+    arima_models = {}
     team_stats = {}
     for team in team_data['team'].unique():
-        team_df = team_data[team_data['team'] == team]
-        if len(team_df) < 15:
-            continue  # Skip teams with insufficient data
-
-        # Prepare features and target
-        features = team_df[['game_number', 'is_home', 'rest_days', 'score_rolling_mean', 'opponent_avg_score']]
-        target = team_df['score']
-
-        # Handle missing values
-        features.fillna(method='ffill', inplace=True)
-
-        # Hyperparameter tuning
-        param_grid = {
-            'n_estimators': [100, 200],
-            'max_depth': [3, 5],
-            'learning_rate': [0.01, 0.1],
-            'subsample': [0.8, 1.0]
-        }
-
-        # TimeSeriesSplit for cross-validation
-        tscv = TimeSeriesSplit(n_splits=3)
-
-        # Initialize models
-        gbr = GradientBoostingRegressor()
-        rf = RandomForestRegressor()
-        xgb = XGBRegressor(eval_metric='rmse', use_label_encoder=False)
-
-        # Perform Grid Search
-        gbr_grid = GridSearchCV(gbr, param_grid, cv=tscv)
-        gbr_grid.fit(features, target)
-
-        rf_grid = GridSearchCV(rf, {'n_estimators': [100, 200], 'max_depth': [5, 10]}, cv=tscv)
-        rf_grid.fit(features, target)
-
-        xgb_grid = GridSearchCV(xgb, param_grid, cv=tscv)
-        xgb_grid.fit(features, target)
-
-        # Store models
-        models[team] = {
-            'gbr': gbr_grid.best_estimator_,
-            'rf': rf_grid.best_estimator_,
-            'xgb': xgb_grid.best_estimator_,
-            'features': features.columns
-        }
-
-        # Collect team stats
+        team_scores = team_data[team_data['team'] == team]['score'].reset_index(drop=True)
         team_stats[team] = {
-            'avg_score': target.mean(),
-            'std_dev': target.std(),
-            'min_score': target.min(),
-            'max_score': target.max()
+            'avg_score': team_scores.mean(),
+            'std_dev': team_scores.std(),
+            'min_score': team_scores.min(),
+            'max_score': team_scores.max()
         }
+        if len(team_scores) > 10:
+            features = np.arange(len(team_scores)).reshape(-1, 1)
+            gbr_model = GradientBoostingRegressor().fit(features, team_scores)
+            models[team] = gbr_model
+        if len(team_scores) > 5:
+            arima_model = auto_arima(team_scores, seasonal=False, trace=False, error_action='ignore', suppress_warnings=True)
+            arima_models[team] = arima_model
+    return models, arima_models, team_stats
 
-    return models, team_stats
-
-models, team_stats = train_team_models(team_data)
+gbr_models, arima_models, team_stats = train_team_models(team_data)
 
 # =======================
 # 5. Prediction Logic
 # =======================
-def predict_team_score(team, models, team_stats, team_data):
-    ensemble_prediction = None
+def predict_team_score(team, models, arima_models, team_stats, team_data):
+    gbr_prediction = None
+    arima_prediction = None
     confidence_interval = None
-
+    # Get the team's scores
+    team_scores = team_data[team_data['team'] == team]['score'].reset_index(drop=True)
     if team in models:
-        team_df = team_data[team_data['team'] == team].iloc[-1]
-        # Prepare features for the next game
-        next_features = pd.DataFrame({
-            'game_number': [team_df['game_number'] + 1],
-            'is_home': [team_df['is_home']],  # Assume same as last game
-            'rest_days': [7],  # Assume default rest days
-            'score_rolling_mean': [team_df['score_rolling_mean']],
-            'opponent_avg_score': [team_df['opponent_avg_score']]
-        })
-
-        # Get models
-        model_dict = models[team]
-        predictions = []
-        for model_name in ['gbr', 'rf', 'xgb']:
-            model = model_dict[model_name]
-            pred = model.predict(next_features[model_dict['features']])[0]
-            predictions.append(pred)
-
-        # Ensemble prediction (average)
-        ensemble_prediction = np.mean(predictions)
-
+        gbr_model = models[team]
+        # The next feature is the index for the next game
+        next_feature = np.array([[len(team_scores)]])
+        gbr_prediction = gbr_model.predict(next_feature)[0]
+    if team in arima_models:
+        arima_model = arima_models[team]
+        arima_pred = arima_model.predict(n_periods=1)
+        if isinstance(arima_pred, pd.Series):
+            arima_prediction = arima_pred.iloc[0]
+        else:
+            arima_prediction = arima_pred[0]
     if team in team_stats:
         avg = team_stats[team]['avg_score']
         std = team_stats[team]['std_dev']
         confidence_interval = (avg - 1.96 * std, avg + 1.96 * std)
-
-    return ensemble_prediction, confidence_interval
+    return gbr_prediction, arima_prediction, confidence_interval
 
 # =======================
 # 6. Fetch Upcoming Games
@@ -244,8 +161,6 @@ def predict_team_score(team, models, team_stats, team_data):
 def fetch_upcoming_games(schedule):
     upcoming_games = schedule[(schedule['home_score'].isna()) & (schedule['away_score'].isna())]
     upcoming_games['matchup'] = upcoming_games['home_team'] + " vs " + upcoming_games['away_team']
-    upcoming_games['gameday'] = pd.to_datetime(upcoming_games['gameday'])
-    upcoming_games.sort_values('gameday', inplace=True)
     return upcoming_games[['gameday', 'home_team', 'away_team', 'matchup']].reset_index(drop=True)
 
 upcoming_games = fetch_upcoming_games(schedule)
@@ -254,8 +169,8 @@ upcoming_games = fetch_upcoming_games(schedule)
 # 7. User Interface and Prediction Display
 # =======================
 # Title and Description
-st.markdown('<div class="title">🏈 Advanced NFL Betting Predictions</div>', unsafe_allow_html=True)
-st.markdown('<div class="subtitle">Get enhanced predictions with advanced modeling techniques for upcoming NFL games.</div>', unsafe_allow_html=True)
+st.markdown('<div class="title">🏈 Enhanced NFL Betting Predictions</div>', unsafe_allow_html=True)
+st.markdown('<div class="subtitle">Get predictions and actionable betting insights for upcoming NFL games.</div>', unsafe_allow_html=True)
 
 # Sidebar: Select an upcoming game
 st.sidebar.header("📅 Upcoming Games")
@@ -273,25 +188,27 @@ home_team = selected_game_data['home_team']
 away_team = selected_game_data['away_team']
 
 # Predictions for selected game
-home_pred, home_ci = predict_team_score(home_team, models, team_stats, team_data)
-away_pred, away_ci = predict_team_score(away_team, models, team_stats, team_data)
+home_gbr, home_arima, home_ci = predict_team_score(home_team, gbr_models, arima_models, team_stats, team_data)
+away_gbr, away_arima, away_ci = predict_team_score(away_team, gbr_models, arima_models, team_stats, team_data)
 
 # Display Predictions
 st.markdown("### 📊 Predictions")
 col1, col2 = st.columns(2)
 
 with col1:
-    st.markdown(f"#### 🏠 **{home_team}**")
-    if home_pred is not None and home_ci is not None:
-        st.markdown(f"**Ensemble Prediction:** {home_pred:.2f}")
+    st.markdown(f"#### 🟢 **{home_team}**")
+    if home_gbr is not None and home_arima is not None and home_ci is not None:
+        st.markdown(f"**Gradient Boosting Prediction:** {home_gbr:.2f}")
+        st.markdown(f"**ARIMA Prediction:** {home_arima:.2f}")
         st.markdown(f"**95% Confidence Interval:** {home_ci[0]:.2f} - {home_ci[1]:.2f}")
     else:
         st.warning("Insufficient data for predictions.")
 
 with col2:
-    st.markdown(f"#### 🚗 **{away_team}**")
-    if away_pred is not None and away_ci is not None:
-        st.markdown(f"**Ensemble Prediction:** {away_pred:.2f}")
+    st.markdown(f"#### 🟠 **{away_team}**")
+    if away_gbr is not None and away_arima is not None and away_ci is not None:
+        st.markdown(f"**Gradient Boosting Prediction:** {away_gbr:.2f}")
+        st.markdown(f"**ARIMA Prediction:** {away_arima:.2f}")
         st.markdown(f"**95% Confidence Interval:** {away_ci[0]:.2f} - {away_ci[1]:.2f}")
     else:
         st.warning("Insufficient data for predictions.")
@@ -299,12 +216,11 @@ with col2:
 # Betting Insights
 st.markdown("### 💡 Betting Insights")
 with st.expander("View Betting Suggestions"):
-    if home_pred is not None and away_pred is not None:
-        suggested_winner = home_team if home_pred > away_pred else away_team
-        margin_of_victory = abs(home_pred - away_pred)
-        total_points = home_pred + away_pred
-        over_under_threshold = team_data['score'].mean() * 2  # Dynamic threshold
-        over_under = "Over" if total_points > over_under_threshold else "Under"
+    if home_gbr is not None and away_gbr is not None:
+        suggested_winner = home_team if home_gbr > away_gbr else away_team
+        margin_of_victory = abs(home_gbr - away_gbr)
+        total_points = home_gbr + away_gbr
+        over_under = "Over" if total_points > 45 else "Under"
 
         col1, col2, col3 = st.columns(3)
 
@@ -317,7 +233,7 @@ with st.expander("View Betting Suggestions"):
         with col3:
             st.markdown(f"**🔢 Total Points:** {total_points:.2f}")
 
-        st.markdown(f"**💰 Over/Under Suggestion:** **Take the {over_under} ({over_under_threshold:.2f})**")
+        st.markdown(f"**💰 Over/Under Suggestion:** **Take the {over_under}**")
     else:
         st.warning("Insufficient data to provide betting insights for this game.")
 
@@ -326,13 +242,13 @@ st.markdown("### 📊 Predicted Scores Comparison")
 scores_df = pd.DataFrame({
     "Team": [home_team, away_team],
     "Predicted Score": [
-        home_pred if home_pred is not None else 0,
-        away_pred if away_pred is not None else 0
+        home_gbr if home_gbr is not None else 0,
+        away_gbr if away_gbr is not None else 0
     ]
 })
 
 # Customize the bar chart with Seaborn
-fig, ax = plt.subplots(figsize=(8, 6))
+fig, ax = plt.subplots(figsize=(6, 4))
 sns.set_style("whitegrid")
 sns.barplot(x="Team", y="Predicted Score", data=scores_df, palette="viridis", ax=ax)
 ax.set_title("Predicted Scores")
@@ -344,38 +260,6 @@ for index, row in scores_df.iterrows():
     ax.text(index, row["Predicted Score"] + 0.5, f'{row["Predicted Score"]:.2f}', color='black', ha="center")
 
 st.pyplot(fig)
-
-# Feature Importance Visualization
-st.markdown("### 🔍 Feature Importance")
-with st.expander("View Feature Importance for Home Team"):
-    if home_team in models:
-        model_dict = models[home_team]
-        model = model_dict['xgb']  # Using XGBoost for feature importance
-        explainer = shap.TreeExplainer(model)
-        team_df = team_data[team_data['team'] == home_team]
-        team_features = team_df[model_dict['features']].iloc[-1:]
-        shap_values = explainer.shap_values(team_features)
-        shap.initjs()
-        plt.title(f"Feature Importance for {home_team}")
-        shap.summary_plot(shap_values, team_features, plot_type="bar")
-        st.pyplot(bbox_inches='tight')
-    else:
-        st.warning("Insufficient data for feature importance visualization.")
-
-with st.expander("View Feature Importance for Away Team"):
-    if away_team in models:
-        model_dict = models[away_team]
-        model = model_dict['xgb']
-        explainer = shap.TreeExplainer(model)
-        team_df = team_data[team_data['team'] == away_team]
-        team_features = team_df[model_dict['features']].iloc[-1:]
-        shap_values = explainer.shap_values(team_features)
-        shap.initjs()
-        plt.title(f"Feature Importance for {away_team}")
-        shap.summary_plot(shap_values, team_features, plot_type="bar")
-        st.pyplot(bbox_inches='tight')
-    else:
-        st.warning("Insufficient data for feature importance visualization.")
 
 # Additional Team Statistics (Optional)
 st.markdown("### 📋 Team Statistics")
