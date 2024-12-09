@@ -351,7 +351,7 @@ def fetch_nba_games():
 upcoming_games = fetch_nba_games()
 
 # =======================
-# 8. Main App Logic
+# 8. Main App Logic 
 # =======================
 def main():
     render_header()
