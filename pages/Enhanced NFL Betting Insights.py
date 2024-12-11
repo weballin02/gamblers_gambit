@@ -15,7 +15,7 @@ import seaborn as sns
 import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from nfl_api import fetch_nfl_game_logs, fetch_upcoming_games  # Placeholder for actual NFL data fetching
+import nfl_data_py as nfl
 from sklearn.ensemble import GradientBoostingRegressor, RandomForestRegressor
 from xgboost import XGBRegressor
 from sklearn.model_selection import TimeSeriesSplit, GridSearchCV
