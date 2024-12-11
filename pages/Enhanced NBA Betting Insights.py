@@ -1,4 +1,4 @@
-# NBA Enhanced Prediction Script with Advanced Features and Models
+# FoxEdge NBA Insights Streamlit App - Enhanced Version
 
 # =======================
 # 1. Import Libraries
@@ -12,43 +12,63 @@ import os
 import warnings
 import matplotlib.pyplot as plt
 import seaborn as sns
+import plotly.express as px
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 from nba_api.stats.endpoints import (
     LeagueGameLog,
     ScoreboardV2,
-    teamgamelog,
+    TeamGameLog
 )
 from nba_api.stats.static import teams as nba_teams
 from sklearn.ensemble import GradientBoostingRegressor, RandomForestRegressor
 from xgboost import XGBRegressor
 from sklearn.model_selection import TimeSeriesSplit, GridSearchCV
 from sklearn.metrics import mean_absolute_error, mean_squared_error
+from sklearn.cluster import KMeans
 import shap
+from pmdarima import auto_arima
+import matplotlib.dates as mdates
+from scipy.stats import truncnorm, t, logistic
 
+# Suppress warnings for cleaner output
 warnings.filterwarnings('ignore')
 
 # =======================
 # 2. Streamlit App Configuration
 # =======================
 st.set_page_config(
-    page_title="NBA Advanced Betting Insights",
+    page_title="🏀 FoxEdge NBA Insights",
     page_icon="🏀",
     layout="wide",
-    initial_sidebar_state="collapsed",
+    initial_sidebar_state="expanded",
 )
 
-# Initialize Session State for Theme
+# =======================
+# 3. Theme and CSS Styling
+# =======================
+
+# Initialize Session State for Theme and High Contrast
 if 'dark_mode' not in st.session_state:
     st.session_state.dark_mode = False
+if 'high_contrast' not in st.session_state:
+    st.session_state.high_contrast = False
 
 # Function to Toggle Theme
 def toggle_theme():
     st.session_state.dark_mode = not st.session_state.dark_mode
+    st.experimental_rerun()
 
-# Theme Toggle Button
+# Function to Toggle High Contrast
+def toggle_high_contrast():
+    st.session_state.high_contrast = not st.session_state.high_contrast
+    st.experimental_rerun()
+
+# Theme Toggle Buttons in Sidebar
 st.sidebar.button("🌗 Toggle Theme", on_click=toggle_theme)
+st.sidebar.button("🎨 Toggle High Contrast", on_click=toggle_high_contrast)
 
-# Apply Theme Based on Dark Mode
+# Apply Theme Based on Dark Mode and High Contrast
 if st.session_state.dark_mode:
     primary_bg = "#121212"
     primary_text = "#FFFFFF"
@@ -64,51 +84,46 @@ else:
     highlight_color = "#03DAC6"
     chart_template = "plotly_white"
 
+if st.session_state.high_contrast:
+    primary_text = "#FFFF00"  # Yellow text for high contrast
+    accent_color = "#FF0000"  # Red accent for high contrast
+
 # Custom CSS for Novel Design
 st.markdown(f"""
     <style>
-    /* Global Styles */
+    /* Overall Page Styling */
     body {{
         background-color: {primary_bg};
         color: {primary_text};
-        font-family: 'Roboto', sans-serif;
+        font-family: 'Open Sans', sans-serif;
     }}
+
+    /* Hide Streamlit Branding */
     #MainMenu {{visibility: hidden;}}
     footer {{visibility: hidden;}}
-    .header {{
-        background-color: {accent_color};
-        padding: 3em;
-        border-radius: 20px;
+
+    /* Header Styling */
+    .header-title {{
+        font-family: 'Montserrat', sans-serif;
+        background: linear-gradient(120deg, {highlight_color}, {accent_color});
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        font-size: 3em;
+        font-weight: 800;
         text-align: center;
-        color: #FFFFFF;
-        margin-bottom: 2em;
-        position: relative;
-        overflow: hidden;
+        margin-bottom: 0.5em;
     }}
-    .header::before {{
-        content: '';
-        background-image: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.1), transparent);
-        position: absolute;
-        top: -50%;
-        left: -50%;
-        width: 200%;
-        height: 200%;
-        animation: rotation 30s infinite linear;
-    }}
-    @keyframes rotation {{
-        from {{transform: rotate(0deg);}}
-        to {{transform: rotate(360deg);}}
-    }}
-    .header h1 {{
-        font-size: 3.5em;
-        margin: 0;
-        font-weight: bold;
-        letter-spacing: -1px;
-    }}
-    .header p {{
+
+    /* Subheader Styling */
+    .subheader-text {{
+        color: {primary_text};
+        opacity: 0.7;
         font-size: 1.5em;
-        margin-top: 0.5em;
+        text-align: center;
+        margin-bottom: 1.5em;
     }}
+
+    /* Prediction Card Styling */
     .prediction-card {{
         background-color: {accent_color};
         padding: 2em;
@@ -130,16 +145,50 @@ st.markdown(f"""
         font-size: 1.2em;
         margin-bottom: 0.5em;
     }}
+
+    /* Data Section Styling */
     .data-section {{
         padding: 2em 1em;
-        background-color: {accent_color};
+        background-color: {secondary_bg};
         border-radius: 15px;
         margin-bottom: 2em;
     }}
+
     .data-section h2 {{
         font-size: 2em;
         margin-bottom: 1em;
+        color: {highlight_color};
     }}
+
+    .data-section p {{
+        font-size: 1em;
+        color: {primary_text};
+        opacity: 0.8;
+        margin-bottom: 1em;
+    }}
+
+    /* Summary Section Styling */
+    .summary-section {{
+        padding: 2em 1em;
+        background-color: {secondary_bg};
+        border-radius: 15px;
+        margin-bottom: 2em;
+    }}
+
+    .summary-section h3 {{
+        font-size: 2em;
+        margin-bottom: 0.5em;
+        color: {highlight_color};
+    }}
+
+    .summary-section p {{
+        font-size: 1.1em;
+        color: {primary_text};
+        opacity: 0.9;
+        line-height: 1.6;
+    }}
+
+    /* Footer Styling */
     .footer {{
         text-align: center;
         padding: 2em 1em;
@@ -147,44 +196,91 @@ st.markdown(f"""
         opacity: 0.6;
         font-size: 0.9em;
     }}
+
     .footer a {{
         color: {highlight_color};
         text-decoration: none;
     }}
+
+    /* Responsive Design */
     @media (max-width: 768px) {{
-        .header h1 {{
-            font-size: 2.5em;
+        .header-title {{
+            font-size: 2em;
         }}
-        .header p {{
+
+        .subheader-text {{
             font-size: 1em;
+        }}
+
+        .prediction-card, .data-section, .summary-section {{
+            padding: 1em;
         }}
     }}
     </style>
 """, unsafe_allow_html=True)
 
 # =======================
-# 3. Header Section
+# 4. Header Section
 # =======================
 def render_header():
     st.markdown(f'''
-        <div class="header">
-            <h1>NBA Advanced Betting Insights</h1>
-            <p>Predictive Analytics with Enhanced Features</p>
+        <div>
+            <h1 class="header-title">FoxEdge NBA Insights</h1>
+            <p class="subheader-text">Comprehensive NBA Betting Predictions and Analytics</p>
         </div>
     ''', unsafe_allow_html=True)
 
 # =======================
-# 4. Data Fetching and Preprocessing
+# 5. Utility Functions
 # =======================
-nba_team_list = nba_teams.get_teams()
-team_name_mapping = {team['abbreviation']: team['full_name'] for team in nba_team_list}
-id_to_abbrev = {team['id']: team['abbreviation'] for team in nba_team_list}
 
-current_season = '2023-24'
-previous_seasons = ['2022-23', '2021-22']
-season_weights = {current_season: 1.0, '2022-23': 0.7, '2021-22': 0.5}
+# --- Helper Function to Round to Nearest 0.5 ---
+def round_to_nearest_half(x):
+    return round(x * 2) / 2
 
-@st.cache_data
+# --- Team Abbreviation Mapping ---
+def get_team_mappings():
+    team_list = nba_teams.get_teams()
+    abbrev_to_full = {team['abbreviation']: team['full_name'] for team in team_list}
+    id_to_abbrev = {team['id']: team['abbreviation'] for team in team_list}
+    return abbrev_to_full, id_to_abbrev
+
+abbrev_to_full, id_to_abbrev = get_team_mappings()
+
+# --- Generate Truncated Normal Distribution ---
+def generate_truncated_normal(mean, std, lower, upper, size):
+    a = (lower - mean) / std
+    b = (upper - mean) / std
+    return truncnorm.rvs(a, b, loc=mean, scale=std, size=size)
+
+# --- Blended Prediction Function ---
+def blended_prediction(arima_pred, gbr_pred, win_streak):
+    # Dynamic blending weights based on win streak
+    weight = 0.4 + 0.1 * win_streak  # Add 0.1 for each game in the win streak (up to 0.9)
+    weight = min(0.9, max(0.1, weight))  # Clamp weight to [0.1, 0.9]
+    return weight * arima_pred + (1 - weight) * gbr_pred
+
+# --- Feature Engineering Functions ---
+def compute_momentum(team_data):
+    """Compute win streak and form trend."""
+    team_data = team_data.copy()
+    team_data['Win'] = team_data['score'] > team_data['score'].shift(1)
+    team_data['Win_Streak'] = team_data.groupby('team')['Win'].apply(lambda x: x.cumsum())
+    return team_data
+
+def calculate_opponent_strength(team_data, cluster_labels):
+    """Calculate opponent strength based on clustering."""
+    team_data = team_data.copy()
+    team_data['opponent_cluster'] = team_data['opponent'].map(cluster_labels)
+    opponent_strength = team_data.groupby('team')['opponent_cluster'].mean().to_dict()
+    return opponent_strength
+
+# =======================
+# 6. Data Fetching and Preprocessing
+# =======================
+
+# --- Fetch and Preprocess NBA Game Logs ---
+@st.cache_data(ttl=3600)
 def load_nba_game_logs(seasons):
     """Fetch and preprocess game logs for the specified NBA seasons."""
     all_games = []
@@ -192,296 +288,758 @@ def load_nba_game_logs(seasons):
         try:
             game_logs = LeagueGameLog(season=season, season_type_all_star='Regular Season', player_or_team_abbreviation='T')
             games = game_logs.get_data_frames()[0]
-            games['GAME_DATE'] = pd.to_datetime(games['GAME_DATE'])
+            games['GAME_DATE'] = pd.to_datetime(games['GAME_DATE'], errors='coerce')
             games['SEASON'] = season
-            games['WEIGHT'] = season_weights[season]
             all_games.append(games)
         except Exception as e:
             st.error(f"Error loading NBA game logs for {season}: {str(e)}")
     return pd.concat(all_games, ignore_index=True) if all_games else None
 
-def preprocess_data(game_logs):
-    # Prepare team data
+def preprocess_nba_data(game_logs):
+    """Prepare team data from game logs."""
+    if game_logs is None:
+        st.error("No game logs to preprocess.")
+        return None
+    
     team_data = game_logs[['GAME_DATE', 'TEAM_ABBREVIATION', 'PTS', 'MATCHUP']]
     team_data = team_data.rename(columns={'TEAM_ABBREVIATION': 'team', 'PTS': 'score'})
-    team_data['GAME_DATE'] = pd.to_datetime(team_data['GAME_DATE'])
-    team_data.sort_values(['team', 'GAME_DATE'], inplace=True)
-
+    team_data['GAME_DATE'] = pd.to_datetime(team_data['GAME_DATE'], errors='coerce')
+    team_data.sort_values('GAME_DATE', inplace=True)  # Ensure chronological order
+    team_data.set_index('GAME_DATE', inplace=True)
+    
+    # Determine Home/Away status
     team_data['is_home'] = team_data['MATCHUP'].apply(lambda x: 1 if 'vs.' in x else 0)
+    
+    # Calculate Rest Days
     team_data['rest_days'] = team_data.groupby('team')['GAME_DATE'].diff().dt.days.fillna(7)
-    team_data['game_number'] = team_data.groupby('team').cumcount() + 1
-
+    
+    # Rolling Mean of Scores (Last 5 Games)
     team_data['score_rolling_mean'] = team_data.groupby('team')['score'].transform(
         lambda x: x.rolling(window=5, min_periods=1).mean()
     )
-
+    
+    # Extract Opponent
     team_data['opponent'] = team_data['MATCHUP'].apply(
         lambda x: x.split('vs. ')[1] if 'vs.' in x else x.split('@ ')[1]
     )
-
+    
+    # Calculate Opponent Average Score
     opponent_avg_score = team_data.groupby('team')['score'].mean().reset_index()
     opponent_avg_score.columns = ['opponent', 'opponent_avg_score']
     team_data = team_data.merge(opponent_avg_score, on='opponent', how='left')
-
+    
+    # Assign Decay Weights (for weighting past games)
     decay = 0.9
     team_data['decay_weight'] = team_data.groupby('team').cumcount().apply(lambda x: decay ** x)
+    
+    # Compute Momentum (Win Streak and Form)
+    team_data = compute_momentum(team_data)
+    
     team_data.dropna(inplace=True)
     return team_data
 
-game_logs = load_nba_game_logs([current_season] + previous_seasons)
-team_data = preprocess_data(game_logs)
+# Load Game Logs
+current_season = "2024-25"  # Update as needed
+seasons = [current_season, "2023-24", "2022-23"]
+game_logs = load_nba_game_logs(seasons)
+team_data = preprocess_nba_data(game_logs)
 
 # =======================
-# 5. Model Training
+# 7. Feature Engineering and Clustering
 # =======================
-@st.cache_data
-def train_team_models(team_data):
-    models = {}
+
+# --- Aggregate Team Statistics ---
+def aggregate_team_stats(team_data):
+    """Aggregate statistics for each team."""
     team_stats = {}
     for team in team_data['team'].unique():
         team_df = team_data[team_data['team'] == team]
-        if len(team_df) < 15:
+        if len(team_df) < 5:
             continue  # Skip teams with insufficient data
-
-        features = team_df[['game_number', 'is_home', 'rest_days', 'score_rolling_mean', 'opponent_avg_score']]
-        target = team_df['score']
-        features.fillna(method='ffill', inplace=True)
-
-        param_grid = {
-            'n_estimators': [100, 200],
-            'max_depth': [3, 5],
-            'learning_rate': [0.01, 0.1],
-            'subsample': [0.8, 1.0]
-        }
-
-        tscv = TimeSeriesSplit(n_splits=3)
-
-        gbr = GradientBoostingRegressor()
-        rf = RandomForestRegressor()
-        xgb = XGBRegressor(eval_metric='rmse', use_label_encoder=False)
-
-        gbr_grid = GridSearchCV(gbr, param_grid, cv=tscv)
-        gbr_grid.fit(features, target)
-
-        rf_grid = GridSearchCV(rf, {'n_estimators': [100, 200], 'max_depth': [5, 10]}, cv=tscv)
-        rf_grid.fit(features, target)
-
-        xgb_grid = GridSearchCV(xgb, param_grid, cv=tscv)
-        xgb_grid.fit(features, target)
-
-        models[team] = {
-            'gbr': gbr_grid.best_estimator_,
-            'rf': rf_grid.best_estimator_,
-            'xgb': xgb_grid.best_estimator_,
-            'features': features.columns
-        }
-
+        scores = team_df['score'].values
         team_stats[team] = {
-            'avg_score': target.mean(),
-            'std_dev': target.std(),
-            'min_score': target.min(),
-            'max_score': target.max()
+            'avg_score': round(np.mean(scores), 2),
+            'std_dev': round(np.std(scores), 2),
+            'min_score': round(np.min(scores), 2),
+            'max_score': round(np.max(scores), 2),
+            'recent_form': round(team_df['score_rolling_mean'].iloc[-1], 2),
+            'win_streak': int(team_df['Win_Streak'].iloc[-1]),
+            'games_played': len(scores)
         }
+    return team_stats
 
-    return models, team_stats
+team_stats = aggregate_team_stats(team_data)
 
-models, team_stats = train_team_models(team_data)
+# --- Dynamic Clustering of Teams ---
+@st.cache_data
+def perform_clustering(team_stats, n_clusters=5):
+    """Cluster teams based on average score and standard deviation."""
+    clustering_data = pd.DataFrame(team_stats).T[['avg_score', 'std_dev']]
+    kmeans = KMeans(n_clusters=n_clusters, random_state=42)
+    clustering_data['cluster'] = kmeans.fit_predict(clustering_data)
+    cluster_labels = clustering_data['cluster'].to_dict()
+    return cluster_labels, kmeans
+
+cluster_labels, kmeans_model = perform_clustering(team_stats, n_clusters=5)
+
+# Calculate Opponent Strength based on Clustering
+opponent_strength = calculate_opponent_strength(team_data, cluster_labels)
 
 # =======================
-# 6. Prediction Logic
+# 8. Model Training
 # =======================
-def predict_team_score(team, models, team_stats, team_data):
-    ensemble_prediction = None
-    confidence_interval = None
 
-    if team in models:
-        team_df = team_data[team_data['team'] == team].iloc[-1]
-        next_features = pd.DataFrame({
-            'game_number': [team_df['game_number'] + 1],
-            'is_home': [team_df['is_home']],
-            'rest_days': [7],
-            'score_rolling_mean': [team_df['score_rolling_mean']],
-            'opponent_avg_score': [team_df['opponent_avg_score']]
+# --- Train Blended ARIMA + GBR Models ---
+@st.cache_resource
+def train_blended_models(team_data, team_stats, cluster_labels):
+    """Train blended ARIMA and Gradient Boosting models for each team."""
+    model_dir = 'models/nba/blended'
+    os.makedirs(model_dir, exist_ok=True)
+    blended_models = {}
+    
+    for team, stats in team_stats.items():
+        team_df = team_data[team_data['team'] == team]
+        if len(team_df) < 10:
+            continue  # Skip teams with insufficient data
+        
+        # Feature Engineering
+        features = team_df[['is_home', 'rest_days', 'score_rolling_mean', 'opponent_avg_score']]
+        # Enhanced Features
+        features['win_streak'] = team_df['win_streak']
+        features['opponent_strength'] = team_df['opponent'].map(opponent_strength).fillna(0)
+        features['back_to_back'] = team_df['rest_days'] < 2  # Binary feature
+        features['home_avg_score'] = team_df.apply(lambda x: team_stats[x['team']]['avg_score'] if x['is_home'] else 0, axis=1)
+        features['away_avg_score'] = team_df.apply(lambda x: team_stats[x['team']]['avg_score'] if not x['is_home'] else 0, axis=1)
+        
+        # Include ELO Ratings (Placeholder calculation)
+        # In a real scenario, fetch ELO ratings from a reliable source
+        team_data['elo_rating'] = team_data.groupby('team')['score'].cumsum() / team_data['games_played']
+        features['elo_rating'] = team_df['elo_rating']
+        
+        # Drop any remaining NaNs
+        features.fillna(method='ffill', inplace=True)
+        
+        target = team_df['score']
+        
+        # SHAP-Based Feature Selection
+        # Train initial GBR model to compute SHAP values
+        gbr_initial = GradientBoostingRegressor(n_estimators=100, learning_rate=0.1, max_depth=3, random_state=42)
+        gbr_initial.fit(features, target)
+        explainer = shap.Explainer(gbr_initial)
+        shap_values = explainer(features)
+        feature_importance = pd.DataFrame({
+            'feature': features.columns,
+            'importance': np.abs(shap_values.values).mean(axis=0)
         })
+        # Select features with importance above the median
+        median_importance = feature_importance['importance'].median()
+        selected_features = feature_importance[feature_importance['importance'] >= median_importance]['feature'].tolist()
+        features_selected = features[selected_features]
+        
+        # Retrain GBR with selected features
+        gbr = GradientBoostingRegressor(n_estimators=100, learning_rate=0.1, max_depth=3, random_state=42)
+        gbr.fit(features_selected, target)
+        
+        # Save Feature Selection
+        feature_selection_path = os.path.join(model_dir, f"{team}_features.pkl")
+        joblib.dump(selected_features, feature_selection_path)
+        
+        # ARIMA Model
+        arima_model_path = os.path.join(model_dir, f"{team}_arima.pkl")
+        arima_model = auto_arima(
+            team_df['score'],
+            seasonal=True,
+            m=82,  # Number of games in NBA season
+            trace=False,
+            error_action='ignore',
+            suppress_warnings=True
+        )
+        joblib.dump(arima_model, arima_model_path)
+        
+        # Gradient Boosting Regressor Model
+        gbr_model_path = os.path.join(model_dir, f"{team}_gbr.pkl")
+        joblib.dump(gbr, gbr_model_path)
+        
+        # Store Blended Models
+        blended_models[team] = {
+            'arima': arima_model,
+            'gbr': gbr,
+            'selected_features': selected_features
+        }
+    
+    return blended_models
 
-        model_dict = models[team]
-        predictions = []
-        for model_name in ['gbr', 'rf', 'xgb']:
-            model = model_dict[model_name]
-            pred = model.predict(next_features[model_dict['features']])[0]
-            predictions.append(pred)
-
-        ensemble_prediction = np.mean(predictions)
-
-    if team in team_stats:
-        avg = team_stats[team]['avg_score']
-        std = team_stats[team]['std_dev']
-        confidence_interval = (avg - 1.96 * std, avg + 1.96 * std)
-
-    return ensemble_prediction, confidence_interval
-
-# =======================
-# 7. Fetch Upcoming Games
-# =======================
-@st.cache_data(ttl=3600)
-def fetch_nba_games():
-    today = datetime.now().date()
-    next_day = today + timedelta(days=1)
-    today_scoreboard = ScoreboardV2(game_date=today.strftime('%Y-%m-%d'))
-    tomorrow_scoreboard = ScoreboardV2(game_date=next_day.strftime('%Y-%m-%d'))
-
-    try:
-        today_games = today_scoreboard.get_data_frames()[0]
-        tomorrow_games = tomorrow_scoreboard.get_data_frames()[0]
-        combined_games = pd.concat([today_games, tomorrow_games], ignore_index=True)
-    except Exception as e:
-        st.error(f"Error fetching games: {e}")
-        return pd.DataFrame()
-
-    combined_games['HOME_TEAM_ABBREV'] = combined_games['HOME_TEAM_ID'].map(id_to_abbrev)
-    combined_games['VISITOR_TEAM_ABBREV'] = combined_games['VISITOR_TEAM_ID'].map(id_to_abbrev)
-    combined_games.dropna(subset=['HOME_TEAM_ABBREV', 'VISITOR_TEAM_ABBREV'], inplace=True)
-
-    combined_games['GAME_LABEL'] = combined_games.apply(
-        lambda row: f"{team_name_mapping.get(row['VISITOR_TEAM_ABBREV'])} at {team_name_mapping.get(row['HOME_TEAM_ABBREV'])}",
-        axis=1
-    )
-    return combined_games[['GAME_ID', 'HOME_TEAM_ABBREV', 'VISITOR_TEAM_ABBREV', 'GAME_LABEL']]
-
-upcoming_games = fetch_nba_games()
+blended_models = train_blended_models(team_data, team_stats, cluster_labels)
 
 # =======================
-# 8. Main App Logic 
+# 9. Prediction Logic
 # =======================
-def main():
-    render_header()
-    st.markdown('<div id="prediction"></div>', unsafe_allow_html=True)
 
-    st.markdown(f'''
-        <div class="data-section">
-            <h2>NBA Game Predictions with Enhanced Models</h2>
-        </div>
-    ''', unsafe_allow_html=True)
+# --- Predict Team Score with Blended Model ---
+def predict_team_score_blended(team, blended_models, team_stats, team_data):
+    """Predict team score using blended ARIMA and GBR models."""
+    if team not in blended_models:
+        return None, None
+    
+    models = blended_models[team]
+    arima_model = models['arima']
+    gbr_model = joblib.load(os.path.join('models/nba/blended', f"{team}_gbr.pkl"))
+    selected_features = joblib.load(os.path.join('models/nba/blended', f"{team}_features.pkl"))
+    
+    team_df = team_data[team_data['team'] == team]
+    if team_df.empty:
+        return None, None
+    
+    latest_game = team_df.iloc[-1]
+    next_features = pd.DataFrame({
+        'is_home': [1],  # Assuming the next game is at home; adjust as needed
+        'rest_days': [7],  # Assuming a week of rest
+        'score_rolling_mean': [latest_game['score_rolling_mean']],
+        'opponent_avg_score': [latest_game['opponent_avg_score']],
+        'win_streak': [latest_game['win_streak']],
+        'opponent_strength': [opponent_strength.get(latest_game['opponent'], 0)],
+        'back_to_back': [latest_game['rest_days'] < 2],
+        'home_avg_score': [team_stats[team]['avg_score'] if latest_game['is_home'] else 0],
+        'away_avg_score': [team_stats[team]['avg_score'] if not latest_game['is_home'] else 0],
+        'elo_rating': [team_data.loc[latest_game.name, 'elo_rating']]
+    })
+    
+    # Select features
+    features_selected = next_features[selected_features]
+    
+    # ARIMA Prediction
+    arima_pred = arima_model.predict(n_periods=1)[0]
+    
+    # GBR Prediction
+    gbr_pred = gbr_model.predict(features_selected)[0]
+    
+    # Blended Prediction with Dynamic Weights
+    blended_pred = blended_prediction(arima_pred, gbr_pred, latest_game['win_streak'])
+    
+    # Confidence via Logistic Transformation
+    # Using logistic CDF to estimate probability
+    confidence = logistic.cdf(blended_pred + team_stats[team]['std_dev']) - logistic.cdf(blended_pred - team_stats[team]['std_dev'])
+    confidence = round(confidence * 100, 2)
+    
+    return blended_pred, confidence
 
-    if not upcoming_games.empty:
-        game_selection = st.selectbox('Select an upcoming game:', upcoming_games['GAME_LABEL'])
-        selected_game = upcoming_games[upcoming_games['GAME_LABEL'] == game_selection].iloc[0]
+# =======================
+# 10. Monte Carlo Simulation Enhancements
+# =======================
 
-        home_team = selected_game['HOME_TEAM_ABBREV']
-        away_team = selected_game['VISITOR_TEAM_ABBREV']
-
-        home_pred, home_ci = predict_team_score(home_team, models, team_stats, team_data)
-        away_pred, away_ci = predict_team_score(away_team, models, team_stats, team_data)
-
-        st.markdown("### 📊 Predictions")
-        col1, col2 = st.columns(2)
-
-        with col1:
-            st.markdown(f"#### 🏠 **{team_name_mapping.get(home_team, home_team)}**")
-            if home_pred is not None and home_ci is not None:
-                st.markdown(f"**Ensemble Prediction:** {home_pred:.2f}")
-                st.markdown(f"**95% Confidence Interval:** {home_ci[0]:.2f} - {home_ci[1]:.2f}")
-            else:
-                st.warning("Insufficient data for predictions.")
-
-        with col2:
-            st.markdown(f"#### 🚗 **{team_name_mapping.get(away_team, away_team)}**")
-            if away_pred is not None and away_ci is not None:
-                st.markdown(f"**Ensemble Prediction:** {away_pred:.2f}")
-                st.markdown(f"**95% Confidence Interval:** {away_ci[0]:.2f} - {away_ci[1]:.2f}")
-            else:
-                st.warning("Insufficient data for predictions.")
-
-        st.markdown("### 💡 Betting Insights")
-        with st.expander("View Betting Suggestions"):
-            if home_pred is not None and away_pred is not None:
-                suggested_winner = home_team if home_pred > away_pred else away_team
-                margin_of_victory = abs(home_pred - away_pred)
-                total_points = home_pred + away_pred
-                over_under_threshold = team_data['score'].mean() * 2  
-                over_under = "Over" if total_points > over_under_threshold else "Under"
-
-                col1, col2, col3 = st.columns(3)
-
-                with col1:
-                    st.markdown(f"**🏆 Suggested Winner:** **{team_name_mapping.get(suggested_winner, suggested_winner)}**")
-
-                with col2:
-                    st.markdown(f"**📈 Margin of Victory:** {margin_of_victory:.2f} pts")
-
-                with col3:
-                    st.markdown(f"**🔢 Total Points:** {total_points:.2f}")
-
-                st.markdown(f"**💰 Over/Under Suggestion:** **Take the {over_under} ({over_under_threshold:.2f})**")
-            else:
-                st.warning("Insufficient data to provide betting insights for this game.")
-
-        st.markdown("### 📊 Predicted Scores Comparison")
-        scores_df = pd.DataFrame({
-            "Team": [team_name_mapping.get(home_team, home_team), team_name_mapping.get(away_team, away_team)],
-            "Predicted Score": [
-                home_pred if home_pred is not None else 0,
-                away_pred if away_pred is not None else 0
-            ]
-        })
-
-        fig, ax = plt.subplots(figsize=(8, 6))
-        sns.set_style("whitegrid")
-        sns.barplot(x="Team", y="Predicted Score", data=scores_df, palette="viridis", ax=ax)
-        ax.set_title("Predicted Scores")
-        ax.set_ylabel("Score")
-        ax.set_ylim(0, max(scores_df["Predicted Score"].max(), 150) + 10 if scores_df["Predicted Score"].max() > 0 else 150)
-
-        for index, row in scores_df.iterrows():
-            ax.text(index, row["Predicted Score"] + 0.5, f'{row["Predicted Score"]:.2f}', color='black', ha="center")
-
-        st.pyplot(fig)
-
-        st.markdown("### 🔍 Feature Importance")
-        with st.expander("View Feature Importance for Home Team"):
-            if home_team in models:
-                model_dict = models[home_team]
-                model = model_dict['xgb']  
-                explainer = shap.TreeExplainer(model)
-                team_df = team_data[team_data['team'] == home_team]
-                team_features = team_df[model_dict['features']].iloc[-1:]
-                shap_values = explainer.shap_values(team_features)
-                shap.initjs()
-                plt.title(f"Feature Importance for {team_name_mapping.get(home_team, home_team)}")
-                shap.summary_plot(shap_values, team_features, plot_type="bar")
-                st.pyplot(bbox_inches='tight')
-            else:
-                st.warning("Insufficient data for feature importance visualization.")
-
-        with st.expander("View Feature Importance for Away Team"):
-            if away_team in models:
-                model_dict = models[away_team]
-                model = model_dict['xgb']
-                explainer = shap.TreeExplainer(model)
-                team_df = team_data[team_data['team'] == away_team]
-                team_features = team_df[model_dict['features']].iloc[-1:]
-                shap_values = explainer.shap_values(team_features)
-                shap.initjs()
-                plt.title(f"Feature Importance for {team_name_mapping.get(away_team, away_team)}")
-                shap.summary_plot(shap_values, team_features, plot_type="bar")
-                st.pyplot(bbox_inches='tight')
-            else:
-                st.warning("Insufficient data for feature importance visualization.")
-
-        st.markdown("### 📋 Team Statistics")
-        with st.expander("View Team Performance Stats"):
-            stats_df = pd.DataFrame(team_stats).T
-            stats_df = stats_df.rename_axis("Team").reset_index()
-            st.dataframe(stats_df.style.highlight_max(axis=0), use_container_width=True)
-
+# --- Monte Carlo Simulation with Truncated Normal and Student's T Distribution ---
+def monte_carlo_simulation_enhanced(home_team, away_team, blended_models, team_stats, team_data, num_simulations=1000, spread_adjustment=0, total_line=220.0):
+    """Enhanced Monte Carlo simulation using truncated normal and Student's T distributions."""
+    # Predict scores
+    home_pred, home_confidence = predict_team_score_blended(home_team, blended_models, team_stats, team_data)
+    away_pred, away_confidence = predict_team_score_blended(away_team, blended_models, team_stats, team_data)
+    
+    if home_pred is None or away_pred is None:
+        return None, None, None, None
+    
+    # Adjust ELO Ratings
+    # Placeholder: In a real scenario, use actual ELO ratings
+    home_elo = team_data.loc[team_data['team'] == home_team, 'elo_rating'].iloc[-1]
+    away_elo = team_data.loc[team_data['team'] == away_team, 'elo_rating'].iloc[-1]
+    
+    # Adjust based on cluster
+    if cluster_labels[home_team] == cluster_labels[away_team]:
+        home_std = team_stats[home_team]['std_dev'] * 0.8  # Reduce spread
+        away_std = team_stats[away_team]['std_dev'] * 0.8
     else:
-        st.warning("No upcoming games found.")
+        home_std = team_stats[home_team]['std_dev']
+        away_std = team_stats[away_team]['std_dev']
+    
+    # Truncated Normal Parameters
+    home_mean = home_pred
+    away_mean = away_pred
+    
+    # Use Student's T distribution for heavy tails
+    df = 5  # Degrees of freedom; adjust as needed for heavier tails
+    home_scores = t.rvs(df, loc=home_mean, scale=home_std, size=num_simulations)
+    away_scores = t.rvs(df, loc=away_mean, scale=away_std, size=num_simulations)
+    
+    # Apply Truncated Normal to ensure realistic scores
+    home_scores = generate_truncated_normal(home_mean, home_std, 50, 150, num_simulations)
+    away_scores = generate_truncated_normal(away_mean, away_std, 50, 150, num_simulations)
+    
+    # Apply Spread Adjustment
+    home_scores += spread_adjustment
+    
+    # Ensure scores are non-negative
+    home_scores = np.maximum(home_scores, 0)
+    away_scores = np.maximum(away_scores, 0)
+    
+    # Adjust for Travel Fatigue (Back-to-Back)
+    # Placeholder: Subtract points if back-to-back
+    # Implement actual back-to-back logic based on schedule
+    home_rest_days = team_data.loc[team_data['team'] == home_team, 'rest_days'].iloc[-1]
+    away_rest_days = team_data.loc[team_data['team'] == away_team, 'rest_days'].iloc[-1]
+    
+    if home_rest_days < 2:
+        home_scores -= 2  # Subtract 2 points for fatigue
+    if away_rest_days < 2:
+        away_scores -= 2  # Subtract 2 points for fatigue
+    
+    # Ensure scores are non-negative after adjustment
+    home_scores = np.maximum(home_scores, 0)
+    away_scores = np.maximum(away_scores, 0)
+    
+    # Calculate score differences
+    score_diff = home_scores - away_scores
+    home_wins = np.sum(score_diff > 0)
+    away_wins = np.sum(score_diff < 0)
+    ties = np.sum(score_diff == 0)
+    
+    # Calculate metrics
+    results = {
+        "Home Win %": round((home_wins / num_simulations) * 100, 2),
+        "Away Win %": round((away_wins / num_simulations) * 100, 2),
+        "Ties %": round((ties / num_simulations) * 100, 2),
+        "Average Home Score": round(np.mean(home_scores), 2),
+        "Average Away Score": round(np.mean(away_scores), 2),
+        "Average Total Score": round(np.mean(home_scores + away_scores), 2),
+        "Average Score Differential": round(np.mean(score_diff), 2)
+    }
+    
+    # Confidence Intervals using Bootstrapping
+    bootstrap_samples = 1000
+    boot_diff_means = []
+    boot_total_scores = []
+    for _ in range(bootstrap_samples):
+        sample_diff = np.random.choice(score_diff, size=num_simulations, replace=True)
+        sample_total = np.random.choice(home_scores + away_scores, size=num_simulations, replace=True)
+        boot_diff_means.append(np.mean(sample_diff))
+        boot_total_scores.append(np.mean(sample_total))
+    lower_diff = round_to_nearest_half(np.percentile(boot_diff_means, 5))
+    upper_diff = round_to_nearest_half(np.percentile(boot_diff_means, 95))
+    lower_total = round_to_nearest_half(np.percentile(boot_total_scores, 5))
+    upper_total = round_to_nearest_half(np.percentile(boot_total_scores, 95))
+    
+    return results, score_diff, (lower_diff, upper_diff), (lower_total, upper_total)
 
+# =======================
+# 11. Logic Improvements
+# =======================
+
+# --- Smarter Injury Handling ---
+def adjust_for_injuries(team, injury_data, team_stats):
+    """Adjust team stats based on injuries."""
+    if team not in injury_data:
+        return team_stats[team]['avg_score']
+    
+    # Define impact scores based on player usage (USG%) and PER
+    player_usage_impact = {
+        'LeBron James': 0.15,  # 15% impact
+        'Kevin Durant': 0.12,
+        # Add more players with USG-based impact as needed
+    }
+    
+    total_impact = 0
+    for player, impact in player_usage_impact.items():
+        if player in injury_data[team]:
+            total_impact += impact
+    
+    adjusted_avg = team_stats[team]['avg_score'] * (1 - total_impact)
+    return adjusted_avg
+
+# Example Injury Data (Placeholder)
+# In a real scenario, fetch injury data from a reliable source
+injury_data = {
+    'LAL': ['LeBron James'],
+    'BKN': ['Kevin Durant'],
+    # Add more teams and injured players as needed
+}
+
+# =======================
+# 12. Data Presentation Improvements
+# =======================
+
+# --- Display Prediction Results ---
+def display_prediction_results(results, home_team_full, away_team_full, lower_diff, upper_diff, lower_total, upper_total, total_line):
+    """Display simulation results with confidence intervals."""
+    if results:
+        st.markdown(f'''
+            <div class="prediction-card">
+                <h2>🏀 Simulation Results</h2>
+                <p><strong>{home_team_full} Win Percentage:</strong> {results["Home Win %"]}%</p>
+                <p><strong>{away_team_full} Win Percentage:</strong> {results["Away Win %"]}%</p>
+                <p><strong>Ties Percentage:</strong> {results["Ties %"]}%</p>
+                <p><strong>Average Total Score:</strong> {results["Average Total Score"]}</p>
+                <p><strong>Average Score Differential:</strong> {results["Average Score Differential"]}</p>
+                <p><strong>90% Confidence Interval for Score Differential:</strong> {lower_diff} to {upper_diff}</p>
+                <p><strong>90% Confidence Interval for Total Points:</strong> {lower_total} to {upper_total}</p>
+            </div>
+        ''', unsafe_allow_html=True)
+        
+        # Betting Insights
+        st.markdown("### 💡 Betting Insights")
+        # Over/Under Recommendation
+        if results["Average Total Score"] > total_line:
+            over_under = "Take the Over"
+        else:
+            over_under = "Take the Under"
+        
+        # Spread Bet Recommendation
+        suggested_winner = "Home Team" if results["Home Win %"] > results["Away Win %"] else "Away Team"
+        spread_recommendation = f"**Spread Bet:** {suggested_winner} to cover the spread."
+        
+        # Over/Under Recommendation
+        over_under_recommendation = f"**Over/Under Bet:** {over_under} ({total_line}) based on predicted total points."
+        
+        # Parlay Suggestion (Placeholder: Suggesting home win and over)
+        parlay_suggestion = f"**Parlay Suggestion:** Combine {suggested_winner} to win and Over on total points."
+        
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.markdown(f"**🏆 Suggested Winner:** **{suggested_winner}**")
+        with col2:
+            st.markdown(f"**💰 Over/Under Recommendation:** {over_under}")
+        with col3:
+            st.markdown(f"**🎯 Spread Bet Recommendation:** {'Home' if suggested_winner == 'Home Team' else 'Away'} Team to cover the spread.")
+        
+        st.markdown(over_under_recommendation)
+        st.markdown(parlay_suggestion)
+        
+        # Visualizations
+        st.markdown("### 📊 Simulation Results Visualization")
+        
+        # Score Differential Distribution
+        fig = px.histogram(
+            score_diff,
+            nbins=50,
+            title="Score Differential Distribution (Home Team - Away Team)",
+            labels={'value': 'Score Differential', 'count': 'Frequency'},
+            opacity=0.75,
+            color_discrete_sequence=[highlight_color],
+            template=chart_template
+        )
+        fig.add_vline(x=0, line_dash="dash", line_color="red",
+                     annotation_text="Break-Even", annotation_position="top left")
+        fig.update_layout(
+            xaxis_title="Score Differential",
+            yaxis_title="Frequency",
+            showlegend=False
+        )
+        st.plotly_chart(fig, use_container_width=True, key='score_diff_distribution')
+        
+        # Betting Line vs. Prediction Overlay
+        fig_bet = go.Figure(data=[
+            go.Bar(name='Predicted Total', x=["Predicted Total"], y=[results["Average Total Score"]], marker_color=highlight_color),
+            go.Bar(name='Betting Total', x=["Betting Total"], y=[total_line], marker_color="orange")
+        ])
+        fig_bet.update_layout(
+            barmode='group',
+            title="Predicted Total vs. Betting Total",
+            yaxis_title="Points",
+            template=chart_template
+        )
+        st.plotly_chart(fig_bet, use_container_width=True, key='betting_total_overlay')
+        
+        # Total Points Confidence Interval
+        fig_total_ci = go.Figure()
+        fig_total_ci.add_trace(go.Box(y=score_diff + away_scores, name='Total Points', boxpoints='all', jitter=0.3, pointpos=-1.8))
+        fig_total_ci.update_layout(
+            title="Total Points Distribution",
+            yaxis_title="Total Points",
+            template=chart_template
+        )
+        st.plotly_chart(fig_total_ci, use_container_width=True, key='total_points_distribution')
+        
+        # Parlay Suggestion Visualization (Placeholder)
+        # More complex visualizations can be added as needed
+        
+    # =======================
+    # 13. Main Application Logic
+    # =======================
+
+def main():
+    # Render Header
+    render_header()
+    
+    # Fetch and preprocess data
+    game_logs = load_nba_game_logs(seasons)
+    team_data = preprocess_nba_data(game_logs)
+    team_stats = aggregate_team_stats(team_data)
+    
+    # Perform Clustering
+    cluster_labels, kmeans_model = perform_clustering(team_stats, n_clusters=5)
+    
+    # Calculate Opponent Strength
+    opponent_strength = calculate_opponent_strength(team_data, cluster_labels)
+    
+    # Train Blended Models
+    blended_models = train_blended_models(team_data, team_stats, cluster_labels)
+    
+    # Compute Team Forecasts
+    team_forecasts = compute_team_forecasts(blended_models, team_data)
+    
+    # Fetch upcoming games
+    upcoming_games = fetch_upcoming_games()
+    
+    # Create Tabs for Organization
+    tabs = st.tabs(["🏀 Predictions", "📈 Team Scoring", "🔮 Quantum Insights", "📊 Data & Analytics", "⚙️ Settings"])
+    
+    with tabs[0]:
+        # Predictions Tab
+        st.markdown('<div class="data-section"><h2>Select a Game for Prediction</h2></div>', unsafe_allow_html=True)
+        
+        if upcoming_games.empty:
+            st.warning("No upcoming games available for prediction.")
+        else:
+            game_selection = st.selectbox('Select an upcoming game:', upcoming_games['GAME_LABEL'])
+            selected_game = upcoming_games[upcoming_games['GAME_LABEL'] == game_selection].iloc[0]
+            home_team, away_team = selected_game['HOME_TEAM_ABBREV'], selected_game['VISITOR_TEAM_ABBREV']
+            home_team_full, away_team_full = abbrev_to_full.get(home_team, home_team), abbrev_to_full.get(away_team, away_team)
+            
+            # Injury Adjustments
+            home_avg = adjust_for_injuries(home_team, injury_data, team_stats)
+            away_avg = adjust_for_injuries(away_team, injury_data, team_stats)
+            team_stats[home_team]['avg_score'] = home_avg
+            team_stats[away_team]['avg_score'] = away_avg
+            
+            # Spread Adjustment Slider
+            st.markdown("### Adjust Spread")
+            spread_adjustment = st.slider(
+                "Home Team Spread Adjustment",
+                -10.0, 10.0, 0.0, step=0.5,
+                help="Adjust the spread line to evaluate betting scenarios."
+            )
+            
+            # Total Line Input
+            st.markdown("### Set Total Points Line")
+            total_line = st.number_input(
+                "Total Points Line",
+                min_value=100.0, max_value=300.0, value=220.0, step=1.0,
+                help="Set the over/under total points line for the game."
+            )
+            
+            # Number of Simulations
+            st.markdown("### Number of Simulations")
+            num_simulations = st.selectbox(
+                "Select Number of Simulations",
+                [1000, 5000, 10000],
+                index=0,
+                help="Choose the number of Monte Carlo simulations to run for prediction accuracy."
+            )
+            
+            # Run Simulation Button
+            if st.button("Run Simulation"):
+                with st.spinner("Running simulation..."):
+                    results, score_diff, (lower_diff, upper_diff), (lower_total, upper_total) = monte_carlo_simulation_enhanced(
+                        home_team, away_team, blended_models, team_stats, team_data,
+                        num_simulations=num_simulations,
+                        spread_adjustment=spread_adjustment,
+                        total_line=total_line
+                    )
+                    if results:
+                        display_prediction_results(results, home_team_full, away_team_full, lower_diff, upper_diff, lower_total, upper_total, total_line)
+                    else:
+                        st.warning("Unable to perform simulation due to insufficient data.")
+    
+    with tabs[1]:
+        # Team Scoring Tab
+        st.markdown('<div class="data-section"><h2>📈 NBA Team Scoring Predictions</h2></div>', unsafe_allow_html=True)
+        
+        # Dropdown menu for selecting a team
+        selected_team = st.selectbox('Select a team for scoring prediction:', sorted(team_stats.keys()), format_func=lambda x: abbrev_to_full.get(x, x))
+        
+        if selected_team:
+            team_full_name = abbrev_to_full.get(selected_team, "Unknown Team")
+            st.markdown(f"### 📊 Historical Points for {team_full_name}")
+            
+            # Plot Historical Points
+            team_points = team_data[team_data['team'] == selected_team]['score']
+            st.line_chart(team_points)
+            
+            # Display Forecasted Points
+            st.markdown(f"### 🔮 Predicted Points for Next 5 Games ({team_full_name})")
+            team_forecast = team_forecasts[team_forecasts['Team'] == selected_team]
+            st.write(team_forecast[['Date', 'Predicted_PTS']])
+            
+            # Plot Forecast with Confidence Interval
+            st.markdown("### 📉 Forecast Visualization")
+            fig, ax = plt.subplots(figsize=(10, 6))
+            historical_dates = mdates.date2num(team_points.index)
+            forecast_dates = mdates.date2num(team_forecast['Date'])
+            ax.plot_date(historical_dates, team_points.values, '-', label='Historical Points', color='blue')
+            ax.plot_date(forecast_dates, team_forecast['Predicted_PTS'], '-', label='Predicted Points', color='orange')
+            lower_bound = team_forecast['Predicted_PTS'] - 5
+            upper_bound = team_forecast['Predicted_PTS'] + 5
+            ax.fill_between(forecast_dates, lower_bound, upper_bound, color='gray', alpha=0.2, label='Confidence Interval')
+            ax.set_title(f"Points Prediction for {team_full_name}", color=primary_text)
+            ax.set_xlabel("Date", color=primary_text)
+            ax.set_ylabel("Points", color=primary_text)
+            ax.legend()
+            ax.grid(True)
+            ax.set_facecolor(secondary_bg)
+            fig.patch.set_facecolor(primary_bg)
+            st.pyplot(fig)
+        
+    with tabs[2]:
+        # Quantum Insights Tab
+        st.markdown('<div class="data-section"><h2>🔮 Quantum-Inspired Predictions</h2></div>', unsafe_allow_html=True)
+        
+        # Description or additional quantum-inspired features can be added here
+        st.write("""
+            Explore advanced quantum-inspired simulations and predictive analytics to enhance your NBA betting strategies. Leverage Monte Carlo simulations, cluster analyses, and more to gain deeper insights into game outcomes.
+        """)
+        
+        # Example: Quantum Monte Carlo Simulation Button
+        if st.button("Run Quantum Monte Carlo Simulation for All Games"):
+            with st.spinner("Running quantum-inspired simulations..."):
+                all_results = []
+                if not upcoming_games.empty:
+                    for _, game in upcoming_games.iterrows():
+                        home_team_abbrev = game['HOME_TEAM_ABBREV']
+                        away_team_abbrev = game['VISITOR_TEAM_ABBREV']
+                        home_team_full = abbrev_to_full.get(home_team_abbrev, home_team_abbrev)
+                        away_team_full = abbrev_to_full.get(away_team_abbrev, away_team_abbrev)
+                        
+                        # Perform simulation
+                        results, score_diff, (lower_diff, upper_diff), (lower_total, upper_total) = monte_carlo_simulation_enhanced(
+                            home_team_abbrev, away_team_abbrev,
+                            blended_models, team_stats, team_data,
+                            num_simulations=1000,
+                            spread_adjustment=0,
+                            total_line=220.0  # Default; adjust as needed
+                        )
+                        if results:
+                            all_results.append({
+                                'Home Team': home_team_full,
+                                'Away Team': away_team_full,
+                                'Home Win %': results['Home Win %'],
+                                'Away Win %': results['Away Win %'],
+                                'Ties %': results['Ties %'],
+                                'Avg Home Score': results['Average Home Score'],
+                                'Avg Away Score': results['Average Away Score'],
+                                'Avg Total Score': results['Average Total Score'],
+                                'Score Differential': results['Average Score Differential'],
+                                'CI Lower Diff': lower_diff,
+                                'CI Upper Diff': upper_diff,
+                                'CI Lower Total': lower_total,
+                                'CI Upper Total': upper_total
+                            })
+                
+                if all_results:
+                    results_df = pd.DataFrame(all_results)
+                    st.write("### Simulation Summary for All Games")
+                    st.dataframe(results_df.style.highlight_max(axis=0, color='lightgreen'), use_container_width=True)
+                    
+                    # Visualize Win Percentages
+                    fig = go.Figure(data=[
+                        go.Bar(name='Home Win %', x=results_df['Home Team'], y=results_df['Home Win %'], marker_color='green'),
+                        go.Bar(name='Away Win %', x=results_df['Away Team'], y=results_df['Away Win %'], marker_color='red')
+                    ])
+                    fig.update_layout(
+                        barmode='group',
+                        title="Win Percentage Comparison",
+                        xaxis_title="Teams",
+                        yaxis_title="Win Percentage (%)",
+                        template=chart_template
+                    )
+                    st.plotly_chart(fig, use_container_width=True, key='quantum_win_percentage')
+                    
+                    # Detailed Results with Confidence Intervals
+                    st.markdown("### Detailed Simulation Results")
+                    for index, row in results_df.iterrows():
+                        st.markdown(f'''
+                            <div class="prediction-card">
+                                <h2>{row['Home Team']} vs {row['Away Team']}</h2>
+                                <p><strong>Home Win %:</strong> {row['Home Win %']}%</p>
+                                <p><strong>Away Win %:</strong> {row['Away Win %']}%</p>
+                                <p><strong>Ties %:</strong> {row['Ties %']}%</p>
+                                <p><strong>Average Total Score:</strong> {row['Avg Total Score']}</p>
+                                <p><strong>Score Differential:</strong> {row['Score Differential']}</p>
+                                <p><strong>90% Confidence Interval for Score Differential:</strong> {row['CI Lower Diff']} to {row['CI Upper Diff']}</p>
+                                <p><strong>90% Confidence Interval for Total Points:</strong> {row['CI Lower Total']} to {row['CI Upper Total']}</p>
+                            </div>
+                        ''', unsafe_allow_html=True)
+                    
+                else:
+                    st.warning("No simulation results to display.")
+    
+    with tabs[3]:
+        # Data & Analytics Tab
+        st.markdown('<div class="data-section"><h2>📊 Data & Analytics</h2></div>', unsafe_allow_html=True)
+        
+        # Display Team Statistics
+        st.markdown("### 📋 Team Performance Statistics")
+        stats_df = pd.DataFrame(team_stats).T
+        stats_df = stats_df.rename_axis("Team").reset_index()
+        stats_df.rename(columns={'team': 'Team'}, inplace=True)
+        st.dataframe(stats_df.style.highlight_max(axis=0, color='lightgreen').format({
+            'avg_score': "{:.2f}",
+            'std_dev': "{:.2f}",
+            'min_score': "{:.2f}",
+            'max_score': "{:.2f}",
+            'recent_form': "{:.2f}",
+            'win_streak': "{:d}",
+            'games_played': "{:d}"
+        }), use_container_width=True)
+        
+        # SHAP Feature Importance
+        st.markdown("### 🔍 Feature Importance")
+        selected_team_for_shap = st.selectbox('Select a team to view feature importance:', sorted(team_stats.keys()), format_func=lambda x: abbrev_to_full.get(x, x))
+        if selected_team_for_shap:
+            if selected_team_for_shap in blended_models:
+                model_info = blended_models[selected_team_for_shap]
+                gbr_model = joblib.load(os.path.join('models/nba/blended', f"{selected_team_for_shap}_gbr.pkl"))
+                selected_features = joblib.load(os.path.join('models/nba/blended', f"{selected_team_for_shap}_features.pkl"))
+                team_features = team_data[team_data['team'] == selected_team_for_shap].iloc[-1:]
+                if not team_features.empty:
+                    explainer = shap.Explainer(gbr_model)
+                    shap_values = explainer(team_features[selected_features])
+                    st.set_option('deprecation.showPyplotGlobalUse', False)
+                    st.markdown(f"#### Feature Importance for {abbrev_to_full.get(selected_team_for_shap, selected_team_for_shap)}")
+                    shap.summary_plot(shap_values, team_features[selected_features], plot_type="bar", show=False)
+                    st.pyplot(bbox_inches='tight')
+                else:
+                    st.warning("Insufficient data for SHAP analysis.")
+            else:
+                st.warning("Model not available for the selected team.")
+    
+    with tabs[4]:
+        # Settings Tab
+        st.markdown('<div class="data-section"><h2>⚙️ Settings</h2></div>', unsafe_allow_html=True)
+        
+        # Data Management
+        with st.expander("💾 Data Management"):
+            if st.button("Download Team Statistics CSV"):
+                csv = pd.DataFrame(team_stats).T.to_csv().encode('utf-8')
+                st.download_button(
+                    label="Download CSV",
+                    data=csv,
+                    file_name='team_statistics.csv',
+                    mime='text/csv',
+                    key='download_team_stats_csv'
+                )
+        
+        # Advanced Settings
+        with st.expander("🔧 Advanced Settings"):
+            st.markdown("Adjust simulation parameters to customize predictions.")
+            new_num_simulations = st.slider(
+                "Default Number of Simulations",
+                1000, 10000, 1000, step=500,
+                help="Set the default number of Monte Carlo simulations for predictions."
+            )
+            st.session_state['default_simulations'] = new_num_simulations
+        
+        # Accessibility Settings
+        with st.expander("🎨 Accessibility"):
+            high_contrast = st.checkbox("Enable High Contrast Mode", value=st.session_state.high_contrast)
+            if high_contrast != st.session_state.high_contrast:
+                toggle_high_contrast()
+    
+    # =======================
+    # 14. Footer Section
+    # =======================
     st.markdown(f'''
         <div class="footer">
-            &copy; {datetime.now().year} NBA Advanced Betting Insights. All rights reserved.
+            &copy; {datetime.now().year} **FoxEdge**. All rights reserved.
         </div>
     ''', unsafe_allow_html=True)
 
+# Run the main function
 if __name__ == "__main__":
     main()
