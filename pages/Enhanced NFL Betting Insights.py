@@ -16,13 +16,13 @@ import plotly.express as px
 import plotly.graph_objects as go
 import requests
 import pytz
-from sklearn.model_selection import TimeSeriesSplit
+from sklearn.model_selection import TimeSeriesSplit, cross_val_score
 from sklearn.metrics import mean_absolute_error
 import warnings
 from sklearn.preprocessing import StandardScaler
 from sklearn.cluster import KMeans
 from scipy.stats import truncnorm
-import pymc3 as pm  # For Bayesian methods
+from sklearn.linear_model import LogisticRegression
 from collections import deque
 import joblib
 
@@ -399,6 +399,10 @@ def fetch_injury_data(current_year):
         injuries = nfl.import_injuries([current_year])
         key_positions = ['QB', 'RB', 'WR', 'OL']
         
+        # Debugging: Display available columns in injury_data
+        # Comment out the next line in production
+        # st.write("Available Columns in Injury Data:", injuries.columns.tolist())
+        
         # Define possible column names for player names, including 'full_name'
         possible_player_columns = [
             'player_name', 'name', 'player_full_name', 'playerName', 
@@ -510,7 +514,7 @@ def adjust_rating_for_weather(base_rating, weather_data):
     return adjusted_rating, round(adjustment * 100, 2)  # Percentage adjustment
 
 # --- Aggregate Team Statistics ---
-def aggregate_team_stats(team_data, schedule):
+def aggregate_team_stats(team_data):
     team_stats = team_data.groupby('team').apply(
         lambda x: pd.Series({
             'avg_score': np.average(x['score']),
@@ -623,7 +627,7 @@ def determine_optimal_clusters(scaled_data, max_k=10):
     optimal_k = 4  # Adjust based on your data and domain knowledge
     return optimal_k
 
-# --- Monte Carlo Simulation with Variance Reduction and Team-Specific Adjustments ---
+# --- Monte Carlo Simulation with Clustering ---
 def monte_carlo_simulation_with_clustering(home_team, away_team, clusters, team_cluster_map, spread_adjustment=0, num_simulations=1000, team_stats=None, team_mae_dict=None):
     if home_team not in team_stats or away_team not in team_stats:
         st.error("Team stats not available for selected teams")
@@ -659,26 +663,21 @@ def monte_carlo_simulation_with_clustering(home_team, away_team, clusters, team_
     home_std_dev = max(home_stats['std_dev'], min_std_dev)
     away_std_dev = max(away_stats['std_dev'], min_std_dev)
 
-    # Simulations using Antithetic Variates
-    simulated_diff = []
-    for _ in range(num_simulations // 2):
-        diff = np.random.normal(combined_home_rating - combined_away_rating, home_std_dev + away_std_dev)
-        simulated_diff.append(diff)
-        simulated_diff.append(-diff)  # Antithetic pair
+    # Simulations using Truncated Normal Distribution
+    home_scores = generate_truncated_normal(combined_home_rating, home_std_dev, 0, 70, num_simulations)
+    away_scores = generate_truncated_normal(combined_away_rating, away_std_dev, 0, 70, num_simulations)
 
-    simulated_diff = np.array(simulated_diff[:num_simulations]) - spread_adjustment
-
-    # Calculate Results
-    home_wins = np.sum(simulated_diff > 0)
+    score_diff = home_scores - away_scores
+    home_wins = np.sum(score_diff > spread_adjustment)
 
     results = {
         "Home Win %": round((home_wins / num_simulations) * 100, 2),
         "Away Win %": round(((num_simulations - home_wins) / num_simulations) * 100, 2),
-        "Average Total": round_to_nearest_half(np.mean(simulated_diff + spread_adjustment) + spread_adjustment),
-        "Average Differential": round_to_nearest_half(np.mean(simulated_diff))
+        "Average Total": round_to_nearest_half(np.mean(home_scores + away_scores)),
+        "Average Differential": round_to_nearest_half(np.mean(score_diff))  # Predicted Scoring Margin
     }
 
-    return results, simulated_diff  # Return score_diff_sim along with results
+    return results, score_diff  # Return score_diff along with results
 
 # --- Generate Truncated Normal Distribution ---
 def generate_truncated_normal(mean, std, lower, upper, size):
@@ -745,28 +744,7 @@ if schedule is None:
 team_data = preprocess_data(schedule)
 
 # Feature Engineering
-team_stats = aggregate_team_stats(team_data, schedule)
-
-# Apply Rolling Average for Smoothing
-def apply_rolling_average(team_data, window=5):
-    team_data['rolling_avg'] = team_data.groupby('team')['score'].transform(lambda x: x.rolling(window, min_periods=1).mean())
-    return team_data
-
-team_data = apply_rolling_average(team_data, window=5)
-
-# Recalculate team_stats after smoothing
-team_stats = aggregate_team_stats(team_data, schedule)
-
-# Adjust std_dev dynamically based on mean std_dev
-def adjust_std_dev(team_stats, multiplier=1.2):
-    mean_std = np.mean([t['std_dev'] for t in team_stats.values()])
-    for team, stats in team_stats.items():
-        cap = mean_std * multiplier
-        if stats['std_dev'] > cap:
-            team_stats[team]['std_dev'] = cap
-    return team_stats
-
-team_stats = adjust_std_dev(team_stats, multiplier=1.2)  # Example multiplier
+team_stats = aggregate_team_stats(team_data)
 
 # Prepare Data for Clustering
 clustering_data, team_list = prepare_clustering_data(team_stats)
@@ -927,11 +905,9 @@ with tabs[0]:
                         )
 
                         if simulation_results and score_diff_sim is not None:
-                            # Calculate Bootstrapped Confidence Intervals using actual simulation data
-                            lower_boot, upper_boot = bootstrap_confidence_interval(score_diff_sim, confidence=0.90, num_bootstrap=10000)
-
-                            # Calculate Bayesian Confidence Intervals
-                            lower_bayes, upper_bayes = bayesian_confidence_interval(score_diff_sim, confidence=0.90)
+                            # **Refinement: Use Actual Simulation Data for Confidence Interval**
+                            lower_bound = round_to_nearest_half(np.percentile(score_diff_sim, 5))
+                            upper_bound = round_to_nearest_half(np.percentile(score_diff_sim, 95))
 
                             # Determine if it's a rivalry game
                             rivalry = is_rivalry_game(home_team, away_team)
@@ -941,12 +917,13 @@ with tabs[0]:
                                 confidence_adjusted = confidence
 
                             # **Additional Refinement: Cap the Confidence Interval Spread**
+                            # Optionally, impose a maximum spread to prevent excessively wide intervals
                             max_spread = 30  # Define maximum spread
-                            current_spread = upper_boot - lower_boot
+                            current_spread = upper_bound - lower_bound
                             if current_spread > max_spread:
                                 adjustment = (current_spread - max_spread) / 2
-                                lower_boot += adjustment
-                                upper_boot -= adjustment
+                                lower_bound += adjustment
+                                upper_bound -= adjustment
 
                             # Prepare Betting Insights Content
                             betting_insights_md = f'''
@@ -960,8 +937,7 @@ with tabs[0]:
                                 
                                 <p><strong>Predicted Scoring Margin:</strong> {simulation_results["Average Differential"]} points</p>
                                 
-                                <p><strong>Score Differential 90% Confidence Interval (Bootstrap):</strong> {lower_boot} to {upper_boot} points</p>
-                                <p><strong>Score Differential 90% Confidence Interval (Bayesian):</strong> {lower_bayes} to {upper_bayes} points</p>
+                                <p><strong>Score Differential 90% Confidence Interval:</strong> {lower_bound} to {upper_bound} points</p>
                             '''
 
                             st.markdown(betting_insights_md, unsafe_allow_html=True)
@@ -980,58 +956,52 @@ with tabs[0]:
                                 <h2>📊 Visual Insights</h2>
                         ''', unsafe_allow_html=True)
 
-                        if simulation_results and score_diff_sim is not None:
-                            # Probability Distribution of Score Differential (Bootstrap)
-                            fig = px.histogram(
-                                score_diff_sim,
-                                nbins=30,
-                                title="Score Differential Distribution (Home Team - Away Team)",
-                                labels={'value': 'Score Differential', 'count': 'Frequency'},
-                                opacity=0.75,
-                                color_discrete_sequence=[chart_color]
-                            )
-                            fig.add_vline(x=spread_adjustment, line_dash="dash", line_color="red", annotation_text="Spread Adjustment", annotation_position="top left")
-                            fig.update_layout(
-                                xaxis_title="Score Differential",
-                                yaxis_title="Frequency",
-                                template=chart_template
-                            )
-                            st.plotly_chart(fig, use_container_width=True, key='fig_score_diff_distribution')
+                        # Probability Distribution of Score Differential
+                        fig = px.histogram(
+                            score_diff_sim,
+                            nbins=30,
+                            title="Score Differential Distribution (Home Team - Away Team)",
+                            labels={'value': 'Score Differential', 'count': 'Frequency'},
+                            opacity=0.75,
+                            color_discrete_sequence=[chart_color]
+                        )
+                        fig.add_vline(x=spread_adjustment, line_dash="dash", line_color="red", annotation_text="Spread Adjustment", annotation_position="top left")
+                        fig.update_layout(
+                            xaxis_title="Score Differential",
+                            yaxis_title="Frequency",
+                            template=chart_template
+                        )
+                        st.plotly_chart(fig, use_container_width=True, key='fig_score_diff_distribution')
 
-                            # Betting Line vs. Prediction Overlay (Bootstrap)
-                            predicted_total = simulation_results["Average Total"]
-                            betting_total = total_line  # From user input
+                        # Betting Line vs. Prediction Overlay
+                        predicted_total = simulation_results["Average Total"]
+                        betting_total = total_line  # From user input
 
-                            fig_bet = go.Figure()
-                            fig_bet.add_trace(go.Bar(
-                                x=["Predicted Total", "Betting Total"],
-                                y=[predicted_total, betting_total],
-                                name="Totals",
-                                marker_color=['#32CD32', '#1E90FF']
-                            ))
-                            fig_bet.update_layout(title="Predicted Total vs. Betting Total", yaxis_title="Points", template=chart_template)
-                            st.plotly_chart(fig_bet, use_container_width=True, key='fig_bet_prediction')
+                        fig_bet = go.Figure()
+                        fig_bet.add_trace(go.Bar(
+                            x=["Predicted Total", "Betting Total"],
+                            y=[predicted_total, betting_total],
+                            name="Totals",
+                            marker_color=['#32CD32', '#1E90FF']
+                        ))
+                        fig_bet.update_layout(title="Predicted Total vs. Betting Total", yaxis_title="Points", template=chart_template)
+                        st.plotly_chart(fig_bet, use_container_width=True, key='fig_bet_prediction')
 
-                            # Probability Distribution of Score Differential (Bayesian)
-                            fig_prob = px.histogram(
-                                score_diff_sim,
-                                nbins=30,
-                                title="Probability Distribution of Score Differential",
-                                labels={'value': 'Score Differential', 'count': 'Frequency'},
-                                opacity=0.75,
-                                color_discrete_sequence=[chart_color]
-                            )
-                            fig_prob.update_layout(
-                                xaxis_title="Score Differential",
-                                yaxis_title="Frequency",
-                                template=chart_template
-                            )
-                            st.plotly_chart(fig_prob, use_container_width=True, key='fig_prob_score_diff')
-
-                            # Calibration Plot
-                            # Note: You need actual game outcomes to plot calibration. This is a placeholder.
-                            # actual_diff = ...  # Obtain actual score differential after the game
-                            # plot_calibration(score_diff_sim, actual_diff)
+                        # Probability Distribution of Score Differential
+                        fig_prob = px.histogram(
+                            score_diff_sim,
+                            nbins=30,
+                            title="Probability Distribution of Score Differential",
+                            labels={'value': 'Score Differential', 'count': 'Frequency'},
+                            opacity=0.75,
+                            color_discrete_sequence=[chart_color]
+                        )
+                        fig_prob.update_layout(
+                            xaxis_title="Score Differential",
+                            yaxis_title="Frequency",
+                            template=chart_template
+                        )
+                        st.plotly_chart(fig_prob, use_container_width=True, key='fig_prob_score_diff')
 
                         st.markdown('''
                             </div>
@@ -1187,11 +1157,10 @@ with tabs[0]:
                             "Predicted Winner": [team_abbrev_mapping.get(predicted_winner, predicted_winner)],
                             "Confidence Level (%)": [confidence],
                             "Average Total Points": [simulation_results["Average Total"]],
-                            "Predicted Scoring Margin": [simulation_results["Average Differential"]],
-                            "Score Differential 90% CI Lower (Bootstrap)": [lower_boot],
-                            "Score Differential 90% CI Upper (Bootstrap)": [upper_boot],
-                            "Score Differential 90% CI Lower (Bayesian)": [lower_bayes],
-                            "Score Differential 90% CI Upper (Bayesian)": [upper_bayes],
+                            "Predicted Scoring Margin": [simulation_results["Average Differential"]],  # Added Field
+                            "Average Differential": [simulation_results["Average Differential"]],
+                            "Score Differential 90% CI Lower": [lower_bound],
+                            "Score Differential 90% CI Upper": [upper_bound]
                         }
                         prediction_df = pd.DataFrame(prediction_data)
 
