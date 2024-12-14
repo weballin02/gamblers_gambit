@@ -664,7 +664,7 @@ def monte_carlo_simulation_with_clustering(home_team, away_team, clusters, team_
         "Home Win %": round((home_wins / num_simulations) * 100, 2),
         "Away Win %": round(((num_simulations - home_wins) / num_simulations) * 100, 2),
         "Average Total": round_to_nearest_half(np.mean(home_scores + away_scores)),
-        "Average Differential": round_to_nearest_half(np.mean(score_diff))
+        "Average Differential": round_to_nearest_half(np.mean(score_diff))  # Predicted Scoring Margin
     }
 
     return results
@@ -897,7 +897,7 @@ with tabs[0]:
                         if simulation_results:
                             # Calculate Bootstrapped Confidence Intervals
                             # For simplicity, using simulated score differences
-                            score_diff_sim = np.random.normal(rating_diff, 5, 1000)
+                            score_diff_sim = np.random.normal(simulation_results["Average Differential"], 5, 1000)
                             lower_bound = round_to_nearest_half(np.percentile(score_diff_sim, 5))
                             upper_bound = round_to_nearest_half(np.percentile(score_diff_sim, 95))
 
@@ -917,6 +917,8 @@ with tabs[0]:
                                 <p><strong>Total Bet Analysis:</strong></p>
                                 <p>Over {total_line}: **{simulation_results["Average Total"]} Points**</p>
                                 <p>Under {total_line}: **{round_to_nearest_half(100 - simulation_results["Home Win %"])}%**</p>
+                                
+                                <p><strong>Predicted Scoring Margin:</strong> {simulation_results["Average Differential"]} points</p>  <!-- Added Line -->
                                 
                                 <p><strong>Score Differential 90% Confidence Interval:</strong> {lower_bound} to {upper_bound}</p>
                             '''
@@ -939,7 +941,7 @@ with tabs[0]:
 
                         # Probability Distribution of Score Differential
                         fig = px.histogram(
-                            np.random.normal(rating_diff, 5, 1000),
+                            np.random.normal(simulation_results["Average Differential"], 5, 1000),
                             nbins=30,
                             title="Score Differential Distribution (Home Team - Away Team)",
                             labels={'value': 'Score Differential', 'count': 'Frequency'},
@@ -1138,6 +1140,7 @@ with tabs[0]:
                             "Predicted Winner": [team_abbrev_mapping.get(predicted_winner, predicted_winner)],
                             "Confidence Level (%)": [confidence],
                             "Average Total Points": [simulation_results["Average Total"]],
+                            "Predicted Scoring Margin": [simulation_results["Average Differential"]],  # Added Field
                             "Average Differential": [simulation_results["Average Differential"]],
                             "Score Differential 90% CI Lower": [lower_bound],
                             "Score Differential 90% CI Upper": [upper_bound]
