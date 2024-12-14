@@ -626,7 +626,7 @@ def determine_optimal_clusters(scaled_data, max_k=10):
 def monte_carlo_simulation_with_clustering(home_team, away_team, clusters, team_cluster_map, spread_adjustment=0, num_simulations=1000, team_stats=None, team_mae_dict=None):
     if home_team not in team_stats or away_team not in team_stats:
         st.error("Team stats not available for selected teams")
-        return None
+        return None, None  # Return None for score_diff_sim
 
     home_cluster = team_cluster_map.get(home_team)
     away_cluster = team_cluster_map.get(away_team)
@@ -667,7 +667,7 @@ def monte_carlo_simulation_with_clustering(home_team, away_team, clusters, team_
         "Average Differential": round_to_nearest_half(np.mean(score_diff))  # Predicted Scoring Margin
     }
 
-    return results
+    return results, score_diff  # Return score_diff along with results
 
 # --- Generate Truncated Normal Distribution ---
 def generate_truncated_normal(mean, std, lower, upper, size):
@@ -886,7 +886,7 @@ with tabs[0]:
                         ''', unsafe_allow_html=True)
 
                         # Recalculate betting insights based on new lines using Monte Carlo Simulation with Clustering
-                        simulation_results = monte_carlo_simulation_with_clustering(
+                        simulation_results, score_diff_sim = monte_carlo_simulation_with_clustering(
                             home_team, away_team, clusters, team_cluster_map,
                             spread_adjustment=spread_adjustment,
                             num_simulations=1000,
@@ -894,10 +894,8 @@ with tabs[0]:
                             team_mae_dict=team_mae_dict
                         )
 
-                        if simulation_results:
-                            # Calculate Bootstrapped Confidence Intervals
-                            # For simplicity, using simulated score differences
-                            score_diff_sim = np.random.normal(simulation_results["Average Differential"], 5, 1000)
+                        if simulation_results and score_diff_sim is not None:
+                            # Calculate Bootstrapped Confidence Intervals using actual simulation data
                             lower_bound = round_to_nearest_half(np.percentile(score_diff_sim, 5))
                             upper_bound = round_to_nearest_half(np.percentile(score_diff_sim, 95))
 
@@ -918,7 +916,7 @@ with tabs[0]:
                                 <p>Over {total_line}: **{simulation_results["Average Total"]} Points**</p>
                                 <p>Under {total_line}: **{round_to_nearest_half(100 - simulation_results["Home Win %"])}%**</p>
                                 
-                                <p><strong>Predicted Scoring Margin:</strong> {simulation_results["Average Differential"]} points</p>  <!-- Added Line -->
+                                <p><strong>Predicted Scoring Margin:</strong> {simulation_results["Average Differential"]} points</p>
                                 
                                 <p><strong>Score Differential 90% Confidence Interval:</strong> {lower_bound} to {upper_bound}</p>
                             '''
@@ -941,7 +939,7 @@ with tabs[0]:
 
                         # Probability Distribution of Score Differential
                         fig = px.histogram(
-                            np.random.normal(simulation_results["Average Differential"], 5, 1000),
+                            score_diff_sim,
                             nbins=30,
                             title="Score Differential Distribution (Home Team - Away Team)",
                             labels={'value': 'Score Differential', 'count': 'Frequency'},
