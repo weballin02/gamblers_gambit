@@ -881,8 +881,8 @@ with tabs[0]:
                             <h2>🏈 Predicted Outcome</h2>
                             <div class="prediction-card">
                                 <p><strong>{team_abbrev_mapping.get(home_team, home_team)}</strong> vs. <strong>{team_abbrev_mapping.get(away_team, away_team)}</strong></p>
-                                <p>**Predicted Winner:** {team_abbrev_mapping.get(predicted_winner, predicted_winner)}</p>
-                                <p>**Confidence Level:** {confidence}%</p>
+                                <p>Predicted Winner: {team_abbrev_mapping.get(predicted_winner, predicted_winner)}</p>
+                                <p>Confidence Level: {confidence}%</p>
                             </div>
                         </div>
                     ''', unsafe_allow_html=True)
@@ -928,12 +928,12 @@ with tabs[0]:
                             # Prepare Betting Insights Content
                             betting_insights_md = f'''
                                 <p><strong>Spread Bet Analysis:</strong></p>
-                                <p>{team_abbrev_mapping.get(home_team, home_team)} Win Percentage: **{simulation_results["Home Win %"]}%**</p>
-                                <p>{team_abbrev_mapping.get(away_team, away_team)} Win Percentage: **{simulation_results["Away Win %"]}%**</p>
+                                <p>{team_abbrev_mapping.get(home_team, home_team)} Win Percentage: {simulation_results["Home Win %"]}%</p>
+                                <p>{team_abbrev_mapping.get(away_team, away_team)} Win Percentage: {simulation_results["Away Win %"]}%</p>
                                 
                                 <p><strong>Total Bet Analysis:</strong></p>
-                                <p>Over {total_line}: **{simulation_results["Average Total"]} Points**</p>
-                                <p>Under {total_line}: **{round_to_nearest_half(100 - simulation_results["Home Win %"])}%**</p>
+                                <p>Over {total_line}: {simulation_results["Average Total"]} Points</p>
+                                <p>Under {total_line}: {round_to_nearest_half(100 - simulation_results["Home Win %"])}%</p>
                                 
                                 <p><strong>Predicted Scoring Margin:</strong> {simulation_results["Average Differential"]} points</p>
                                 
@@ -1104,7 +1104,7 @@ with tabs[0]:
                                 # Calculate impact score if not already present
                                 impact_score = row.get('impact_score', 10)  # Default to 10% if not present
                                 st.markdown(f'''
-                                    <p><strong>{player} ({position})</strong> is currently <span style="color:red;">Out</span> with an impact score of **{impact_score}%**.</p>
+                                    <p><strong>{player} ({position})</strong> is currently <span style="color:red;">Out</span> with an impact score of {impact_score}%.</p>
                                 ''', unsafe_allow_html=True)
                         else:
                             st.markdown("<p>No key players are currently injured.</p>", unsafe_allow_html=True)
@@ -1181,7 +1181,7 @@ with tabs[0]:
                     # Footer
                     st.markdown(f'''
                         <div class="footer">
-                            &copy; {datetime.now().year} **FoxEdge**. All rights reserved.
+                            &copy; {datetime.now().year} FoxEdge. All rights reserved.
                         </div>
                     ''', unsafe_allow_html=True)
                 else:
@@ -1307,6 +1307,6 @@ with tabs[4]:
 # =======================
 st.markdown(f'''
     <div class="footer">
-        &copy; {datetime.now().year} **FoxEdge**. All rights reserved.
+        &copy; {datetime.now().year} FoxEdge. All rights reserved.
     </div>
 ''', unsafe_allow_html=True)
