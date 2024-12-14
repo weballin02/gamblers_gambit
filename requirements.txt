@@ -78,3 +78,4 @@ html2text
 xgboost
 shap
 ipython
+pymc3
