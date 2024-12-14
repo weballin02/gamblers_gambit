@@ -558,6 +558,11 @@ def aggregate_team_stats(team_data):
         recent_opponents = recent_games['opp_score']
         team_stats[team]['recent_opponent_avg_score'] = round(recent_opponents.mean(), 2) if not recent_opponents.empty else team_stats[team]['avg_points_allowed']
 
+        # **Refinement: Cap the Standard Deviation to Reduce Spread**
+        max_std_dev = 10  # Define maximum standard deviation
+        if team_stats[team]['std_dev'] > max_std_dev:
+            team_stats[team]['std_dev'] = max_std_dev
+
     return team_stats
 
 # --- Train Machine Learning Models ---
@@ -653,9 +658,14 @@ def monte_carlo_simulation_with_clustering(home_team, away_team, clusters, team_
     combined_home_rating *= (1 + cluster_adjustment)
     combined_away_rating *= (1 - cluster_adjustment)
 
+    # **Refinement: Introduce a Minimum Standard Deviation to Prevent Zero Variance**
+    min_std_dev = 3  # Define minimum standard deviation
+    home_std_dev = max(home_stats['std_dev'], min_std_dev)
+    away_std_dev = max(away_stats['std_dev'], min_std_dev)
+
     # Simulations using Truncated Normal Distribution
-    home_scores = generate_truncated_normal(combined_home_rating, home_stats['std_dev'], 0, 70, num_simulations)
-    away_scores = generate_truncated_normal(combined_away_rating, away_stats['std_dev'], 0, 70, num_simulations)
+    home_scores = generate_truncated_normal(combined_home_rating, home_std_dev, 0, 70, num_simulations)
+    away_scores = generate_truncated_normal(combined_away_rating, away_std_dev, 0, 70, num_simulations)
 
     score_diff = home_scores - away_scores
     home_wins = np.sum(score_diff > spread_adjustment)
@@ -895,7 +905,7 @@ with tabs[0]:
                         )
 
                         if simulation_results and score_diff_sim is not None:
-                            # Calculate Bootstrapped Confidence Intervals using actual simulation data
+                            # **Refinement: Use Actual Simulation Data for Confidence Interval**
                             lower_bound = round_to_nearest_half(np.percentile(score_diff_sim, 5))
                             upper_bound = round_to_nearest_half(np.percentile(score_diff_sim, 95))
 
@@ -905,6 +915,15 @@ with tabs[0]:
                                 confidence_adjusted = round(confidence * 0.85, 2)  # Lower the confidence in divisional games
                             else:
                                 confidence_adjusted = confidence
+
+                            # **Additional Refinement: Cap the Confidence Interval Spread**
+                            # Optionally, impose a maximum spread to prevent excessively wide intervals
+                            max_spread = 30  # Define maximum spread
+                            current_spread = upper_bound - lower_bound
+                            if current_spread > max_spread:
+                                adjustment = (current_spread - max_spread) / 2
+                                lower_bound += adjustment
+                                upper_bound -= adjustment
 
                             # Prepare Betting Insights Content
                             betting_insights_md = f'''
@@ -918,7 +937,7 @@ with tabs[0]:
                                 
                                 <p><strong>Predicted Scoring Margin:</strong> {simulation_results["Average Differential"]} points</p>
                                 
-                                <p><strong>Score Differential 90% Confidence Interval:</strong> {lower_bound} to {upper_bound}</p>
+                                <p><strong>Score Differential 90% Confidence Interval:</strong> {lower_bound} to {upper_bound} points</p>
                             '''
 
                             st.markdown(betting_insights_md, unsafe_allow_html=True)
