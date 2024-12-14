@@ -899,7 +899,7 @@ with tabs[0]:
                         simulation_results, score_diff_sim = monte_carlo_simulation_with_clustering(
                             home_team, away_team, clusters, team_cluster_map,
                             spread_adjustment=spread_adjustment,
-                            num_simulations=1000,
+                            num_simulations=1000000,
                             team_stats=team_stats,
                             team_mae_dict=team_mae_dict
                         )
