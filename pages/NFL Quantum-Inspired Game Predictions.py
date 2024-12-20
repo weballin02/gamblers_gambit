@@ -356,6 +356,22 @@ def calculate_team_stats():
 # 8. Upcoming Games Retrieval
 # ===========================
 
+# --- Load NFL Schedule Data ---
+@st.cache_data(ttl=3600)
+def load_nfl_schedule():
+    try:
+        current_year = datetime.now().year
+        previous_years = [current_year - 1, current_year - 2]
+        schedule = nfl.import_schedules([current_year] + previous_years)
+        if schedule.empty:
+            st.error(f"No data available for the years: {current_year}, {current_year - 1}, {current_year - 2}")
+            return None
+        schedule['gameday'] = pd.to_datetime(schedule['gameday'], errors='coerce')
+        return schedule
+    except Exception as e:
+        st.error(f"Error loading NFL schedule data: {str(e)}")
+        return None
+
 # --- Fetch Upcoming Games ---
 @st.cache_data(ttl=3600)
 def fetch_upcoming_games(schedule):
@@ -382,6 +398,11 @@ def fetch_upcoming_games(schedule):
     ].sort_values('game_datetime')
 
     return upcoming_games[['game_datetime', 'home_team', 'away_team']]
+
+# Load the schedule and pass it to fetch upcoming games
+schedule = load_nfl_schedule()
+upcoming_games = fetch_upcoming_games(schedule)
+
 
 # Ensure correct function call is used in the main script
 upcoming_games = fetch_upcoming_games(schedule)
