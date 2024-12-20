@@ -365,30 +365,21 @@ def get_upcoming_games():
         return pd.DataFrame()
 
     schedule = games.copy()
+    
+    # Localize the game time to UTC and convert to Pacific Time
     schedule['game_datetime'] = pd.to_datetime(schedule['gameday']).dt.tz_localize('UTC').dt.tz_convert('US/Pacific')
+    
+    # Get the current time in Pacific Time
     now = datetime.now().astimezone(pytz.timezone('US/Pacific'))
-    today_weekday = now.weekday()
-
-    # Set target game days based on the current weekday
-    if today_weekday == 3:  # Thursday
-        target_days = [3, 6, 0]
-    elif today_weekday == 6:  # Sunday
-        target_days = [6, 0, 3]
-    elif today_weekday == 0:  # Monday
-        target_days = [0, 3, 6]
-    else:
-        target_days = [3, 6, 0]
-
-    upcoming_game_dates = [
-        now + timedelta(days=(d - today_weekday + 7) % 7) for d in target_days
-    ]
-
+    
+    # Filter for "upcoming games" which includes games happening today (even if they started) and future games
     upcoming_games = schedule[
-        (schedule['game_type'] == 'REG') &
-        (schedule['game_datetime'].dt.date.isin([date.date() for date in upcoming_game_dates]))
+        (schedule['game_type'] == 'REG') & 
+        (schedule['game_datetime'] >= now - timedelta(hours=6))  # Allow a 6-hour grace period to keep "today's" games
     ].sort_values('game_datetime')
     
     return upcoming_games[['game_datetime', 'home_team', 'away_team']]
+
 
 # ===========================
 # 9. Quantum Monte Carlo Simulation Function
