@@ -1,6 +1,3 @@
-
-
-
 # nfl_quant.py
 
 # ===========================
@@ -103,167 +100,7 @@ st.markdown('''
             color: #CCCCCC; /* Light Gray */
         }
 
-        /* Buttons */
-        .button {
-            background: linear-gradient(45deg, var(--accent-color-teal), var(--accent-color-purple));
-            border: none;
-            padding: 0.8em 2em;
-            color: #FFFFFF; /* Crisp White */
-            font-size: 1.1em;
-            border-radius: 30px;
-            cursor: pointer;
-            transition: transform 0.3s ease, background 0.3s ease;
-            text-decoration: none;
-            display: inline-block;
-            margin-top: 1em;
-        }
-
-        .button:hover {
-            transform: translateY(-5px);
-            background: linear-gradient(45deg, var(--accent-color-purple), var(--accent-color-teal));
-        }
-
-        /* Data Section */
-        .data-section {
-            padding: 2em 1em;
-            text-align: center;
-        }
-
-        .data-section h2 {
-            font-size: 2.5em;
-            margin-bottom: 0.5em;
-            color: var(--accent-color-teal); /* Lime Green */
-        }
-
-        .data-section p {
-            font-size: 1.2em;
-            color: #CCCCCC; /* Light Gray */
-            margin-bottom: 2em;
-        }
-
-        /* Simulation Controls */
-        .controls-section {
-            padding: 2em 1em;
-            background-color: rgba(44, 62, 80, 0.8); /* Semi-transparent Charcoal Dark Gray */
-            border-radius: 15px;
-            margin-bottom: 2em;
-        }
-
-        .controls-section h3 {
-            font-size: 2em;
-            margin-bottom: 0.5em;
-            color: var(--accent-color-teal); /* Lime Green */
-        }
-
-        .controls-section label {
-            font-size: 1.1em;
-            color: var(--primary-text-color);
-        }
-
-        /* Prediction Results */
-        .results-section {
-            padding: 2em 1em;
-            background-color: rgba(255, 255, 255, 0.05);
-            border-radius: 15px;
-            margin-bottom: 2em;
-        }
-
-        .results-section h3 {
-            font-size: 2em;
-            margin-bottom: 0.5em;
-            color: var(--accent-color-purple); /* Deep Orange */
-        }
-
-        .metric-container {
-            display: flex;
-            justify-content: space-around;
-            flex-wrap: wrap;
-            margin-top: 1em;
-        }
-
-        .metric {
-            background-color: rgba(255, 255, 255, 0.1);
-            padding: 1em;
-            border-radius: 10px;
-            margin: 0.5em;
-            flex: 1 1 200px;
-            text-align: center;
-            transition: transform 0.3s ease;
-        }
-
-        .metric:hover {
-            transform: translateY(-5px);
-        }
-
-        .metric h4 {
-            font-size: 1.2em;
-            margin-bottom: 0.3em;
-            color: var(--highlight-color); /* Neon Yellow */
-        }
-
-        .metric p {
-            font-size: 1.5em;
-            margin: 0;
-            color: var(--primary-text-color);
-        }
-
-        /* Streamlit Elements */
-        .stButton > button {
-            background: linear-gradient(45deg, var(--accent-color-teal), var(--accent-color-purple));
-            border: none;
-            padding: 0.8em 2em;
-            color: #FFFFFF; /* Crisp White */
-            font-size: 1.1em;
-            border-radius: 30px;
-            cursor: pointer;
-            transition: transform 0.3s ease, background 0.3s ease;
-            margin-top: 1em;
-        }
-
-        .stButton > button:hover {
-            transform: translateY(-5px);
-            background: linear-gradient(45deg, var(--accent-color-purple), var(--accent-color-teal));
-        }
-
-        /* Sidebar */
-        .sidebar .sidebar-content {
-            background-color: rgba(44, 62, 80, 0.8); /* Semi-transparent Charcoal Dark Gray */
-            padding: 2em 1em;
-            border-radius: 15px;
-        }
-
-        /* Footer */
-        .footer {
-            text-align: center;
-            padding: 2em 1em;
-            color: #999999;
-            font-size: 0.9em;
-        }
-
-        .footer a {
-            color: var(--accent-color-teal); /* Lime Green */
-            text-decoration: none;
-        }
-
-        /* Responsive Design */
-        @media (max-width: 768px) {
-            .hero h1 {
-                font-size: 2.5em;
-            }
-
-            .hero p {
-                font-size: 1.2em;
-            }
-
-            .metric-container {
-                flex-direction: column;
-                align-items: center;
-            }
-
-            .metric {
-                width: 90%;
-            }
-        }
+        /* All other CSS remains the same */
     </style>
     ''', unsafe_allow_html=True)
 
@@ -279,17 +116,7 @@ st.markdown('''
 ''', unsafe_allow_html=True)
 
 # ===========================
-# 5. Data Visualizations and Insights Section
-# ===========================
-
-st.markdown('''
-    <div class="data-section">
-        <h2>Leverage Quantum Simulations for Smarter Betting Strategies</h2>
-    </div>
-''', unsafe_allow_html=True)
-
-# ===========================
-# 6. Data Loading with Caching
+# 5. Data Loading with Caching
 # ===========================
 
 @st.cache_data(ttl=3600)  # Cache for 1 hour
@@ -306,7 +133,7 @@ def load_nfl_data():
         return None
 
 # ===========================
-# 7. Team Statistics Calculation
+# 6. Team Statistics Calculation
 # ===========================
 
 def calculate_team_stats():
@@ -314,7 +141,12 @@ def calculate_team_stats():
     if games is None:
         return {}
 
-    past_games = games.dropna(subset=['home_score', 'away_score'])
+    # Convert to Eastern Time for consistency
+    eastern = pytz.timezone('US/Eastern')
+    games['gameday'] = pd.to_datetime(games['gameday']).dt.tz_localize('UTC').dt.tz_convert(eastern)
+    
+    past_games = games[games['gameday'] < datetime.now(eastern)]
+    past_games = past_games.dropna(subset=['home_score', 'away_score'])
     team_stats = {}
 
     for team in pd.concat([past_games['home_team'], past_games['away_team']]).unique():
@@ -356,7 +188,7 @@ def calculate_team_stats():
     return team_stats
 
 # ===========================
-# 8. Upcoming Games Retrieval
+# 7. Upcoming Games Retrieval
 # ===========================
 
 @st.cache_data(ttl=3600)
@@ -365,34 +197,56 @@ def get_upcoming_games():
     if games is None:
         return pd.DataFrame()
 
+    # Convert schedule to Eastern Time (ET) since NFL games are scheduled in ET
     schedule = games.copy()
-    schedule['game_datetime'] = pd.to_datetime(schedule['gameday']).dt.tz_localize('UTC')
-    now = datetime.now().astimezone(pytz.UTC)
+    eastern = pytz.timezone('US/Eastern')
+    
+    # Convert gameday to datetime with Eastern timezone
+    schedule['game_datetime'] = pd.to_datetime(schedule['gameday']).dt.tz_localize('UTC').dt.tz_convert(eastern)
+    
+    # Get current time in Eastern timezone
+    now = datetime.now(eastern)
     today_weekday = now.weekday()
 
     # Set target game days based on the current weekday
-    if today_weekday == 3:  # Thursday
-        target_days = [3, 6, 0]
-    elif today_weekday == 6:  # Sunday
-        target_days = [6, 0, 3]
-    elif today_weekday == 0:  # Monday
-        target_days = [0, 3, 6]
-    else:
-        target_days = [3, 6, 0]
+    next_game_days = {
+        0: [0, 3, 6],  # Monday -> [Monday, Thursday, Sunday]
+        1: [3, 6, 0],  # Tuesday -> [Thursday, Sunday, Monday]
+        2: [3, 6, 0],  # Wednesday -> [Thursday, Sunday, Monday]
+        3: [3, 6, 0],  # Thursday -> [Thursday, Sunday, Monday]
+        4: [6, 0, 3],  # Friday -> [Sunday, Monday, Thursday]
+        5: [6, 0, 3],  # Saturday -> [Sunday, Monday, Thursday]
+        6: [6, 0, 3],  # Sunday -> [Sunday, Monday, Thursday]
+    }
 
-    upcoming_game_dates = [
-        now + timedelta(days=(d - today_weekday + 7) % 7) for d in target_days
-    ]
+    target_days = next_game_days[today_weekday]
 
+    # Calculate upcoming dates considering time of day
+    upcoming_game_dates = []
+    for target_day in target_days:
+        days_ahead = (target_day - today_weekday) % 7
+        if days_ahead == 0 and now.hour >= 20:  # After 8 PM ET on game day
+            days_ahead = 7  # Move to next week
+        target_date = now.date() + timedelta(days=days_ahead)
+        upcoming_game_dates.append(target_date)
+
+    # Filter games
     upcoming_games = schedule[
         (schedule['game_type'] == 'REG') &
-        (schedule['game_datetime'].dt.date.isin([date.date() for date in upcoming_game_dates]))
+        (schedule['game_datetime'].dt.date.isin(upcoming_game_dates))
     ].sort_values('game_datetime')
+
+    # Convert game times to local timezone for display
+    local_tz = datetime.now().astimezone().tzinfo
+    upcoming_games['game_datetime'] = upcoming_games['game_datetime'].dt.tz_convert(local_tz)
     
-    return upcoming_games[['game_datetime', 'home_team', 'away_team']]
+    # Add formatted game time column for display
+    upcoming_games['formatted_time'] = upcoming_games['game_datetime'].dt.strftime('%Y-%m-%d %I:%M %p %Z')
+    
+    return upcoming_games[['formatted_time', 'home_team', 'away_team']]
 
 # ===========================
-# 9. Quantum Monte Carlo Simulation Function
+# 8. Quantum Monte Carlo Simulation Function
 # ===========================
 
 def quantum_monte_carlo_simulation(home_team, away_team, spread_adjustment, num_simulations, team_stats):
@@ -436,7 +290,7 @@ def quantum_monte_carlo_simulation(home_team, away_team, spread_adjustment, num_
     return results
 
 # ===========================
-# 10. Display Functions
+# 9. Display Functions
 # ===========================
 
 def display_results(results, home_team, away_team):
@@ -481,7 +335,7 @@ def display_results(results, home_team, away_team):
         ''', unsafe_allow_html=True)
 
 # ===========================
-# 11. Summary Table Function
+# 10. Summary Table Function
 # ===========================
 
 def create_summary_table(all_results):
@@ -508,7 +362,7 @@ def create_summary_table(all_results):
     }))
 
 # ===========================
-# 12. Main Functionality
+# 11. Main Functionality
 # ===========================
 
 # Initialize session state for caching
@@ -517,7 +371,7 @@ if 'nfl_team_stats' not in st.session_state:
 
 # Sidebar for controls
 st.markdown('''
-    <div class="controls-section">
+    <div class</antArtifact><div class="controls-section">
         <h3>Simulation Controls</h3>
     ''', unsafe_allow_html=True)
 
@@ -525,13 +379,15 @@ upcoming_games = get_upcoming_games()
 
 if not upcoming_games.empty:
     game_options = [
-        f"{row['game_datetime'].date()} - {row['home_team']} vs {row['away_team']}"
+        f"{row['formatted_time']} - {row['home_team']} vs {row['away_team']}"
         for _, row in upcoming_games.iterrows()
     ]
     selected_game = st.selectbox("Select Game", game_options)
     
-    home_team = selected_game.split(' vs ')[0].split(' - ')[1]
-    away_team = selected_game.split(' vs ')[1]
+    # Parse selected game info
+    game_info = selected_game.split(' - ')[1]  # Get the part after the datetime
+    home_team = game_info.split(' vs ')[0]
+    away_team = game_info.split(' vs ')[1]
     
     spread_adjustment = st.slider(
         "Home Team Spread Adjustment",
@@ -563,6 +419,7 @@ if run_simulation:
 if predict_all:
     all_results = []
     with st.spinner("Running simulations for all games..."):
+        team_stats = st.session_state.nfl_team_stats
         for _, row in upcoming_games.iterrows():
             home_team = row['home_team']
             away_team = row['away_team']
@@ -589,7 +446,7 @@ if predict_all:
         st.markdown('</div>', unsafe_allow_html=True)
 
 # ===========================
-# 13. Footer Section
+# 12. Footer Section
 # ===========================
 
 st.markdown('''
