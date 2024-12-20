@@ -388,7 +388,7 @@ def fetch_upcoming_games(schedule):
     upcoming_game_dates = [now + timedelta(days=(d - weekday + 7) % 7) for d in target_days]
 
     # Include current day games as well
-    upcoming_game_dates.append(today)
+    upcoming_game_dates.append(now)  # Keep as datetime object, not date
     unique_upcoming_dates = list(set([date.date() for date in upcoming_game_dates]))  # Remove duplicates
     
     # Filter games to only include games of type 'REG' scheduled on the relevant days
