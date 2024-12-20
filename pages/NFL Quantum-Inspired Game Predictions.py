@@ -356,36 +356,31 @@ def calculate_team_stats():
 # 8. Upcoming Games Retrieval
 # ===========================
 
+# --- Fetch Upcoming Games ---
 @st.cache_data(ttl=3600)
-def get_upcoming_games():
-    games = load_nfl_data()
-    if games is None:
+def fetch_upcoming_games(schedule):
+    if schedule is None:
         return pd.DataFrame()
+    
+    schedule['game_datetime'] = pd.to_datetime(schedule['gameday'].astype(str) + ' ' + schedule['gametime'].astype(str), errors='coerce', utc=True)
+    now = datetime.now(pytz.UTC)
+    today = now.date()
+    weekday = now.weekday()
 
-    schedule = games.copy()
-    schedule['game_datetime'] = pd.to_datetime(schedule['gameday']).dt.tz_localize('UTC')
-    now = datetime.now().astimezone(pytz.UTC)
-    today_weekday = now.weekday()
+    # Include games for the current day and the next 3 scheduled days (Thursday, Sunday, Monday for NFL)
+    target_days = {3: [3, 6, 0], 6: [6, 0, 3], 0: [0, 3, 6]}.get(weekday, [3, 6, 0])
+    upcoming_game_dates = [now + timedelta(days=(d - weekday + 7) % 7) for d in target_days]
 
-    # Set target game days based on the current weekday
-    if today_weekday == 3:  # Thursday
-        target_days = [3, 6, 0]
-    elif today_weekday == 6:  # Sunday
-        target_days = [6, 0, 3]
-    elif today_weekday == 0:  # Monday
-        target_days = [0, 3, 6]
-    else:
-        target_days = [3, 6, 0]
-
-    upcoming_game_dates = [
-        now + timedelta(days=(d - today_weekday + 7) % 7) for d in target_days
-    ]
-
+    # Include current day games as well
+    upcoming_game_dates.append(now)  # Keep as datetime object, not date
+    unique_upcoming_dates = list(set([date.date() for date in upcoming_game_dates]))  # Remove duplicates
+    
+    # Filter games to only include games of type 'REG' scheduled on the relevant days
     upcoming_games = schedule[
         (schedule['game_type'] == 'REG') &
-        (schedule['game_datetime'].dt.date.isin([date.date() for date in upcoming_game_dates]))
+        (schedule['game_datetime'].dt.date.isin(unique_upcoming_dates))
     ].sort_values('game_datetime')
-    
+
     return upcoming_games[['game_datetime', 'home_team', 'away_team']]
 
 # ===========================
