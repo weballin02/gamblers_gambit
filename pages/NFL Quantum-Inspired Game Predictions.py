@@ -1,3 +1,5 @@
+
+
 # nfl_quant.py
 
 # ===========================
@@ -356,17 +358,15 @@ def calculate_team_stats():
 # 8. Upcoming Games Retrieval
 # ===========================
 
-@st.cache_data(ttl=3600, allow_output_mutation=True)
-def get_upcoming_games(user_timezone):
+@st.cache_data(ttl=3600)
+def get_upcoming_games():
     games = load_nfl_data()
     if games is None:
         return pd.DataFrame()
 
     schedule = games.copy()
-    # Assume 'gameday' is in UTC; localize accordingly
-    schedule['game_datetime'] = pd.to_datetime(schedule['gameday']).dt.tz_localize('UTC').dt.tz_convert(user_timezone)
-    
-    now = datetime.now(pytz.timezone(user_timezone))
+    schedule['game_datetime'] = pd.to_datetime(schedule['gameday']).dt.tz_localize('UTC')
+    now = datetime.now().astimezone(pytz.UTC)
     today_weekday = now.weekday()
 
     # Set target game days based on the current weekday
@@ -486,18 +486,14 @@ def display_results(results, home_team, away_team):
 def create_summary_table(all_results):
     summary_data = []
     for game in all_results:
-        if game['results'] is not None:
-            summary_data.append({
-                "Home Team": game['home_team'],
-                "Away Team": game['away_team'],
-                "Home Win %": game['results'][f"{game['home_team']} Win Percentage"],
-                "Away Win %": game['results'][f"{game['away_team']} Win Percentage"],
-                "Avg Total Score": game['results']["Average Total Score"],
-                "Score Differential": game['results'][f"Score Differential ({game['home_team']} - {game['away_team']})"]
-            })
-    if not summary_data:
-        st.warning("No simulation results to display in the summary table.")
-        return
+        summary_data.append({
+            "Home Team": game['home_team'],
+            "Away Team": game['away_team'],
+            "Home Win %": game['results'][f"{game['home_team']} Win Percentage"],
+            "Away Win %": game['results'][f"{game['away_team']} Win Percentage"],
+            "Avg Total Score": game['results']["Average Total Score"],
+            "Score Differential": game['results'][f"Score Differential ({game['home_team']} - {game['away_team']})"]
+        })
     summary_df = pd.DataFrame(summary_data)
     st.markdown('''
         <div class="data-section">
@@ -524,35 +520,18 @@ st.markdown('''
         <h3>Simulation Controls</h3>
     ''', unsafe_allow_html=True)
 
-# Add a dropdown for users to select their time zone
-user_timezone = st.selectbox(
-    "Select Your Time Zone",
-    pytz.all_timezones,
-    index=pytz.all_timezones.index('UTC') if 'UTC' in pytz.all_timezones else 0,
-    help="Please select your local time zone to ensure accurate game times."
-)
-
-# Fetch upcoming games based on user's time zone
-upcoming_games = get_upcoming_games(user_timezone)
+upcoming_games = get_upcoming_games()
 
 if not upcoming_games.empty:
     game_options = [
-        f"{row['game_datetime'].strftime('%Y-%m-%d %H:%M %Z')} - {row['home_team']} vs {row['away_team']}"
+        f"{row['game_datetime'].date()} - {row['home_team']} vs {row['away_team']}"
         for _, row in upcoming_games.iterrows()
     ]
     selected_game = st.selectbox("Select Game", game_options)
     
-    # Parse selected game to get home and away teams
-    try:
-        # Extract the game_datetime, home_team, and away_team
-        selected_index = game_options.index(selected_game)
-        selected_row = upcoming_games.iloc[selected_index]
-        home_team = selected_row['home_team']
-        away_team = selected_row['away_team']
-    except Exception as e:
-        st.error(f"Error parsing selected game: {str(e)}")
-        home_team, away_team = None, None
-
+    home_team = selected_game.split(' vs ')[0].split(' - ')[1]
+    away_team = selected_game.split(' vs ')[1]
+    
     spread_adjustment = st.slider(
         "Home Team Spread Adjustment",
         -10.0, 10.0, 0.0, step=0.5,
@@ -571,7 +550,7 @@ if not upcoming_games.empty:
 st.markdown('</div>', unsafe_allow_html=True)
 
 # Main content area
-if run_simulation and home_team and away_team:
+if run_simulation:
     with st.spinner("Running simulation..."):
         team_stats = st.session_state.nfl_team_stats
         results = quantum_monte_carlo_simulation(
@@ -580,7 +559,7 @@ if run_simulation and home_team and away_team:
         )
         display_results(results, home_team, away_team)
 
-if predict_all and not upcoming_games.empty:
+if predict_all:
     all_results = []
     with st.spinner("Running simulations for all games..."):
         for _, row in upcoming_games.iterrows():
@@ -588,7 +567,7 @@ if predict_all and not upcoming_games.empty:
             away_team = row['away_team']
             game_results = quantum_monte_carlo_simulation(
                 home_team, away_team, spread_adjustment, num_simulations,
-                st.session_state.nfl_team_stats
+                team_stats
             )
             all_results.append({
                 'home_team': home_team,
@@ -601,13 +580,12 @@ if predict_all and not upcoming_games.empty:
 
     # Display individual game results
     for game in all_results:
-        if game['results'] is not None:
-            st.markdown(f'''
-                <div class="results-section">
-                    <h3>{game['home_team']} vs {game['away_team']}</h3>
-            ''', unsafe_allow_html=True)
-            display_results(game['results'], game['home_team'], game['away_team'])
-            st.markdown('</div>', unsafe_allow_html=True)
+        st.markdown(f'''
+            <div class="results-section">
+                <h3>{game['home_team']} vs {game['away_team']}</h3>
+        ''', unsafe_allow_html=True)
+        display_results(game['results'], game['home_team'], game['away_team'])
+        st.markdown('</div>', unsafe_allow_html=True)
 
 # ===========================
 # 13. Footer Section
