@@ -364,31 +364,54 @@ def get_upcoming_games():
     if games is None:
         return pd.DataFrame()
 
+    # Convert schedule to Eastern Time (ET) since NFL games are scheduled in ET
     schedule = games.copy()
-    schedule['game_datetime'] = pd.to_datetime(schedule['gameday']).dt.tz_localize('UTC')
-    now = datetime.now().astimezone(pytz.UTC)
+    eastern = pytz.timezone('US/Eastern')
+    
+    # Convert gameday to datetime with Eastern timezone
+    schedule['game_datetime'] = pd.to_datetime(schedule['gameday']).dt.tz_localize('US/Eastern')
+    
+    # Get current time in Eastern timezone
+    now = datetime.now(eastern)
     today_weekday = now.weekday()
 
     # Set target game days based on the current weekday
-    if today_weekday == 3:  # Thursday
-        target_days = [3, 6, 0]
-    elif today_weekday == 6:  # Sunday
-        target_days = [6, 0, 3]
-    elif today_weekday == 0:  # Monday
-        target_days = [0, 3, 6]
-    else:
-        target_days = [3, 6, 0]
+    # Dictionary mapping current day to next game days (in order of priority)
+    next_game_days = {
+        0: [0, 3, 6],  # Monday -> [Monday, Thursday, Sunday]
+        1: [3, 6, 0],  # Tuesday -> [Thursday, Sunday, Monday]
+        2: [3, 6, 0],  # Wednesday -> [Thursday, Sunday, Monday]
+        3: [3, 6, 0],  # Thursday -> [Thursday, Sunday, Monday]
+        4: [6, 0, 3],  # Friday -> [Sunday, Monday, Thursday]
+        5: [6, 0, 3],  # Saturday -> [Sunday, Monday, Thursday]
+        6: [6, 0, 3],  # Sunday -> [Sunday, Monday, Thursday]
+    }
 
-    upcoming_game_dates = [
-        now + timedelta(days=(d - today_weekday + 7) % 7) for d in target_days
-    ]
+    target_days = next_game_days[today_weekday]
 
+    # Calculate upcoming dates considering time of day
+    upcoming_game_dates = []
+    for target_day in target_days:
+        days_ahead = (target_day - today_weekday) % 7
+        if days_ahead == 0 and now.hour >= 20:  # After 8 PM ET on game day
+            days_ahead = 7  # Move to next week
+        target_date = now.date() + timedelta(days=days_ahead)
+        upcoming_game_dates.append(target_date)
+
+    # Filter games
     upcoming_games = schedule[
         (schedule['game_type'] == 'REG') &
-        (schedule['game_datetime'].dt.date.isin([date.date() for date in upcoming_game_dates]))
+        (schedule['game_datetime'].dt.date.isin(upcoming_game_dates))
     ].sort_values('game_datetime')
+
+    # Convert game times to local timezone for display
+    local_tz = datetime.now().astimezone().tzinfo
+    upcoming_games['game_datetime'] = upcoming_games['game_datetime'].dt.tz_convert(local_tz)
     
-    return upcoming_games[['game_datetime', 'home_team', 'away_team']]
+    # Add formatted game time column for display
+    upcoming_games['formatted_time'] = upcoming_games['game_datetime'].dt.strftime('%Y-%m-%d %I:%M %p %Z')
+    
+    return upcoming_games[['formatted_time', 'home_team', 'away_team']]
 
 # ===========================
 # 9. Quantum Monte Carlo Simulation Function
