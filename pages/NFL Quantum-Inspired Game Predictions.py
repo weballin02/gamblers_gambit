@@ -1,5 +1,4 @@
 
-
 # nfl_quant.py
 
 # ===========================
@@ -365,27 +364,30 @@ def get_upcoming_games():
         return pd.DataFrame()
 
     schedule = games.copy()
-    
-    # Convert game time from UTC to Pacific Time (PT)
-    schedule['game_datetime'] = pd.to_datetime(schedule['gameday']).dt.tz_localize('UTC').dt.tz_convert('US/Pacific')
-    
-    # Get the current Pacific Time and today's Pacific Date
-    now = datetime.now().astimezone(pytz.timezone('US/Pacific'))
-    today_pacific_date = now.date()
-    
-    # Filter to include today's games and future games
+    schedule['game_datetime'] = pd.to_datetime(schedule['gameday']).dt.tz_localize('UTC')
+    now = datetime.now().astimezone(pytz.UTC)
+    today_weekday = now.weekday()
+
+    # Set target game days based on the current weekday
+    if today_weekday == 3:  # Thursday
+        target_days = [3, 6, 0]
+    elif today_weekday == 6:  # Sunday
+        target_days = [6, 0, 3]
+    elif today_weekday == 0:  # Monday
+        target_days = [0, 3, 6]
+    else:
+        target_days = [3, 6, 0]
+
+    upcoming_game_dates = [
+        now + timedelta(days=(d - today_weekday + 7) % 7) for d in target_days
+    ]
+
     upcoming_games = schedule[
-        (schedule['game_type'] == 'REG') & 
-        (
-            (schedule['game_datetime'].dt.date == today_pacific_date) |  # Include today's games
-            (schedule['game_datetime'] >= now)  # Include future games
-        ) &
-        (schedule['game_datetime'] >= now - timedelta(hours=6))  # Grace period to keep recently started games
+        (schedule['game_type'] == 'REG') &
+        (schedule['game_datetime'].dt.date.isin([date.date() for date in upcoming_game_dates]))
     ].sort_values('game_datetime')
-
+    
     return upcoming_games[['game_datetime', 'home_team', 'away_team']]
-
-
 
 # ===========================
 # 9. Quantum Monte Carlo Simulation Function
