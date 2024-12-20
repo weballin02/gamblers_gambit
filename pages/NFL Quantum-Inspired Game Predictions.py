@@ -383,6 +383,10 @@ def fetch_upcoming_games(schedule):
 
     return upcoming_games[['game_datetime', 'home_team', 'away_team']]
 
+# Ensure correct function call is used in the main script
+upcoming_games = fetch_upcoming_games(schedule)
+
+
 # ===========================
 # 9. Quantum Monte Carlo Simulation Function
 # ===========================
