@@ -366,19 +366,25 @@ def get_upcoming_games():
 
     schedule = games.copy()
     
-    # Localize the game time to UTC and convert to Pacific Time
+    # Convert game time from UTC to Pacific Time (PT)
     schedule['game_datetime'] = pd.to_datetime(schedule['gameday']).dt.tz_localize('UTC').dt.tz_convert('US/Pacific')
     
-    # Get the current time in Pacific Time
+    # Get the current Pacific Time and today's Pacific Date
     now = datetime.now().astimezone(pytz.timezone('US/Pacific'))
+    today_pacific_date = now.date()
     
-    # Filter for "upcoming games" which includes games happening today (even if they started) and future games
+    # Filter to include today's games and future games
     upcoming_games = schedule[
         (schedule['game_type'] == 'REG') & 
-        (schedule['game_datetime'] >= now - timedelta(hours=6))  # Allow a 6-hour grace period to keep "today's" games
+        (
+            (schedule['game_datetime'].dt.date == today_pacific_date) |  # Include today's games
+            (schedule['game_datetime'] >= now)  # Include future games
+        ) &
+        (schedule['game_datetime'] >= now - timedelta(hours=6))  # Grace period to keep recently started games
     ].sort_values('game_datetime')
-    
+
     return upcoming_games[['game_datetime', 'home_team', 'away_team']]
+
 
 
 # ===========================
