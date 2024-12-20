@@ -377,17 +377,24 @@ full_name_to_abbrev = {v: k for k, v in team_abbrev_mapping.items()}
 def fetch_upcoming_games(schedule):
     if schedule is None:
         return pd.DataFrame()
+    
     schedule['game_datetime'] = pd.to_datetime(schedule['gameday'].astype(str) + ' ' + schedule['gametime'].astype(str), errors='coerce', utc=True)
     now = datetime.now(pytz.UTC)
+    today = now.date()
     weekday = now.weekday()
 
-    # Define target days based on current weekday
+    # Include games for the current day and the next 3 scheduled days (Thursday, Sunday, Monday for NFL)
     target_days = {3: [3, 6, 0], 6: [6, 0, 3], 0: [0, 3, 6]}.get(weekday, [3, 6, 0])
     upcoming_game_dates = [now + timedelta(days=(d - weekday + 7) % 7) for d in target_days]
 
+    # Include current day games as well
+    upcoming_game_dates.append(today)
+    unique_upcoming_dates = list(set([date.date() for date in upcoming_game_dates]))  # Remove duplicates
+    
+    # Filter games to only include games of type 'REG' scheduled on the relevant days
     upcoming_games = schedule[
         (schedule['game_type'] == 'REG') &
-        (schedule['game_datetime'].dt.date.isin([date.date() for date in upcoming_game_dates]))
+        (schedule['game_datetime'].dt.date.isin(unique_upcoming_dates))
     ].sort_values('game_datetime')
 
     return upcoming_games[['game_datetime', 'home_team', 'away_team']]
