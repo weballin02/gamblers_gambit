@@ -363,9 +363,9 @@ def get_upcoming_games():
     if games is None:
         return pd.DataFrame()
 
-    schedule = games.copy()
-    schedule['game_datetime'] = pd.to_datetime(schedule['gameday']).dt.tz_localize('UTC')
-    now = datetime.now().astimezone(pytz.UTC)
+    schedule['game_datetime'] = pd.to_datetime(schedule['gameday'] + ' ' + schedule['gametime'], errors='coerce')
+    schedule['game_datetime'] = schedule['game_datetime'].dt.tz_localize('UTC').dt.tz_convert('US/Pacific')
+    now = datetime.now(pytz.timezone('US/Pacific'))
     today_weekday = now.weekday()
 
     # Set target game days based on the current weekday
